@@ -1,0 +1,4 @@
+{
+    "python.defaultInterpreterPath": "environment\\Scripts\\python.exe",
+    "python.linting.pylintArgs": ["--load-plugins pylint_flask_sqlalchemy"]
+}
