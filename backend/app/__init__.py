@@ -17,10 +17,8 @@ def initDatabase(app):
         with app.app_context():
             from . import models
             db.create_all()
+
             db.session.add(models.User(username="admin", password="admin"))
-            db.session.add(models.RoomState(name="Waiting"))
-            db.session.add(models.RoomState(name="Running"))
-            db.session.add(models.RoomState(name="Results"))
             db.session.add(models.User(username="jeff", password="jeff"))
             db.session.add(models.User(username="egg", password="egg"))
             db.session.add(models.User(username="nog", password="nog"))
@@ -29,21 +27,27 @@ def initDatabase(app):
             db.session.add(models.User(username="crip", password="crip"))
             db.session.add(models.User(username="Carbin", password="Carbin"))
 
-            db.session.add(models.Quiz(creatorId=1, name="quiz1", description="epic test quiz"))
-            db.session.add(models.Room(name="test", quizId=1, masterId=1, stateId=1))
-            db.session.add(models.RoomState(name="test"))
-            db.session.add(models.RoomParticipants(roomId=1, userId=5, score=0, isReady=True))
-            db.session.add(models.RoomParticipants(roomId=1, userId=6, score=0, isReady=False))
-            db.session.add(models.RoomParticipants(roomId=1, userId=7, score=0, isReady=False))
-            db.session.add(models.RoomParticipants(roomId=1, userId=8, score=0, isReady=True))
+            #db.session.add(models.Government(name="Democracy", description="TEST1"))
+            #db.session.add(models.RoomState(name="Anarchy", description="TEST2"))
+            #db.session.add(models.RoomState(name="Communism", description="TEST3"))
+            #db.session.add(models.RoomState(name="Dictatorship", description="TEST3"))
+
+            #db.session.add(models.Laws(name="law1"), description="the big law1")
+            #db.session.add(models.Laws(name="law2"), description="the big law2")
+            #db.session.add(models.Laws(name="law3"), description="the big law3")
+            #db.session.add(models.Laws(name="law4"), description="the big law4")
+
+            db.session.add(models.Room(name="test", id=1))
+            db.session.add(models.RoomParticipants(roomId=1, userId=5))
+            db.session.add(models.RoomParticipants(roomId=1, userId=6))
+            db.session.add(models.RoomParticipants(roomId=1, userId=7))
+            db.session.add(models.RoomParticipants(roomId=1, userId=8))
             
-            db.session.add(models.Quiz(creatorId=2, name="quiz2", description="epic test quiz"))
-            db.session.add(models.Room(name="roogy", quizId=2, masterId=2, stateId=1))
-            db.session.add(models.RoomState(name="leg"))
-            db.session.add(models.RoomParticipants(roomId=2, userId=1, score=12, isReady=False))
-            db.session.add(models.RoomParticipants(roomId=2, userId=2, score=5, isReady=True))
-            db.session.add(models.RoomParticipants(roomId=2, userId=3, score=25, isReady=True))
-            db.session.add(models.RoomParticipants(roomId=2, userId=4, score=18, isReady=True))
+            db.session.add(models.Room(name="roogy", id=2))
+            db.session.add(models.RoomParticipants(roomId=2, userId=1))
+            db.session.add(models.RoomParticipants(roomId=2, userId=2))
+            db.session.add(models.RoomParticipants(roomId=2, userId=3))
+            db.session.add(models.RoomParticipants(roomId=2, userId=4))
 
             db.session.commit()
 
@@ -59,9 +63,9 @@ def createApp(configName):
     #Init CORS (temporary)
     CORS(app, resources={r"/*": {"origins": "*"}})
     #Init websocket
-    from .websocket.QuizSession import QuizNamespace
+    from .websocket.GameSession import GameNamespace
     socketio.init_app(app)
-    socketio.on_namespace(QuizNamespace())
+    socketio.on_namespace(GameNamespace())
     #Init API blueprints
     from .api import api as apiBlueprint
     from .auth import auth as authBlueprint

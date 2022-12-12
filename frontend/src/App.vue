@@ -1,11 +1,15 @@
 <template>
   <div id="app">
     <b-navbar type="dark" variant="dark">
-      <b-navbar-brand href="#">NazoDazo</b-navbar-brand>
+      <b-navbar-brand href="#">Gerrys Game</b-navbar-brand>
         <b-collapse id="nav-collapse" is-nav>
         <b-navbar-nav>
-          <b-nav-item to="/rooms">Active quizzes</b-nav-item>
-          <b-nav-item to="/me/quizzes">My quizzes</b-nav-item>
+          <b-nav-item to="/rooms">Active games</b-nav-item>
+          <template v-if="username != null"> 
+            <b-nav-item to="/room">Current Game</b-nav-item>
+          </template>
+        
+          <!--<b-nav-item to="/me/quizzes">My quizzes</b-nav-item> -->
         </b-navbar-nav>
         <b-navbar-nav class="ml-auto">
           <template v-if="username != null">
@@ -30,6 +34,12 @@
 </template>
 <script>
 export default {
+  name: 'RoomList',
+  data() {
+		return {
+			name: 'RoomList',
+		}
+	},
     methods: {
       async onLogout () {
         await this.$store.dispatch('logout').then(() => {

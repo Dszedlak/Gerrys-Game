@@ -1,16 +1,19 @@
 import re
-from app.models import Room, RoomState, User, db, RoomParticipants
+import threading
+from app.models import Room, User, db
 from flask import request
 from flask_socketio import Namespace, emit
 from flask_jwt_extended import jwt_required, get_jwt_identity
 import json
 
-class QuizNamespace(Namespace):
+class GameNamespace(Namespace):
+
     @jwt_required()
     def on_connect(self):
         current_user = get_jwt_identity()
         participants = load_ready_partipants(current_user)
     
+        sleep(10)
         emit('UpdateUserStatus', {'data':participants}, broadcast=True)
         pass
 
@@ -18,7 +21,14 @@ class QuizNamespace(Namespace):
     def on_oof(self, data):
         print(data)
         pass
-
+    
+    @jwt_required()
+    def update_users(self):
+        print("I HATE POO!!!!")
+        current_user = get_jwt_identity()
+        participants = load_ready_partipants(current_user)
+        emit('UpdateUserStatus', {'data':participants}, broadcast=True)
+        pass
     @jwt_required()
     def on_disconnect(self):
         pass
@@ -48,18 +58,27 @@ class QuizNamespace(Namespace):
         #Quiz master wants to end the answering period for this question
         pass
 
-def load_ready_partipants(session_id):
-    ready_users_id=[]
-    ready_users=[]
-    session_query = Room.query.filter_by(id=session_id).first()
-    participants = session_query.participants
+    def ping_in_intervals(self):
+        while True:
+            sleep(1)
 
-    for participants in session_query.participants:
-        if participants.isReady == True:
-            ready_users_id.append(participants.userId)
+        
+
+def obj_dict(obj):
+    return obj  
+
+def load_ready_partipants(session_id):
+    players=[]
+    session_query = Room.query.filter_by(id=session_id).first()
+
+    for participant in session_query.participants:
+        players.append(db.session.query(User.username).filter_by(id=participant.userId).first()[0])
+        #tmp = {"User": db.session.query(User.username).filter_by(id=participant.userId).first()[0], "Job": participant.job}
+    jsonString = json.dumps(players)
+        
+    print(jsonString)    
+
+    return jsonString
+    #return json.dumps(participant, default=obj_dict)
+
     
-    for user_id in ready_users_id:
-        tmp = db.session.query(User.username).filter_by(id=user_id).first()
-        ready_users.append(tmp[0])
-    
-    return json.dumps(ready_users)

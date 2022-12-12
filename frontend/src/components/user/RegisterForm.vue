@@ -32,6 +32,9 @@
         required>
         </b-form-input>
     </b-form-group>
+    <div class="form-group">
+      <small v-if="errors" class="text-danger">{{errors}}</small>
+    </div>
     <b-button type="submit" class="btn btn-success">Register</b-button>
   </b-form>
 </template>
