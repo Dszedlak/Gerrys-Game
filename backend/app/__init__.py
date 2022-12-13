@@ -63,9 +63,8 @@ def createApp(configName):
     #Init CORS (temporary)
     CORS(app, resources={r"/*": {"origins": "*"}})
     #Init websocket
-    from .websocket.GameSession import GameNamespace
+    from .websocket.GameSession import socketio
     socketio.init_app(app)
-    socketio.on_namespace(GameNamespace())
     #Init API blueprints
     from .api import api as apiBlueprint
     from .auth import auth as authBlueprint

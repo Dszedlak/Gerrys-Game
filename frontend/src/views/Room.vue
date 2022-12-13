@@ -4,7 +4,7 @@
     <h2>Players:</h2>
     <ul id="test">
       <li v-for="value in players">
-        {{ value}}
+        {{ value }}
       </li>
     </ul>
     <div class="mt-2">Clock: {{ text }}</div>
@@ -42,7 +42,7 @@ export default {
     sockets: {
     connect() {
       console.log(`${JwtService.getToken()}`)
-      console.log("socket connected");
+      console.log("socket connected");  
     },
     UpdateUserStatus(data) {
       var users = JSON.parse(data.data)

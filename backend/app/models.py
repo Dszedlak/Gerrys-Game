@@ -50,9 +50,6 @@ class RoomParticipants(db.Model):
     clock = db.Column(db.Integer, default=24)
     #job = db.relationship("Job", lazy="subquery")
 
-
-
-
 class Job(db.Model):
     __tablename__ = "job"
     id = db.Column(db.Integer, primary_key=True)
