@@ -3,7 +3,7 @@
 		<h1>Gerrys Game!</h1>
     <h2>Players:</h2>
     <ul id="test">
-      <li v-for="value in players">
+      <li v-for="value in players" v-bind:key="value">
         {{ value }}
       </li>
     </ul>
@@ -43,13 +43,15 @@ export default {
     connect() {
       console.log(`${JwtService.getToken()}`)
       console.log("socket connected");  
+      this.$socket.client.emit('join')
     },
     UpdateUserStatus(data) {
+      this.players = [];
       var users = JSON.parse(data.data)
       for(let i = 0; i < users.length; i++){
         this.players.push(users[i]);
       }
-    },
+    }
   },
   data() {
     return {
