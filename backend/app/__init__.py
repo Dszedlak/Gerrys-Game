@@ -70,4 +70,5 @@ def createApp(configName):
     from .auth import auth as authBlueprint
     app.register_blueprint(apiBlueprint, url_prefix="/api")
     app.register_blueprint(authBlueprint, url_prefix="/api/auth")
+
     return app

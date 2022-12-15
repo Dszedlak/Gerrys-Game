@@ -70,7 +70,6 @@
 			</b-modal>	
 	</div>
 </template>
-
 <script>
 import RoomListService from "@/services/RoomListService";
 export default {
