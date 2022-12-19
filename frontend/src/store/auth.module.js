@@ -5,7 +5,8 @@ import AuthenticationService from '@/services/AuthenticationService'
 const state = {
   errors: null,
   username: null,
-  isAuthenticated: !!JwtService.getToken()
+  isAuthenticated: !!JwtService.getToken(), 
+  roomId: null
 }
 
 const getters = {
@@ -14,6 +15,9 @@ const getters = {
   },
   isAuthenticated (state) {
     return this.isAuthenticated;
+  },
+  roomId (state) {
+    return this.roomId;
   }
 };
 
@@ -88,6 +92,13 @@ const mutations = {
     state.errors = "";
     JwtService.destroyToken();
   },
+  setRoomId(state, {id}) {
+    state.roomId = id;
+  },
+  leaveRoomId(state)
+  {
+    state.roomId = null;
+  }
 };
 
 export default {

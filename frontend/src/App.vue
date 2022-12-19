@@ -48,9 +48,9 @@ export default {
     }
     },
     computed: {
-    username () {
-      return this.$store.state.auth.username
-    },
+      username () {
+        return this.$store.state.auth.username
+      },
   }
 }
 </script>

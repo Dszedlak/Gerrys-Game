@@ -104,7 +104,7 @@ export default {
     connect() {
       console.log(`${JwtService.getToken()}`)
       console.log("socket connected");  
-      this.$socket.client.emit('join')
+      this.$socket.client.emit('join');
     },
     UpdateUserStatus(data) {
       this.players = [];
@@ -126,15 +126,24 @@ export default {
       const player = JSON.stringify(Object.assign({}, playerData))
       this.$socket.client.emit('updatePlayerData', player)
     },
+    updateRoomId(data)
+    {
+      this.$store.state.auth.roomId = data.data;
+      console.log("roomId: " + this.$store.state.auth.roomId)
+
+    }
   },
-  beforeRouteLeave(to, from, next) {
-    this.$socket.client.emit('leave')
-    console.log("Left the room")
-    next()
+  methods:{
+    leaveRoom()
+    {
+      this.$socket.client.emit('leave')
+      this.$router.push("/rooms")
+    }
   },
   data() {
     return {
       players: [],
+      roomId: null,
       newComponent: false
     }    
   },
