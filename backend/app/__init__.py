@@ -20,12 +20,12 @@ def initDatabase(app):
 
             db.session.add(models.User(username="admin", password="admin"))
             db.session.add(models.User(username="jeff", password="jeff"))
-            db.session.add(models.User(username="egg", password="egg"))
-            db.session.add(models.User(username="nog", password="nog"))
-            db.session.add(models.User(username="cock", password="cock"))
-            db.session.add(models.User(username="balls", password="balls"))
-            db.session.add(models.User(username="crip", password="crip"))
-            db.session.add(models.User(username="Carbin", password="Carbin"))
+            db.session.add(models.User(username="aaron", password="aaron"))
+            db.session.add(models.User(username="xi xinping", password="xi xinping"))
+            db.session.add(models.User(username="LiterallyHitler", password="LiterallyHitler"))
+            db.session.add(models.User(username="Stalin", password="Stalin"))
+            db.session.add(models.User(username="Josef Mengele", password="Josef"))
+            db.session.add(models.User(username="Paul Gerry", password="Paul"))
 
             #db.session.add(models.Government(name="Democracy", description="TEST1"))
             #db.session.add(models.RoomState(name="Anarchy", description="TEST2"))

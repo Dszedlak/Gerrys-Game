@@ -13,7 +13,11 @@ game_session = GameSession()
 class Polling:
     def __init__(self):
         self.is_polling = False
-    
+        self.room = 0
+
+    def setRoom(self, r):
+        self.room = r
+
     def poll(self):
         self.is_polling = True
     
@@ -27,24 +31,29 @@ polling = Polling()
 @socketio.on('join')
 @jwt_required()
 def on_join():
-    polling.poll()
     username = get_jwt_identity()
     room = game_session.get_room_id(username)
+
+    polling.poll()
+    polling.setRoom(room)
+
     join_room(room)
     
     emit('updateRoomId', {'data': room}, to=game_session.getRoom())
+
+    print("polling =" + str(polling.is_polling))
+    print("room= " + str(polling.room))
 
     global thread
     with thread_lock:
         if thread is None:
             thread = socketio.start_background_task(background_thread(polling))
 
-    print(polling.is_polling)
-
 @socketio.on('leave')
 @jwt_required()
 def on_leave():
-    polling.stop()
+    polling.setRoom(0)
+
     username = get_jwt_identity()
     room = game_session.get_room_id(username)
     leave_room(room)
@@ -54,9 +63,6 @@ def on_leave():
 @socketio.on('connect')
 @jwt_required()
 def on_connect():
-    username = get_jwt_identity()
-    room = game_session.get_room_id(username)    
-    emit('updateRoomId', {'data': room}, to=game_session.getRoom())
     print("Client Connected")
 
 @socketio.on('disconnect')
@@ -68,8 +74,6 @@ def background_thread(polling: Polling):
     while True:
         if polling.is_polling:
             current_user = get_jwt_identity()
-            participants = game_session.load_ready_partipants(current_user)
-            emit('UpdateUserStatus', {'data':participants}, to=game_session.getRoom())
+            participants = game_session.load_ready_partipants(current_user, polling.room)
+            emit('UpdateUserStatus', {'data':participants}, to=polling.room)
             socketio.sleep(1)
-        else:
-            break

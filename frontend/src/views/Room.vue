@@ -9,19 +9,19 @@
     </b-row>
     <b-row>
       <b-col></b-col>
-      <b-col cols="14" class="itemRowButtons">
+      <b-col cols="14" class="itemRowButtonsClock">
             <b-button-group class="mx-1">
-              <b-button class="addremovebutton">-1h</b-button>
-              <b-button class="addremovebutton">-30</b-button>
-              <b-button class="addremovebutton">-20</b-button>
-              <b-button class="addremovebutton">-10</b-button>
+              <b-button class="addremovebuttonClock">-1h</b-button>
+              <b-button class="addremovebuttonClock">-30</b-button>
+              <b-button class="addremovebuttonClock">-20</b-button>
+              <b-button class="addremovebuttonClock">-10</b-button>
             </b-button-group>
             
             <b-button-group class="mx-1">
-              <b-button class="addremovebutton">+10</b-button>
-              <b-button class="addremovebutton">+20</b-button>
-              <b-button class="addremovebutton">+30</b-button>
-              <b-button class="addremovebutton">+1h</b-button>
+              <b-button class="addremovebuttonClock">+10</b-button>
+              <b-button class="addremovebuttonClock">+20</b-button>
+              <b-button class="addremovebuttonClock">+30</b-button>
+              <b-button class="addremovebuttonClock">+1h</b-button>
             </b-button-group>
       </b-col>
       <b-col></b-col>
@@ -60,10 +60,10 @@
       <b-row class="itemRowPlayers">
         <b-col></b-col>
         <b-col cols="1.4">    
-          <h1>Players</h1>
+          <h1 class="players">Players</h1>
             <ul id="test">
               <li v-for="value in players" v-bind:key="value">
-                <h5>{{ value }}</h5>
+                <h5 class="list">{{ value }}</h5>
               </li>
             </ul>
         </b-col>
@@ -133,6 +133,20 @@ export default {
 
     }
   },
+  created() {
+    window.addEventListener("beforeunload", this.leaveRoom);
+  }, 
+  mounted() {
+    if (localStorage.getItem('reloaded')) {
+        // The page was just reloaded. Clear the value from local storage
+        // so that it will reload the next time this page is visited.
+        localStorage.removeItem('reloaded');
+    } else {
+        // Set a flag so that we know not to reload the page twice.
+        localStorage.setItem('reloaded', '1');
+        location.reload();
+    }
+  },  
   methods:{
     leaveRoom()
     {
@@ -177,6 +191,13 @@ export default {
   text-align: left;
 }
 
+.addremovebuttonClock{
+  width: 52px;
+  height: 45px;
+  text-align: left;
+  margin-right:0px
+}
+
 .interestButton{
   width: 95px;
   height: 45px;
@@ -191,7 +212,21 @@ export default {
   height: 75px;
 }
 
+.itemRowButtonsClock{
+  height: 75px;
+}
+
 .itemRowPlayers{
   height: 150px;
+  padding-right:40px;
+}
+
+.players {
+  padding-left:40px;
+}
+
+ul {
+  list-style-type: none;
+  text-align: center;
 }
 </style>

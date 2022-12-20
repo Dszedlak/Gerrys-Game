@@ -17,23 +17,19 @@
 					v-for="(room, index) in rooms"
 					:key="index">
 						<b-td><a v-b-modal.JoinRoomModal roomname="room" roomId="room" @click="sendInfo(room.name, room.id)">{{ room.name }}</a></b-td>
-						<template v-if="currentRoomId != null && room.id == currentRoomId">  
-							<b-button ><a v-b-modal.LeaveRoomModal roomname="room" roomId="room" @click="sendInfo(room.name, room.id)">{{ "Leave Room?" }}</a></b-button>
-					</template>
 					</b-tr>
 					</b-tbody>
 				</b-table-simple>
 			</b-col>
-				<b-tbody>
+				<b-tbody class="leaveButtons">
 					<b-tr
 					v-for="(room, index) in rooms"
 					:key="index">
-					
+					<template v-if="currentRoomId != null && room.id == currentRoomId">  
+							<span><b-button class="butt"><a v-b-modal.LeaveRoomModal roomname="room" roomId="room" @click="sendInfo(room.name, room.id)">{{ "Leave Room?" }}</a></b-button></span>
+						</template>
 					</b-tr>
 					</b-tbody>
-				<b-col>
-
-		</b-col>
 
 		</b-row>
 		</b-container>
@@ -149,7 +145,7 @@ export default {
 			var data = {
 				roomId: this.roomId
 			}
-			this.$store.state.auth.roomId = roomId
+			this.$store.state.auth.roomId = data.data;
             RoomListService.joinRoom(data)
             .then(response => {
                 this.$router.push({ name: 'Room'})
@@ -177,5 +173,22 @@ export default {
 .itemRow{
   height: 118px;
   text-align: center;
+}
+
+.leaveButtons {
+	padding-top: 50px;
+}
+
+tr {
+	font-size:25px;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.butt {
+	height: 45px;
+}
+.bv-example-row {
+	padding-left: 120px;
 }
 </style>
