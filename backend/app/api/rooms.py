@@ -1,18 +1,25 @@
 from flask_restful import Resource, marshal_with
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_socketio import join_room
 from .. import db
 from ..models import Room, RoomParticipants, Government, Job
 from .util import ROOMS_FIELDS,JOIN_ROOM_FIELDS, roomParser,joinRoomParser
-
+from ..websocket.game_session import GameSession
 
 #Have a log for the game that logs peoples actions to show whether people are cheating
 
 class RoomListResource(Resource):
+	@jwt_required()
 	@marshal_with(ROOMS_FIELDS)
 	def get(self):
+		game = GameSession("test")
+		gametwo = GameSession("roogy")
+		game.run()
+		gametwo.run()
 		rooms = Room.query.all()
 		return rooms
 
+#Create room
 	@jwt_required()
 	@marshal_with(ROOMS_FIELDS)
 	def post(self):
@@ -23,6 +30,8 @@ class RoomListResource(Resource):
 		#room = Room(name=name, id=user, state=RoomState.query.filter_by(name="Waiting").first(), government=Government.query.filter_by(name="Democracy").first())
 		db.session.add(room)
 		db.session.commit()
+		game = GameSession(name)
+		game.run()
 		return room
 
 class JoinRoomResource(Resource):
