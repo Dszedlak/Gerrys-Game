@@ -5,17 +5,13 @@ from .. import db
 from ..models import Room, RoomParticipants, Government, Job
 from .util import ROOMS_FIELDS,JOIN_ROOM_FIELDS, roomParser,joinRoomParser
 from ..websocket.game_session import GameSession
-
+from app import socketio
 #Have a log for the game that logs peoples actions to show whether people are cheating
 
 class RoomListResource(Resource):
 	@jwt_required()
 	@marshal_with(ROOMS_FIELDS)
 	def get(self):
-		game = GameSession("test")
-		gametwo = GameSession("roogy")
-		game.run()
-		gametwo.run()
 		rooms = Room.query.all()
 		return rooms
 

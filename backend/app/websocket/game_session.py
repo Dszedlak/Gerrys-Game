@@ -4,17 +4,22 @@ from threading import Lock
 from flask_socketio import emit, join_room, leave_room, send
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app import socketio
+from flask import current_app as app
 
 thread = None
 thread_lock = Lock()
 
-class GameSession:
+class GameSession():
     def __init__(self, roomname):
         self._room = db.session.query(Room.id).filter_by(name=roomname).first()[0]
         self._socketio = socketio
+        self.isRunning = False
 
     def getRoom(self) -> int:
         return self._room
+        
+    def getIsRunning(self) -> bool:
+        return self.isRunning
         
     def obj_dict(self):
         return self
@@ -34,10 +39,11 @@ class GameSession:
         #return json.dumps(participant, default=obj_dict)
 
     def run(self):
+        self.isRunning = True
         global thread
         with thread_lock:
             if thread is None:
-                thread = self._socketio.start_background_task(self.background_thread())
+                    thread = self._socketio.start_background_task(self.background_thread())
 
     def background_thread(self):
         while True:
