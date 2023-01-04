@@ -7,9 +7,11 @@ from sqlalchemy_utils import database_exists
 from flask_jwt_extended import JWTManager
 import config
 
+import eventlet
+eventlet.monkey_patch()
 
 db = SQLAlchemy()
-socketio = SocketIO(cors_allowed_origins="*")
+socketio = SocketIO(cors_allowed_origins="*", async_mode='eventlet')
 jwt = JWTManager()
 
 def initDatabase(app):
