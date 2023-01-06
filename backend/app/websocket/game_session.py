@@ -44,9 +44,9 @@ class GameSession():
         with thread_lock:
             if thread is None:
                 @copy_current_request_context
-                def foo():
+                def start():
                     self.background_thread()
-                thread = Thread(target=foo)
+                thread = Thread(target=start)
                 thread.daemon = True
                 thread.start()
 

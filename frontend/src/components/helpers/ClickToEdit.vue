@@ -1,6 +1,6 @@
 <template>
     <span class="my-checkbox">
-      <input type="text"
+      <input class="input-checkbox" type="text"
              v-if="edit"
              :value="valueLocal"
              @blur="save($event);"
@@ -58,6 +58,11 @@
 <style>
 .my-checkbox {
     font-size: 2em;
+    color: rgb(64, 224, 64);
+}
+
+.input-checkbox {
+    font-size: 1em;
     text-align: center;
     color: rgb(64, 224, 64);
 }

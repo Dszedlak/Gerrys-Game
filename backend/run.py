@@ -8,8 +8,8 @@ app.app_context().push()
 
 @app.before_first_request
 def before_first_request_func():
-    game = GameSession("roogy")
-    game2 = GameSession("test")
+    game = GameSession("test")
+    game2 = GameSession("roogy")
     game.run()
     game2.run()
     print("cock")
