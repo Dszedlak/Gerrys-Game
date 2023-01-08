@@ -10,7 +10,6 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from app import socketio
 from flask import current_app as app
 
-thread = None
 thread_lock = Lock()
 
 class GameSession():
@@ -18,6 +17,8 @@ class GameSession():
     def __init__(self, roomname):
         self._room = db.session.query(Room.id).filter_by(name=roomname).first()[0]
         self._socketio = socketio
+        self.thread = None
+
 
     def getRoom(self) -> int:
         return self._room
@@ -40,19 +41,17 @@ class GameSession():
         #return json.dumps(participant, default=obj_dict)
 
     def run(self):
-        global thread
         with thread_lock:
-            if thread is None:
+            if self.thread is None:
                 @copy_current_request_context
                 def start():
                     self.background_thread()
-                thread = Thread(target=start)
-                thread.daemon = True
-                thread.start()
+                self.thread = Thread(target=start)
+                self.thread.daemon = True
+                self.thread.start()
 
     def background_thread(self):
         while True:
             participants = self.load_ready_partipants()
-            print(participants)
             self._socketio.emit('UpdateUserStatus', {'data':participants}, to=self._room)
             self._socketio.sleep(1)
