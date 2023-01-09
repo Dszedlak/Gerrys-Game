@@ -3,7 +3,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from flask_socketio import join_room
 from .. import db
 from ..models import Room, RoomParticipants, Government, Job
-from .util import ROOMS_FIELDS,JOIN_ROOM_FIELDS, roomParser,joinRoomParser
+from .util import ROOMS_FIELDS,JOIN_ROOM_FIELDS,LEAVE_ROOM_FIELDS,roomParser,joinRoomParser
 from ..websocket.game_session import GameSession
 from app import socketio
 #Have a log for the game that logs peoples actions to show whether people are cheating
@@ -40,4 +40,16 @@ class JoinRoomResource(Resource):
 		participant = RoomParticipants(roomId=roomId, userId=user, timeBank=0, clock=24)
 		#participant = RoomParticipants(roomId=roomId, userId=user, timeBank=0, clock=24, job=Job.query.filter_by(name="None").first(), isReady=False)
 		db.session.add(participant)
+		db.session.commit()
+
+class LeaveRoomResource(Resource):
+	@jwt_required()
+	@marshal_with(LEAVE_ROOM_FIELDS)
+	def post(self):
+		user = get_jwt_identity()
+		parsedArgs = joinRoomParser.parse_args()
+		roomId = parsedArgs['roomId']
+		participant = RoomParticipants.query.filter_by(id=user, roomId=roomId)
+		#participant = RoomParticipants(roomId=roomId, userId=user, timeBank=0, clock=24, job=Job.query.filter_by(name="None").first(), isReady=False)
+		db.session.delete(participant)
 		db.session.commit()
