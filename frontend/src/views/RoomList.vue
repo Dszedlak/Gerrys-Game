@@ -154,6 +154,19 @@ export default {
                 console.log(e);
             });
         },
+		leaveRoom() {
+			var data = {
+				roomId: this.roomId
+			}
+			this.$store.state.auth.roomId = 0;
+            RoomListService.leaveRoom(data)
+            .then(response => {
+                this.$router.push({ name: 'RoomList'})
+            })
+            .catch(e => {
+                console.log(e);
+            });
+        },
     },
 		computed: {
 			username () {

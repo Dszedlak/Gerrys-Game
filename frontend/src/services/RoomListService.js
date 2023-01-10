@@ -13,6 +13,10 @@ class RoomListService {
   joinRoom(data) {
 		return ApiService.post("rooms/join", data);
 	}
+
+  leaveRoom(data) {
+		return ApiService.post("rooms/leave", data);
+	}
 };
 
 export default new RoomListService();

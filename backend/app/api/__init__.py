@@ -7,3 +7,4 @@ from . import rooms
 apiREST = Api(api)
 apiREST.add_resource(rooms.RoomListResource, "/rooms")
 apiREST.add_resource(rooms.JoinRoomResource, "/rooms/join")
+apiREST.add_resource(rooms.LeaveRoomResource, "/rooms/leave")
