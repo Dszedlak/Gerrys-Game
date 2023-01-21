@@ -55,3 +55,4 @@ class GameSession():
             participants = self.load_ready_partipants()
             self._socketio.emit('UpdateUserStatus', {'data':participants}, to=self._room)
             self._socketio.sleep(1)
+            
