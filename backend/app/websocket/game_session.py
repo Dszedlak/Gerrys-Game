@@ -19,7 +19,6 @@ class GameSession():
         self._socketio = socketio
         self.thread = None
 
-
     def getRoom(self) -> int:
         return self._room
         
@@ -36,9 +35,7 @@ class GameSession():
         jsonString = json.dumps(players)
             
         print(jsonString)
-
-        return jsonString
-        #return json.dumps(participant, default=obj_dict)
+        return jsonString        
 
     def run(self):
         with thread_lock:

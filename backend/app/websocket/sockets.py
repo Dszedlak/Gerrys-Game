@@ -29,10 +29,15 @@ def on_leave():
     print("disconnected fam")
     send(str(username) + ' has left the room.', to=room)
 
-@socketio.on('update')
+@socketio.on('updateClock')
 @jwt_required()
 def on_update(data):
-    print("oof")
+    print("timebank == OOF!!")
+
+@socketio.on('updateTimeBank')
+@jwt_required()
+def on_update(data):
+    print("Clock == COCK!!")
 
 @socketio.on('connect')
 @jwt_required()
