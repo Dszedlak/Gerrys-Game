@@ -106,25 +106,24 @@ export default {
       console.log("socket connected");  
       this.$socket.client.emit('join');
     },
-    UpdateUserStatus(data) {
+    UpdateTimeBank(data) {
       this.players = [];
       var users = JSON.parse(data.data)
       for(let i = 0; i < users.length; i++){
         this.players.push(users[i]);
       }
     },
-    updateUserInfo() 
+    updateClock(data)
     {
-      var args = arguments;
-      var playerData = [];
-
-      for (var a in args)
-      {
-        playerData.push(a);
-      }
-      
-      const player = JSON.stringify(Object.assign({}, playerData))
-      this.$socket.client.emit('updatePlayerData', player)
+      this.data = data.replace('•', "")
+      const clockjson = JSON.stringify(Object.assign({}, data))
+      this.$socket.client.emit('updateClock', clockjson)
+    },
+    updateTimeBank(data)
+    {
+      this.data = data.replace('•', "")
+      const timebankJson = JSON.stringify(Object.assign({}, data))
+      this.$socket.client.emit('updateTimeBank', timebankJson)
     },
     updateRoomId(data)
     {
