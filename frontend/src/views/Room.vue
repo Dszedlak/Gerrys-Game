@@ -4,7 +4,7 @@
       <b-row class="itemRow">
         <b-col>
           <h1>Clock</h1>
-          <Click-To-Edit id="clock" value="0•00•00•00"></Click-To-Edit>
+          <Click-To-Edit id="clock" v-bind:value="clock"></Click-To-Edit>
         </b-col>  
     </b-row>
     <b-row>
@@ -29,7 +29,7 @@
     <b-row class="itemRow">
       <b-col>
         <h1>Time Bank</h1>
-        <Click-To-Edit value="0•00•00•00"></Click-To-Edit>
+        <Click-To-Edit id="" v-bind:value="timeBank"></Click-To-Edit>
       </b-col>
     </b-row>
     <b-row>
@@ -106,7 +106,7 @@ export default {
       console.log("socket connected");  
       this.$socket.client.emit('join');
     },
-    UpdateTimeBank(data) {
+    UpdateUserStatus(data) {
       this.players = [];
       var users = JSON.parse(data.data)
       for(let i = 0; i < users.length; i++){
@@ -115,21 +115,18 @@ export default {
     },
     updateClock(data)
     {
-      this.data = data.replace('•', "")
-      const clockjson = JSON.stringify(Object.assign({}, data))
-      this.$socket.client.emit('updateClock', clockjson)
+      var unformatted = String(JSON.parse(data.data))
+      this.clock = unformatted.substring(0,2) + "•" + unformatted.substring(2,4) + "•" + unformatted.substring(4,6)
     },
     updateTimeBank(data)
     {
-      this.data = data.replace('•', "")
-      const timebankJson = JSON.stringify(Object.assign({}, data))
-      this.$socket.client.emit('updateTimeBank', timebankJson)
+      var unformatted = String(JSON.parse(data.data))
+      this.timeBank = unformatted.substring(0,2) + "•" + unformatted.substring(2,4) + "•" + unformatted.substring(4,6)
     },
     updateRoomId(data)
     {
       this.$store.state.auth.roomId = data.data;
       console.log("roomId: " + this.$store.state.auth.roomId)
-
     }
   },
   created() {
@@ -151,11 +148,33 @@ export default {
     {
       this.$socket.client.emit('leave')
       this.$router.push("/rooms")
+    }, 
+    updateClock()
+    {
+      const clockJson = JSON.stringify(Object.assign({}, unFormatTime(clock)))
+      this.$socket.client.emit('updateClock', clockJson)
+    },
+    updateTimeBank()
+    {
+      const timeBankJson = JSON.stringify(Object.assign({}, unFormatTime(timeBank)))
+      this.$socket.client.emit('updateTimeBank', timeBankJson)
+    },
+    formatTime(str)
+    {
+      var fstring = str.substring(0,2) + "•" + clock.substring(2,4) + "•" + clock.substring(4,6)
+      return fstring
+    },
+    unFormatTime(fstr)
+    {
+      var timeStr = fstr.replace("•", "")
+      return timeStr
     }
   },
   data() {
     return {
       players: [],
+      clock: "",
+      timeBank: "",
       roomId: null,
       newComponent: false
     }    

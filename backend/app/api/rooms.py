@@ -37,7 +37,7 @@ class JoinRoomResource(Resource):
 		user = get_jwt_identity()
 		parsedArgs = joinRoomParser.parse_args()
 		roomId = parsedArgs['roomId']
-		participant = RoomParticipants(roomId=roomId, userId=user, timeBank=0, clock=24)
+		participant = RoomParticipants(roomId=roomId, userId=user, timeBank=000000, clock=240000)
 		#participant = RoomParticipants(roomId=roomId, userId=user, timeBank=0, clock=24, job=Job.query.filter_by(name="None").first(), isReady=False)
 		db.session.add(participant)
 		db.session.commit()

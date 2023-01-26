@@ -18,6 +18,7 @@
     props: ['value'],
     
     data () {
+      
     return {
         edit: false,
         valueLocal: this.value,

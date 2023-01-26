@@ -46,8 +46,8 @@ class RoomParticipants(db.Model):
     __tablename__ = "room_participants"
     roomId = db.Column(db.Integer, db.ForeignKey("room.id"), primary_key=True)
     userId = db.Column(db.Integer, db.ForeignKey("user.id"), primary_key=True)
-    timeBank = db.Column(db.Integer, default=0)#Have add or remove button
-    clock = db.Column(db.Integer, default=24)
+    timeBank = db.Column(db.Integer, default=000000)#Have add or remove button
+    clock = db.Column(db.Integer, default=240000)
     #job = db.relationship("Job", lazy="subquery")
 
 class Job(db.Model):
