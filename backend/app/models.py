@@ -1,7 +1,7 @@
 from sqlalchemy.orm import session
 from . import db, jwt
 from werkzeug.security import generate_password_hash, check_password_hash
-import datetime
+from datetime import datetime, timedelta
 
 rooms = db.Table("rooms", db.Column("roomId", db.Integer, db.ForeignKey("room.id"))),
 
@@ -38,16 +38,16 @@ class Room(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(60), nullable=False)
     participants = db.relationship("RoomParticipants", lazy="subquery")
-    startedAt = db.Column(db.DateTime, default=datetime.datetime.utcnow)
-    endedAt = db.Column(db.DateTime, default=datetime.datetime.utcnow)#TO-DO
+    startedAt = db.Column(db.DateTime, default=datetime.utcnow)
+    endedAt = db.Column(db.DateTime, default=datetime.utcnow)#TO-DO
     #government = db.relationship("Government", lazy="subquery")
 
 class RoomParticipants(db.Model):
     __tablename__ = "room_participants"
     roomId = db.Column(db.Integer, db.ForeignKey("room.id"), primary_key=True)
     userId = db.Column(db.Integer, db.ForeignKey("user.id"), primary_key=True)
-    timeBank = db.Column(db.DateTime, default=datetime.datetime.utcnow)#Have add or remove button
-    clock = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    timeBank = db.Column(db.DateTime, default=datetime.min)#Have add or remove button
+    clock = db.Column(db.DateTime, default=datetime.min + timedelta(days=1))
     #job = db.relationship("Job", lazy="subquery")
 
 class Job(db.Model):

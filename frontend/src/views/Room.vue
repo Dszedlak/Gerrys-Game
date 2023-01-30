@@ -149,7 +149,7 @@ export default {
       this.$socket.client.emit('leave')
       this.$router.push("/rooms")
     }, 
-    updateClock()
+    updateClock(time)
     {
       const clockJson = JSON.stringify(Object.assign({}, unFormatTime(clock)))
       this.$socket.client.emit('updateClock', clockJson)

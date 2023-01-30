@@ -1,6 +1,7 @@
 from flask_restful import Resource, marshal_with
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from flask_socketio import join_room
+from datetime import datetime, timedelta
 from .. import db
 from ..models import Room, RoomParticipants, Government, Job
 from .util import ROOMS_FIELDS,JOIN_ROOM_FIELDS,LEAVE_ROOM_FIELDS,roomParser,joinRoomParser
@@ -37,7 +38,7 @@ class JoinRoomResource(Resource):
 		user = get_jwt_identity()
 		parsedArgs = joinRoomParser.parse_args()
 		roomId = parsedArgs['roomId']
-		participant = RoomParticipants(roomId=roomId, userId=user, timeBank=000000, clock=240000)
+		participant = RoomParticipants(roomId=roomId, userId=user, timeBank=datetime.min, clock=(datetime.min + timedelta(days=1)))
 		#participant = RoomParticipants(roomId=roomId, userId=user, timeBank=0, clock=24, job=Job.query.filter_by(name="None").first(), isReady=False)
 		db.session.add(participant)
 		db.session.commit()
