@@ -19,11 +19,10 @@ def on_join():
     clock = userData.clock
     join_room(room)
     emit('updateRoomId', {'data': room}, to=room)
-    emit('updateClock', {'data': clock}, to=room)
-    emit('updateTimeBank', {'data': timeBank}, to=room)
+    emit('updateClock', {'data': clock})
+    emit('updateTimeBank', {'data': timeBank})
 
 #NEED TO RETHINKING HOW THIS TIMEBANK/CLOCK IS STORED AND IN WHAT FORMAT. IS AN INTEGER REALLY THE SMARTEST IDEA?
-
 
 @socketio.on('leave')
 @jwt_required()
