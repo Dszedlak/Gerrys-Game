@@ -24,7 +24,6 @@ class RoomListResource(Resource):
 		parsedArgs = roomParser.parse_args()
 		name = parsedArgs["name"]
 		room = Room(name=name, id=user)
-		#room = Room(name=name, id=user, state=RoomState.query.filter_by(name="Waiting").first(), government=Government.query.filter_by(name="Democracy").first())
 		db.session.add(room)
 		db.session.commit()
 		game = GameSession(name)
@@ -39,7 +38,6 @@ class JoinRoomResource(Resource):
 		parsedArgs = joinRoomParser.parse_args()
 		roomId = parsedArgs['roomId']
 		participant = RoomParticipants(roomId=roomId, userId=user, timeBank=datetime.min, clock=(datetime.min + timedelta(days=1)))
-		#participant = RoomParticipants(roomId=roomId, userId=user, timeBank=0, clock=24, job=Job.query.filter_by(name="None").first(), isReady=False)
 		db.session.add(participant)
 		db.session.commit()
 

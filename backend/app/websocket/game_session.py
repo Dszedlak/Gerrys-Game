@@ -31,7 +31,6 @@ class GameSession():
 
         for participant in session_query:
             players.append(db.session.query(User.username).filter_by(id=participant[0]).first()[0])
-            #tmp = {"User": db.session.query(User.username).filter_by(id=participant.userId).first()[0], "Job": participant.job}
         jsonString = json.dumps(players)
             
         print(jsonString)

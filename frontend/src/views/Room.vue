@@ -11,17 +11,17 @@
       <b-col></b-col>
       <b-col cols="14" class="itemRowButtonsClock">
             <b-button-group class="mx-1">
-              <b-button class="addremovebuttonClock">-1h</b-button>
-              <b-button class="addremovebuttonClock">-30</b-button>
-              <b-button class="addremovebuttonClock">-20</b-button>
-              <b-button class="addremovebuttonClock">-10</b-button>
+              <b-button class="addremovebuttonClock" @click="updateClock(-60)">-1h</b-button>
+              <b-button class="addremovebuttonClock" @click="updateClock(-30)">-30</b-button>
+              <b-button class="addremovebuttonClock" @click="updateClock(-20)">-20</b-button>
+              <b-button class="addremovebuttonClock" @click="updateClock(-10)">-10</b-button>
             </b-button-group>
             
             <b-button-group class="mx-1">
-              <b-button class="addremovebuttonClock">+10</b-button>
-              <b-button class="addremovebuttonClock">+20</b-button>
-              <b-button class="addremovebuttonClock">+30</b-button>
-              <b-button class="addremovebuttonClock">+1h</b-button>
+              <b-button class="addremovebuttonClock" @click="updateClock(10)">+10</b-button>
+              <b-button class="addremovebuttonClock" @click="updateClock(20)">+20</b-button>
+              <b-button class="addremovebuttonClock" @click="updateClock(30)">+30</b-button>
+              <b-button class="addremovebuttonClock" @click="updateClock(40)">+1h</b-button>
             </b-button-group>
       </b-col>
       <b-col></b-col>
@@ -36,23 +36,23 @@
       <b-col></b-col>
       <b-col cols="14" class="itemRowButtons">
             <b-button-group class="mx-1">
-              <b-button class="addremovebutton">-1h</b-button>
+              <b-button class="addremovebutton" @click="updateTimeBank(-60)">-1h</b-button>
             </b-button-group>
             
             <b-button-group class="mx-1">
-              <b-button class="addremovebutton">+1h</b-button>
+              <b-button class="addremovebutton" @click="updateTimeBank(60)">+1h</b-button>
             </b-button-group>
 
             <b-button-group class="mx-1">
-              <b-button class="emptyButton">Clear</b-button>
+              <b-button class="emptyButton" @click="updateTimeBank('Clear')">Clear</b-button>
             </b-button-group>
 
             <b-button-group class="mx-1">
-              <b-button class="cashoutButton">Cashout</b-button>
+              <b-button class="cashoutButton" @click="updateTimeBank('cashout')">Cashout</b-button>
             </b-button-group>
 
             <b-button-group class="mx-1">
-              <b-button class="interestButton">+ Interest</b-button>
+              <b-button class="interestButton" @click="updateTimeBank('addInterest')">+ Interest</b-button>
             </b-button-group>
       </b-col>
       <b-col></b-col>
@@ -115,13 +115,11 @@ export default {
     },
     updateClock(data)
     {
-      var unformatted = String(JSON.parse(data.data))
-      this.clock = unformatted.substring(0,2) + "•" + unformatted.substring(2,4) + "•" + unformatted.substring(4,6)
+      this.clock = String(JSON.parse(data.data))
     },
     updateTimeBank(data)
     {
-      var unformatted = String(JSON.parse(data.data))
-      this.timeBank = unformatted.substring(0,2) + "•" + unformatted.substring(2,4) + "•" + unformatted.substring(4,6)
+      this.timeBank= String(JSON.parse(data.data))
     },
     updateRoomId(data)
     {
@@ -134,11 +132,8 @@ export default {
   }, 
   mounted() {
     if (localStorage.getItem('reloaded')) {
-        // The page was just reloaded. Clear the value from local storage
-        // so that it will reload the next time this page is visited.
         localStorage.removeItem('reloaded');
     } else {
-        // Set a flag so that we know not to reload the page twice.
         localStorage.setItem('reloaded', '1');
         location.reload();
     }
@@ -151,24 +146,12 @@ export default {
     }, 
     updateClock(time)
     {
-      const clockJson = JSON.stringify(Object.assign({}, unFormatTime(clock)))
-      this.$socket.client.emit('updateClock', clockJson)
+      this.$socket.client.emit('updateClock', JSON.stringify(time))
     },
-    updateTimeBank()
+    updateTimeBank(time)
     {
-      const timeBankJson = JSON.stringify(Object.assign({}, unFormatTime(timeBank)))
-      this.$socket.client.emit('updateTimeBank', timeBankJson)
+      this.$socket.client.emit('updateTimeBank', JSON.stringify(time))
     },
-    formatTime(str)
-    {
-      var fstring = str.substring(0,2) + "•" + clock.substring(2,4) + "•" + clock.substring(4,6)
-      return fstring
-    },
-    unFormatTime(fstr)
-    {
-      var timeStr = fstr.replace("•", "")
-      return timeStr
-    }
   },
   data() {
     return {

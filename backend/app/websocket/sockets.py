@@ -2,24 +2,23 @@ from app.models import db
 
 from flask_socketio import emit, join_room, leave_room, send
 from app import socketio
-from flask_jwt_extended import jwt_required, get_jwt_identity, current_user
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.models import User, db, RoomParticipants
 import json
+from datetime import datetime, timedelta
 from flask import current_app as app
-#For Every room in rooms, open up a seperate thread.
 
 @socketio.on('join')
 @jwt_required()
 def on_join():        
     username = get_jwt_identity()
     user = db.session.query(User.id).filter_by(id=username).first()[0]
-    room = RoomParticipants.query.filter_by(userId=user).first().roomId
     userData = RoomParticipants.query.filter_by(userId=user).first()
+    room = userData.roomId
     
-    timeBank = json.dumps(userData.timeBank, indent=4, sort_keys=True, default=str)
-    clock = json.dumps(userData.clock, indent=4, sort_keys=True, default=str)
-    print("Timebank: " + str(userData.timeBank)[8:])
-    print("Clock: " + clock)
+    timeBank = json.dumps(timeFormat(userData.timeBank), indent=4, sort_keys=True, default=str)
+    clock = json.dumps(timeFormat(userData.clock), indent=4, sort_keys=True, default=str)
+
     join_room(room)
     emit('updateRoomId', {'data': room}, to=room)
     emit('updateClock', {'data': clock})
@@ -40,12 +39,24 @@ def on_leave():
 @socketio.on('updateClock')
 @jwt_required()
 def on_update(data):
-    print("timebank == OOF!!")
+    userData = getUserData()
+    action = json.loads(data)
+    if action.isnumeric():
+        userData.clock = userData.clock + timedelta(minutes=action)
+        db.session.commit()
 
 @socketio.on('updateTimeBank')
 @jwt_required()
 def on_update(data):
-    print("Clock == COCK!!")
+    userData = getUserData()
+    action = json.loads(data)
+    if action.isnumeric():
+        userData.timeBank = userData.timeBank + timedelta(minutes=data)
+    if action == "clear" or action == "cashout":
+        if action == "cashout":
+            userData.clock + userData.timeBank
+        userData.timeBank = datetime.min
+    db.session.commit()
 
 @socketio.on('connect')
 @jwt_required()
@@ -56,3 +67,23 @@ def on_connect():
 def disconnect():
     print("Client Disconnected")
 
+def getUserData():
+    username = get_jwt_identity()
+    user = db.session.query(User.id).filter_by(id=username).first()[0]
+    userData = RoomParticipants.query.filter_by(userId=user).first()
+    return userData
+
+def timeFormat(time: datetime):
+    days = ""
+    if time.day == 1:
+        days = "00"
+    else:
+        time = time - timedelta(days=1)
+        days = str(time)[8:10]
+    
+    hours = str(time)[11:13]
+    minutes = str(time)[14:16]
+
+    return days+"•"+hours+"•"+minutes
+    
+    
