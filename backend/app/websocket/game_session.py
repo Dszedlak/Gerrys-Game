@@ -2,13 +2,9 @@ from app.models import Room, User, db, RoomParticipants
 import json
 from threading import Lock
 from threading import Thread
-import time
-from flask_socketio import emit, join_room, leave_room, send
 from flask import copy_current_request_context
 
-from flask_jwt_extended import jwt_required, get_jwt_identity
 from app import socketio
-from flask import current_app as app
 
 thread_lock = Lock()
 

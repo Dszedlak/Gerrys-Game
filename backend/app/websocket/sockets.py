@@ -6,18 +6,14 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.models import User, db, RoomParticipants
 import json
 from datetime import datetime, timedelta
-from flask import current_app as app
 
 @socketio.on('join')
 @jwt_required()
 def on_join():        
-    username = get_jwt_identity()
-    user = db.session.query(User.id).filter_by(id=username).first()[0]
-    userData = RoomParticipants.query.filter_by(userId=user).first()
-    room = userData.roomId
-    
-    timeBank = json.dumps(timeFormat(userData.timeBank), indent=4, sort_keys=True, default=str)
-    clock = json.dumps(timeFormat(userData.clock), indent=4, sort_keys=True, default=str)
+    userData = getUserData()
+    room = userData.roomId  
+    timeBank = getTimeBank(userData)
+    clock = getClock(userData)
 
     join_room(room)
     emit('updateRoomId', {'data': room}, to=room)
@@ -41,22 +37,28 @@ def on_leave():
 def on_update(data):
     userData = getUserData()
     action = json.loads(data)
-    if action.isnumeric():
+    if isinstance(action, int):
         userData.clock = userData.clock + timedelta(minutes=action)
         db.session.commit()
+        clock = getClock(userData)
+        emit('updateClock', {'data': clock})
 
 @socketio.on('updateTimeBank')
 @jwt_required()
 def on_update(data):
     userData = getUserData()
     action = json.loads(data)
-    if action.isnumeric():
-        userData.timeBank = userData.timeBank + timedelta(minutes=data)
-    if action == "clear" or action == "cashout":
-        if action == "cashout":
-            userData.clock + userData.timeBank
+    if isinstance(action, int):
+        userData.timeBank = userData.timeBank + timedelta(minutes=action)
+    if action == 'clear' or action == 'cashout':
+        if action == 'cashout':
+            userData.clock = userData.clock + timedelta(days=userData.timeBank.day - 1, hours=userData.timeBank.hour, minutes=userData.timeBank.minute)
         userData.timeBank = datetime.min
     db.session.commit()
+    timeBank = getTimeBank(userData)
+    clock = getClock(userData)
+    emit('updateTimeBank', {'data': timeBank})
+    emit('updateClock', {'data': clock})
 
 @socketio.on('connect')
 @jwt_required()
@@ -86,4 +88,8 @@ def timeFormat(time: datetime):
 
     return days+"•"+hours+"•"+minutes
     
-    
+def getClock(userData) -> datetime:
+    return json.dumps(timeFormat(userData.clock), indent=4, sort_keys=True, default=str)
+
+def getTimeBank(userData) -> datetime: 
+    return json.dumps(timeFormat(userData.timeBank), indent=4, sort_keys=True, default=str)

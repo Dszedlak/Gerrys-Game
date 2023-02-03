@@ -4,24 +4,24 @@
       <b-row class="itemRow">
         <b-col>
           <h1>Clock</h1>
-          <Click-To-Edit id="clock" v-bind:value="clock"></Click-To-Edit>
+          <Click-To-Edit id="clock" v-bind:value="clock" @change="uClock(clock)"></Click-To-Edit>
         </b-col>  
     </b-row>
     <b-row>
       <b-col></b-col>
       <b-col cols="14" class="itemRowButtonsClock">
             <b-button-group class="mx-1">
-              <b-button class="addremovebuttonClock" @click="updateClock(-60)">-1h</b-button>
-              <b-button class="addremovebuttonClock" @click="updateClock(-30)">-30</b-button>
-              <b-button class="addremovebuttonClock" @click="updateClock(-20)">-20</b-button>
-              <b-button class="addremovebuttonClock" @click="updateClock(-10)">-10</b-button>
+              <b-button class="addremovebuttonClock" @click="uClock(-60)">-1h</b-button>
+              <b-button class="addremovebuttonClock" @click="uClock(-30)">-30</b-button>
+              <b-button class="addremovebuttonClock" @click="uClock(-20)">-20</b-button>
+              <b-button class="addremovebuttonClock" @click="uClock(-10)">-10</b-button>
             </b-button-group>
             
             <b-button-group class="mx-1">
-              <b-button class="addremovebuttonClock" @click="updateClock(10)">+10</b-button>
-              <b-button class="addremovebuttonClock" @click="updateClock(20)">+20</b-button>
-              <b-button class="addremovebuttonClock" @click="updateClock(30)">+30</b-button>
-              <b-button class="addremovebuttonClock" @click="updateClock(40)">+1h</b-button>
+              <b-button class="addremovebuttonClock" @click="uClock(10)">+10</b-button>
+              <b-button class="addremovebuttonClock" @click="uClock(20)">+20</b-button>
+              <b-button class="addremovebuttonClock" @click="uClock(30)">+30</b-button>
+              <b-button class="addremovebuttonClock" @click="uClock(60)">+1h</b-button>
             </b-button-group>
       </b-col>
       <b-col></b-col>
@@ -29,30 +29,30 @@
     <b-row class="itemRow">
       <b-col>
         <h1>Time Bank</h1>
-        <Click-To-Edit id="" v-bind:value="timeBank"></Click-To-Edit>
+        <Click-To-Edit id="" v-bind:value="timeBank" @change="uTimeBank(timeBank)"></Click-To-Edit>
       </b-col>
     </b-row>
     <b-row>
       <b-col></b-col>
       <b-col cols="14" class="itemRowButtons">
             <b-button-group class="mx-1">
-              <b-button class="addremovebutton" @click="updateTimeBank(-60)">-1h</b-button>
+              <b-button class="addremovebutton" @click="uTimeBank(-60)">-1h</b-button>
             </b-button-group>
             
             <b-button-group class="mx-1">
-              <b-button class="addremovebutton" @click="updateTimeBank(60)">+1h</b-button>
+              <b-button class="addremovebutton" @click="uTimeBank(60)">+1h</b-button>
             </b-button-group>
 
             <b-button-group class="mx-1">
-              <b-button class="emptyButton" @click="updateTimeBank('Clear')">Clear</b-button>
+              <b-button class="emptyButton" @click="uTimeBank('clear')">Clear</b-button>
             </b-button-group>
 
             <b-button-group class="mx-1">
-              <b-button class="cashoutButton" @click="updateTimeBank('cashout')">Cashout</b-button>
+              <b-button class="cashoutButton" @click="uTimeBank('cashout')">Cashout</b-button>
             </b-button-group>
 
             <b-button-group class="mx-1">
-              <b-button class="interestButton" @click="updateTimeBank('addInterest')">+ Interest</b-button>
+              <b-button class="interestButton" @click="uTimeBank('addInterest')">+ Interest</b-button>
             </b-button-group>
       </b-col>
       <b-col></b-col>
@@ -138,21 +138,6 @@ export default {
         location.reload();
     }
   },  
-  methods:{
-    leaveRoom()
-    {
-      this.$socket.client.emit('leave')
-      this.$router.push("/rooms")
-    }, 
-    updateClock(time)
-    {
-      this.$socket.client.emit('updateClock', JSON.stringify(time))
-    },
-    updateTimeBank(time)
-    {
-      this.$socket.client.emit('updateTimeBank', JSON.stringify(time))
-    },
-  },
   data() {
     return {
       players: [],
@@ -162,10 +147,22 @@ export default {
       newComponent: false
     }    
   },
- 
   methods: {
     changeComponent: function () {
       this.newComponent = !this.newComponent
+    },
+    leaveRoom()
+    {
+      this.$socket.client.emit('leave')
+      this.$router.push("/rooms")
+    }, 
+    uClock(time)
+    {
+      this.$socket.client.emit('updateClock', JSON.stringify(time))
+    },
+    uTimeBank(time)
+    {
+      this.$socket.client.emit('updateTimeBank', JSON.stringify(time))
     }
   }
 

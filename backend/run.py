@@ -13,6 +13,7 @@ def before_first_request_func():
     print("cock")
     e = GameSession("test")
     e.run()
+
 if __name__ == "__main__":
     socketio.run(app)
     
