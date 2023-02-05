@@ -87,7 +87,7 @@ def timeFormat(time: datetime):
     minutes = str(time)[14:16]
 
     return days+"•"+hours+"•"+minutes
-    
+
 def getClock(userData) -> datetime:
     return json.dumps(timeFormat(userData.clock), indent=4, sort_keys=True, default=str)
 

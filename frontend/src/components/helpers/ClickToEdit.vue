@@ -22,15 +22,17 @@
     return {
         edit: false,
         valueLocal: this.value,
+        eventname: this.evenname,
         oldValue: (' ' + this.value).slice(1)
       }
     },
     methods: {
         save(event){
           if(event.target.value){             
-              this.valueLocal = event.target.value; 
+              this.valueLocal = event.target.value;
               this.edit = false; 
-              this.$emit('input', this.valueLocal);
+              this.$emit('input', this.valueLocal)
+              this.$socket.client.emit(this.action, JSON.stringify(this.valueLocal))
           }
         },
         esc(event){
@@ -38,11 +40,13 @@
             event.target.value = this.oldValue;
             this.edit = false; 
             this.$emit('input', this.valueLocal);
+            this.$socket.client.emit(this.action, JSON.stringify(this.valueLocal))
         }
     },
     watch: {
       value: function() {
         this.valueLocal = this.value;
+        this.eventname = this.action;
       }
     },
     
