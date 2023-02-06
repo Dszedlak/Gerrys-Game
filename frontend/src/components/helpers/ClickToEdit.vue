@@ -16,13 +16,14 @@
     export default {
     
     props: ['value'],
+    props: ['action'],
     
     data () {
       
     return {
         edit: false,
         valueLocal: this.value,
-        eventname: this.evenname,
+        eventname: this.action,
         oldValue: (' ' + this.value).slice(1)
       }
     },

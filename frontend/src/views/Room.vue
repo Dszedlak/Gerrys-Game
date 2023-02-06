@@ -4,7 +4,7 @@
       <b-row class="itemRow">
         <b-col>
           <h1>Clock</h1>
-          <Click-To-Edit id="clock" v-bind:value="clock" @change="uClock(clock)"></Click-To-Edit>
+          <Click-To-Edit id="clock" v-bind:value="clock" action="updateClock"></Click-To-Edit>
         </b-col>  
     </b-row>
     <b-row>
@@ -29,7 +29,7 @@
     <b-row class="itemRow">
       <b-col>
         <h1>Time Bank</h1>
-        <Click-To-Edit id="" v-bind:value="timeBank" @change="uTimeBank(timeBank)"></Click-To-Edit>
+        <Click-To-Edit id="" v-bind:value="timeBank" action="updateTimeBank"></Click-To-Edit>
       </b-col>
     </b-row>
     <b-row>

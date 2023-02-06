@@ -5,6 +5,8 @@ from app import socketio
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.models import User, db, RoomParticipants
 import json
+import re
+from typing import List
 from datetime import datetime, timedelta
 
 @socketio.on('join')
@@ -39,9 +41,12 @@ def on_update(data):
     action = json.loads(data)
     if isinstance(action, int):
         userData.clock = userData.clock + timedelta(minutes=action)
-        db.session.commit()
-        clock = getClock(userData)
-        emit('updateClock', {'data': clock})
+    if re.match(r"[1-9•]{2}", action):
+        diff_in_mins = getTimeDiff(action, userData.clock)
+        userData.clock = userData.clock + timedelta(minutes=diff_in_mins)
+    db.session.commit()
+    clock = getClock(userData)
+    emit('updateClock', {'data': clock})
 
 @socketio.on('updateTimeBank')
 @jwt_required()
@@ -54,6 +59,14 @@ def on_update(data):
         if action == 'cashout':
             userData.clock = userData.clock + timedelta(days=userData.timeBank.day - 1, hours=userData.timeBank.hour, minutes=userData.timeBank.minute)
         userData.timeBank = datetime.min
+
+    if re.match(r"[1-9•]{2}", action):
+        diff_in_mins = getTimeDiff(action, userData.timeBank)
+        userData.timeBank = userData.timeBank + timedelta(minutes=diff_in_mins)
+
+    timeBank = getTimeBank(userData)
+    clock = getClock(userData)
+        
     db.session.commit()
     timeBank = getTimeBank(userData)
     clock = getClock(userData)
@@ -93,3 +106,17 @@ def getClock(userData) -> datetime:
 
 def getTimeBank(userData) -> datetime: 
     return json.dumps(timeFormat(userData.timeBank), indent=4, sort_keys=True, default=str)
+
+def getTimeDiff(newTime: str, oldTime: datetime) -> int: 
+    dhs = getDayHourSec(newTime)
+    dhs = oldTime - newTime
+    diff = dhs.total_seconds() / 60
+    return diff
+
+def getDayHourSec(time: str) -> datetime:
+    ddhhmm = re.sub("[^0-9]", "", time)
+    newTime = datetime.min
+    newTime.day = str(ddhhmm)[:2] 
+    newTime.hour = str(ddhhmm)[2:4] 
+    newTime.minute = str(ddhhmm)[4:6]
+    return newTime
