@@ -23,7 +23,10 @@ class RoomListResource(Resource):
 		user = get_jwt_identity()
 		parsedArgs = roomParser.parse_args()
 		name = parsedArgs["name"]
-		room = Room(name=name, id=user)
+		print(parsedArgs["interest_rate"])
+		interest_rate = int(parsedArgs["interest_rate"])
+
+		room = Room(name=name, id=user, interest_rate=interest_rate)
 		db.session.add(room)
 		db.session.commit()
 		game = GameSession(name)

@@ -39,13 +39,13 @@ def initDatabase(app):
             #db.session.add(models.Laws(name="law3"), description="the big law3")
             #db.session.add(models.Laws(name="law4"), description="the big law4")
 
-            db.session.add(models.Room(name="test", id=1))
+            db.session.add(models.Room(name="test", id=1, interest_rate=1.5))
             db.session.add(models.RoomParticipants(roomId=1, userId=5))
             db.session.add(models.RoomParticipants(roomId=1, userId=6))
             db.session.add(models.RoomParticipants(roomId=1, userId=7))
             db.session.add(models.RoomParticipants(roomId=1, userId=8))
             
-            db.session.add(models.Room(name="roogy", id=2))
+            db.session.add(models.Room(name="roogy", id=2, interest_rate=2))
             db.session.add(models.RoomParticipants(roomId=2, userId=1))
             db.session.add(models.RoomParticipants(roomId=2, userId=2))
             db.session.add(models.RoomParticipants(roomId=2, userId=3))

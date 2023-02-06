@@ -3,11 +3,12 @@ from app.models import db
 from flask_socketio import emit, join_room, leave_room, send
 from app import socketio
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from app.models import User, db, RoomParticipants
+from app.models import User, db, RoomParticipants, Room
 import json
 import re
 from typing import List
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
+from math import ceil
 
 @socketio.on('join')
 @jwt_required()
@@ -17,6 +18,8 @@ def on_join():
     timeBank = getTimeBank(userData)
     clock = getClock(userData)
 
+    print(clock)
+    print(timeBank)
     join_room(room)
     emit('updateRoomId', {'data': room}, to=room)
     emit('updateClock', {'data': clock})
@@ -39,11 +42,15 @@ def on_leave():
 def on_update(data):
     userData = getUserData()
     action = json.loads(data)
+
     if isinstance(action, int):
         userData.clock = userData.clock + timedelta(minutes=action)
-    if re.match(r"[1-9•]{2}", action):
+    print(action)
+
+    pattern = re.compile(r'\d{2}•\d{2}•\d{2}')
+    if isinstance(action, str) and re.match(pattern, action):
         diff_in_mins = getTimeDiff(action, userData.clock)
-        userData.clock = userData.clock + timedelta(minutes=diff_in_mins)
+        userData.clock = userData.clock - timedelta(minutes=diff_in_mins)
     db.session.commit()
     clock = getClock(userData)
     emit('updateClock', {'data': clock})
@@ -59,14 +66,17 @@ def on_update(data):
         if action == 'cashout':
             userData.clock = userData.clock + timedelta(days=userData.timeBank.day - 1, hours=userData.timeBank.hour, minutes=userData.timeBank.minute)
         userData.timeBank = datetime.min
-
-    if re.match(r"[1-9•]{2}", action):
+    elif action == 'addInterest':
+        time_in_mins = ((userData.timeBank - datetime.min).total_seconds()) / 60
+        print(time_in_mins)
+        total_interest = (ceil((time_in_mins * Room.query.filter_by(id=userData.roomId).first().interest_rate) - time_in_mins) / 10) * 10
+        print(total_interest)
+        userData.timeBank = userData.timeBank + timedelta(minutes=total_interest)
+    pattern = re.compile(r'\d{2}•\d{2}•\d{2}')
+    if isinstance(action, str) and re.match(pattern, action):
         diff_in_mins = getTimeDiff(action, userData.timeBank)
-        userData.timeBank = userData.timeBank + timedelta(minutes=diff_in_mins)
-
-    timeBank = getTimeBank(userData)
-    clock = getClock(userData)
-        
+        userData.timeBank = userData.timeBank - timedelta(minutes=diff_in_mins)
+            
     db.session.commit()
     timeBank = getTimeBank(userData)
     clock = getClock(userData)
@@ -109,14 +119,12 @@ def getTimeBank(userData) -> datetime:
 
 def getTimeDiff(newTime: str, oldTime: datetime) -> int: 
     dhs = getDayHourSec(newTime)
-    dhs = oldTime - newTime
+    dhs = oldTime - dhs
     diff = dhs.total_seconds() / 60
     return diff
 
 def getDayHourSec(time: str) -> datetime:
     ddhhmm = re.sub("[^0-9]", "", time)
     newTime = datetime.min
-    newTime.day = str(ddhhmm)[:2] 
-    newTime.hour = str(ddhhmm)[2:4] 
-    newTime.minute = str(ddhhmm)[4:6]
+    newTime = newTime + timedelta(days=int(str(ddhhmm)[:2]), hours=int(str(ddhhmm)[2:4]), minutes=int(str(ddhhmm)[4:6]))
     return newTime

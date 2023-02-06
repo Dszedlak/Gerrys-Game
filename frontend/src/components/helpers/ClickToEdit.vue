@@ -15,8 +15,7 @@
   <script>
     export default {
     
-    props: ['value'],
-    props: ['action'],
+    props: ['value', 'action'],
     
     data () {
       
@@ -41,7 +40,7 @@
             event.target.value = this.oldValue;
             this.edit = false; 
             this.$emit('input', this.valueLocal);
-            this.$socket.client.emit(this.action, JSON.stringify(this.valueLocal))
+            this.$socket.client.emit(this.action, JSON.stringify(event.target.value))
         }
     },
     watch: {

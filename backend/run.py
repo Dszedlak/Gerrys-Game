@@ -10,7 +10,7 @@ app.app_context().push()
 def before_first_request_func():
     t = GameSession("roogy")
     t.run()
-    print("cock")
+    print("test game sessions running.")
     e = GameSession("test")
     e.run()
 
