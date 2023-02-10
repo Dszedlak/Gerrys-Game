@@ -1,6 +1,16 @@
 <template>
   <div id="app">
       <b-container class="bv-example-row">
+        <b-row class="itemRow">
+        <b-col>
+          <b-button class="butt"><a v-b-modal.LeaveRoomModal>{{ "Leave Room?" }}</a></b-button>
+        </b-col>  
+        <b-col>
+          <div v-if="currentUserId == currentRoomId || currentUserId == 1"> 
+          <b-button class="butt" ><a v-b-modal.removeRoomModal>{{ "End Game?" }}</a></b-button>
+          </div>
+        </b-col>
+    </b-row>
       <b-row class="itemRow">
         <b-col>
           <h1>Clock</h1>
@@ -70,9 +80,36 @@
         <b-col></b-col>
         
       </b-row>
+      <b-modal id="LeaveRoomModal" ref="modal" title="Leave Room:">Are you sure you want to Leave room: {{roomname}}
+					<template #modal-footer="{ cancel }">
+				<!-- Emulate built in modal footer ok and cancel button actions -->
+			
+					<b-button size="sm" variant="success" @click="leaveRoom()">
+						Yes
+					</b-button>
+					<b-button size="sm" variant="danger" @click="cancel()">
+						No
+					</b-button>
+					<!-- Button with custom close trigger value -->      
+					</template>	
+			</b-modal>
+      <b-modal id="removeRoomModal" ref="modal" title="End Game:">Are you sure you want to end the game: {{roomname}}
+					<template #modal-footer="{ cancel }">
+				<!-- Emulate built in modal footer ok and cancel button actions -->
+			
+					<b-button size="sm" variant="success" @click="removeRoom()">
+						Yes
+					</b-button>
+					<b-button size="sm" variant="danger" @click="cancel()">
+						No
+					</b-button>
+					<!-- Button with custom close trigger value -->      
+					</template>	
+			</b-modal>
 
     </b-container>
   </div>
+  
 </template>
 <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/socket.io-client/dist/socket.io.slim.js"></script>
@@ -84,6 +121,7 @@ import io from 'socket.io-client';
 import Vue from 'vue';
 import store from '../store/index';
 import JwtService from '@/services/JwtService'
+import RoomListService from "@/services/RoomListService";
 
 var socket = io("ws://127.0.0.1:5000/",  {
       transportOptions: {
@@ -125,6 +163,12 @@ export default {
     {
       this.$store.state.auth.roomId = data.data;
       console.log("roomId: " + this.$store.state.auth.roomId)
+    },
+    setUserId(data)
+    {
+      this.$store.state.auth.userId = data.data;
+      console.log("userId: " + this.$store.state.auth.userId)
+
     }
   },
   created() {
@@ -144,7 +188,8 @@ export default {
       clock: "",
       timeBank: "",
       roomId: null,
-      newComponent: false
+      userId: "",
+      newComponent: false, 
     }    
   },
   methods: {
@@ -153,9 +198,34 @@ export default {
     },
     leaveRoom()
     {
+			var data = {
+				roomId: this.$store.state.auth.roomId
+			}
       this.$socket.client.emit('leave')
-      this.$router.push("/rooms")
-    }, 
+			this.$store.state.auth.roomId = 0;
+            RoomListService.leaveRoom(data)
+            .then(response => {
+                this.$router.push({ name: 'RoomList'})
+            })
+            .catch(e => {
+                console.log(e);
+            });
+    },
+    removeRoom()
+    {
+      var data = {
+				roomId: this.$store.state.auth.roomId
+			}
+      //this.$socket.client.emit('closeRoom')
+      this.$store.state.auth.roomId = 0
+      RoomListService.removeRoom(data)
+            .then(response => {
+                this.$router.push({ name: 'RoomList'})
+            })
+            .catch(e => {
+                console.log(e);
+            });
+    },
     uClock(time)
     {
       this.$socket.client.emit('updateClock', JSON.stringify(time))
@@ -163,10 +233,21 @@ export default {
     uTimeBank(time)
     {
       this.$socket.client.emit('updateTimeBank', JSON.stringify(time))
-    }
-  }
+    },
+  },
+  computed: {
+			username () {
+			return this.$store.state.auth.username
+			},
+			currentRoomId () {
+			return this.$store.state.auth.roomId
+			},
+      currentUserId () {
+			return this.$store.state.auth.roomId
+			},
+		},
+  } 
 
-}
 </script>
 <style>
 

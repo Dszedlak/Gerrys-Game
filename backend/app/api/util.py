@@ -28,10 +28,13 @@ ROOM_WAITING_FIELDS = {
 
 roomParser = reqparse.RequestParser()
 roomParser.add_argument("name", type=str, required=True)
-roomParser.add_argument("interest_rate", type=int, required=True)
+roomParser.add_argument("interest_rate", type=float, required=True)
 
 joinRoomParser = reqparse.RequestParser()
 joinRoomParser.add_argument("roomId", type=int, required=True)
 
 leaveRoomParser = reqparse.RequestParser()
 leaveRoomParser.add_argument("roomId", type=int, required=True)
+
+removeRoomParser = reqparse.RequestParser()
+removeRoomParser.add_argument("roomId", type=int, required=True)

@@ -21,6 +21,10 @@ class GameSession():
     def obj_dict(self):
         return self
 
+    def closeRoom(self):
+        self._room = 0
+        self.thread = None
+
     def load_ready_partipants(self):
         players=[]
         session_query = db.session.query(RoomParticipants.userId).filter_by(roomId=self._room).all()
@@ -44,7 +48,10 @@ class GameSession():
 
     def background_thread(self):
         while True:
-            participants = self.load_ready_partipants()
-            self._socketio.emit('UpdateUserStatus', {'data':participants}, to=self._room)
-            self._socketio.sleep(1)
-            
+            while self._room > 0:
+                print(self.getRoom())
+                participants = self.load_ready_partipants()
+                self._socketio.emit('UpdateUserStatus', {'data':participants}, to=self._room)
+                self._socketio.sleep(1)
+            if self._room == 0:
+                return

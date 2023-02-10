@@ -37,7 +37,7 @@ class Room(db.Model):
     __tablename__ = "room"
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(60), nullable=False)
-    interest_rate = db.Column(db.Integer, nullable=False)
+    interest_rate = db.Column(db.Float, nullable=False)
     participants = db.relationship("RoomParticipants", lazy="subquery")
     startedAt = db.Column(db.DateTime, default=datetime.utcnow)
     endedAt = db.Column(db.DateTime, default=datetime.utcnow)#TO-DO

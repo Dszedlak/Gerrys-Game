@@ -6,7 +6,8 @@ const state = {
   errors: null,
   username: null,
   isAuthenticated: !!JwtService.getToken(), 
-  roomId: null
+  roomId: null, 
+  userId: null
 }
 
 const getters = {

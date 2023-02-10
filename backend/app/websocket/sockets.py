@@ -14,14 +14,13 @@ from math import ceil
 @jwt_required()
 def on_join():        
     userData = getUserData()
+    print(userData)
     room = userData.roomId  
     timeBank = getTimeBank(userData)
     clock = getClock(userData)
-
-    print(clock)
-    print(timeBank)
     join_room(room)
     emit('updateRoomId', {'data': room}, to=room)
+    emit('setUserId', {'data':get_jwt_identity()})
     emit('updateClock', {'data': clock})
     emit('updateTimeBank', {'data': timeBank})
 
@@ -30,12 +29,11 @@ def on_join():
 @socketio.on('leave')
 @jwt_required()
 def on_leave():
-    username = get_jwt_identity()
-    user = db.session.query(User.id).filter_by(id=username).first()[0]
-    room = RoomParticipants.query.filter_by(userId=user).first().roomId
+    userData = getUserData()
+    room = userData.roomId  
     leave_room(room)
     print("disconnected fam")
-    send(str(username) + ' has left the room.', to=room)
+    send(str(get_jwt_identity()) + ' has left the room.', to=room)
 
 @socketio.on('updateClock')
 @jwt_required()
@@ -68,10 +66,13 @@ def on_update(data):
         userData.timeBank = datetime.min
     elif action == 'addInterest':
         time_in_mins = ((userData.timeBank - datetime.min).total_seconds()) / 60
-        print(time_in_mins)
-        total_interest = (ceil((time_in_mins * Room.query.filter_by(id=userData.roomId).first().interest_rate) - time_in_mins) / 10) * 10
-        print(total_interest)
+        total_interest = (time_in_mins * Room.query.filter_by(id=userData.roomId).first().interest_rate) - time_in_mins
         userData.timeBank = userData.timeBank + timedelta(minutes=total_interest)
+        if not userData.timeBank.minute % 5 == 0:
+            discard = timedelta(minutes=userData.timeBank.minute % 10)
+            userData.timeBank -= discard
+            if discard >= timedelta(minutes=5):
+                userData.timeBank += timedelta(minutes=10)
     pattern = re.compile(r'\d{2}•\d{2}•\d{2}')
     if isinstance(action, str) and re.match(pattern, action):
         diff_in_mins = getTimeDiff(action, userData.timeBank)
@@ -95,7 +96,9 @@ def disconnect():
 def getUserData():
     username = get_jwt_identity()
     user = db.session.query(User.id).filter_by(id=username).first()[0]
+    print(user)
     userData = RoomParticipants.query.filter_by(userId=user).first()
+    print(userData)
     return userData
 
 def timeFormat(time: datetime):

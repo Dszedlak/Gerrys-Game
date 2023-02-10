@@ -17,6 +17,10 @@ class RoomListService {
   leaveRoom(data) {
 		return ApiService.post("rooms/leave", data);
 	}
+
+  removeRoom(data) {
+    return ApiService.post("rooms/remove", data);
+  }
 };
 
 export default new RoomListService();

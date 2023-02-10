@@ -1,7 +1,7 @@
 <template>
 <div id="app">
 	<b-container class="bv-example-row">
-		<div v-if="username == 'admin'">
+		<div v-if="username">
 		<b-button v-b-modal.modal-prevent-closing>Create Room</b-button>
 		</div>
 		<b-row>
@@ -21,16 +21,6 @@
 					</b-tbody>
 				</b-table-simple>
 			</b-col>
-				<b-tbody class="leaveButtons">
-					<b-tr
-					v-for="(room, index) in rooms"
-					:key="index">
-					<template v-if="currentRoomId != null && room.id == currentRoomId">  
-							<span><b-button class="butt"><a v-b-modal.LeaveRoomModal roomname="room" roomId="room" @click="sendInfo(room.name, room.id)">{{ "Leave Room?" }}</a></b-button></span>
-						</template>
-					</b-tr>
-					</b-tbody>
-
 		</b-row>
 		</b-container>
 			<b-modal 
@@ -47,7 +37,7 @@
 				invalid-feedback="Room Name"
 				description="Enter a name for this room"
 				:state="nameState">
-
+				<small v-if="errors" class="text-danger">{{errors}}</small>
 				<b-form-input
 				id="name-input"
 				v-model="newRoom.name"
@@ -125,7 +115,8 @@ export default {
 				interest_rate: "",
             },
 			roomname: '',
-			roomId: ''
+			roomId: '', 
+			errors: '',
 		}
 	},
 	methods: {
@@ -147,13 +138,13 @@ export default {
                 name: this.newRoom.name,
 				interest_rate: this.newRoom.interest_rate,
             };
-			
             RoomListService.createRoom(data)
             .then(response => {
-                this.$router.push({ name: 'RoomList'})
+                this.$router.push({ name: 'Room'})
             })
-            .catch(e => {
-                console.log(e);
+			.catch(e => {
+                this.errors = "Room already exists for this user. Please quit the previous room to create a new one."
+				console.log(this.errors)
             });
         },
 		joinRoom() {
@@ -165,9 +156,7 @@ export default {
             .then(response => {
                 this.$router.push({ name: 'Room'})
             })
-            .catch(e => {
-                console.log(e);
-            });
+            
         },
 		leaveRoom() {
 			var data = {
@@ -190,10 +179,13 @@ export default {
 			currentRoomId () {
 			return this.$store.state.auth.roomId
 			},
+			errors () {
+      		return this.$store.state.auth.errors
+    }
 		},
     mounted() {
         this.retrieveRooms();
-    }
+  },  
 }
 </script>
 
