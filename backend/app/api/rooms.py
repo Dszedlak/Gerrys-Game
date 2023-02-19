@@ -29,8 +29,8 @@ class RoomListResource(Resource):
 		print(parsedArgs["interest_rate"])
 		interest_rate = float(parsedArgs["interest_rate"])
 
-		#if Room.query.filter_by(id=user).first():
-			#return jsonify({'errors': 'Room already exists for this user. Please quit a room before making a new one.'}), 400
+		if Room.query.filter_by(id=user).first():
+			return jsonify({'errors': 'Room already exists for this user. Please quit a room before making a new one.'}), 400
 		
 		room = Room(name=name, id=user, interest_rate=interest_rate)
 		db.session.add(room)

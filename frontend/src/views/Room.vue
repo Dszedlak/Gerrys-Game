@@ -7,6 +7,20 @@
         </b-col>  
         <b-col>
           <div v-if="currentUserId == currentRoomId || currentUserId == 1"> 
+            <div>Interest Rate:</div>
+              <select class="intselect" v-model="interest_rate">
+                <option disabled value="">Change interest rate?</option>
+                <option>1.2</option>
+                <option>1.5</option>
+                <option>2</option>
+              </select>
+              <p @mouseover="handleHover(true)" @mouseleave="handleHover(false)">
+                {{ message }}
+              </p>
+          </div>
+        </b-col>
+        <b-col>
+          <div v-if="currentUserId == currentRoomId || currentUserId == 1"> 
           <b-button class="butt" ><a v-b-modal.removeRoomModal>{{ "End Game?" }}</a></b-button>
           </div>
         </b-col>
@@ -190,6 +204,7 @@ export default {
       roomId: null,
       userId: "",
       newComponent: false, 
+      hover: false,
     }    
   },
   methods: {
@@ -234,6 +249,9 @@ export default {
     {
       this.$socket.client.emit('updateTimeBank', JSON.stringify(time))
     },
+    handleHover(s){
+      this.hover = s;
+    },
   },
   computed: {
 			username () {
@@ -245,6 +263,9 @@ export default {
       currentUserId () {
 			return this.$store.state.auth.roomId
 			},
+      message() {
+      return this.hover === true ? "1.2 = 20 mins per hour. 1.5 = 30 mins per hour. 2 = 1 hour per hour. " : "Help?";
+      },
 		},
   } 
 
@@ -304,6 +325,9 @@ export default {
   padding-left:40px;
 }
 
+.intselect {
+  text-align: center;
+}
 ul {
   list-style-type: none;
   text-align: center;
