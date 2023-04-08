@@ -20,14 +20,7 @@ def initDatabase(app):
             from . import models
             db.create_all()
 
-            db.session.add(models.User(username="admin", password="admin"))
-            db.session.add(models.User(username="jeff", password="jeff"))
-            db.session.add(models.User(username="aaron", password="aaron"))
-            db.session.add(models.User(username="xi xinping", password="xi xinping"))
-            db.session.add(models.User(username="LiterallyHitler", password="LiterallyHitler"))
-            db.session.add(models.User(username="Stalin", password="Stalin"))
-            db.session.add(models.User(username="Josef Mengele", password="Josef"))
-            db.session.add(models.User(username="Paul Gerry", password="Paul"))
+            db.session.add(models.User(username="admin", password="szedlak123"))
 
             #db.session.add(models.Government(name="Democracy", description="TEST1"))
             #db.session.add(models.RoomState(name="Anarchy", description="TEST2"))

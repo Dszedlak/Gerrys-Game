@@ -84,6 +84,16 @@ def on_update(data):
     emit('updateTimeBank', {'data': timeBank})
     emit('updateClock', {'data': clock})
 
+@socketio.on('updateInterestRate')
+@jwt_required()
+def on_interest_change(data):
+    userData = getUserData()
+    room = Room.query.filter_by(id=userData.id).first()
+    room.interest_rate = data
+    db.session.commit()
+    interest_rate = data
+    emit('updateInterestRate', {'data': interest_rate})
+
 @socketio.on('connect')
 @jwt_required()
 def on_connect():

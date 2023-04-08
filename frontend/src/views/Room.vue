@@ -8,7 +8,7 @@
         <b-col>
           <div v-if="currentUserId == currentRoomId || currentUserId == 1"> 
             <div>Interest Rate:</div>
-              <select class="intselect" v-model="interest_rate">
+              <select class="intselect" v-model="interest_rate" v-bind:value="interestRate">
                 <option disabled value="">Change interest rate?</option>
                 <option>1.2</option>
                 <option>1.5</option>
@@ -173,6 +173,10 @@ export default {
     {
       this.timeBank= String(JSON.parse(data.data))
     },
+    updateInterestRate(data)
+    {
+      this.interestRate = String(JSON.parse(data.data))
+    },
     updateRoomId(data)
     {
       this.$store.state.auth.roomId = data.data;
@@ -201,6 +205,7 @@ export default {
       players: [],
       clock: "",
       timeBank: "",
+      interestRate: "",
       roomId: null,
       userId: "",
       newComponent: false, 
@@ -248,6 +253,10 @@ export default {
     uTimeBank(time)
     {
       this.$socket.client.emit('updateTimeBank', JSON.stringify(time))
+    },
+    uInterestRate(interest)
+    {
+      this.$socket.client.emit('updateInterestRate', JSON.stringify(interest))
     },
     handleHover(s){
       this.hover = s;
