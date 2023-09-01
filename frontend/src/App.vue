@@ -1,11 +1,14 @@
 <template>
   <div id="app">
+    <head>
+      <title>Gerrys Game</title>
+    </head>
     <b-navbar type="dark" variant="dark">
       <b-navbar-brand href="#">Gerrys Game</b-navbar-brand>
         <b-collapse id="nav-collapse" is-nav>
         <b-navbar-nav>
           <b-nav-item to="/rooms">Active games</b-nav-item>
-          <template v-if="username != null"> 
+          <template v-if="username != null && roomId != null"> 
             <b-nav-item to="/room">Current Game</b-nav-item>
           </template>
         
@@ -34,7 +37,10 @@
 </template>
 <script>
 export default {
-  name: 'RoomList',
+  name: "App",
+  mounted() {
+     document.title = "Gerrys Game";
+  },
   data() {
 		return {
 			name: 'RoomList',
@@ -50,6 +56,9 @@ export default {
     computed: {
       username () {
         return this.$store.state.auth.username
+      },
+      roomId () {
+        return this.$store.state.auth.roomId
       },
   }
 }

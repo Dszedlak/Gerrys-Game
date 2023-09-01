@@ -6,17 +6,18 @@
           <b-button class="butt"><a v-b-modal.LeaveRoomModal>{{ "Leave Room?" }}</a></b-button>
         </b-col>  
         <b-col>
-          <div v-if="currentUserId == currentRoomId || currentUserId == 1"> 
+          <!-- Conditionally render the div and dropdown based on the user's ID -->
+          <div v-if="currentUserId == currentRoomId || currentUserId == 1">
             <div>Interest Rate:</div>
-              <select class="intselect" v-model="interest_rate">
-                <option disabled value="">Change interest rate?</option>
-                <option>1.2</option>
-                <option>1.5</option>
-                <option>2</option>
-              </select>
-              <p @mouseover="handleHover(true)" @mouseleave="handleHover(false)">
-                {{ message }}
-              </p>
+            <select class="intselect" @change="handleInterestRateChange">
+              <option disabled value="">Change interest rate?</option>
+              <option value="1.2">1.2</option>
+              <option value="1.5">1.5</option>
+              <option value="2">2</option>
+            </select>
+            <p @mouseover="handleHover(true)" @mouseleave="handleHover(false)">
+              {{ message }}
+            </p>
           </div>
         </b-col>
         <b-col>
@@ -171,7 +172,12 @@ export default {
     },
     updateTimeBank(data)
     {
-      this.timeBank= String(JSON.parse(data.data))
+      this.timeBank = String(JSON.parse(data.data))
+    },
+    updateInterestRate(data)
+    {
+      console.log(data.data)
+      this.interestRate = String(JSON.parse(data.data))
     },
     updateRoomId(data)
     {
@@ -201,10 +207,12 @@ export default {
       players: [],
       clock: "",
       timeBank: "",
+      interestRate: 0,
       roomId: null,
       userId: "",
       newComponent: false, 
       hover: false,
+      roomname: "test",
     }    
   },
   methods: {
@@ -217,7 +225,7 @@ export default {
 				roomId: this.$store.state.auth.roomId
 			}
       this.$socket.client.emit('leave')
-			this.$store.state.auth.roomId = 0;
+			this.$store.state.auth.roomId = null;
             RoomListService.leaveRoom(data)
             .then(response => {
                 this.$router.push({ name: 'RoomList'})
@@ -232,7 +240,7 @@ export default {
 				roomId: this.$store.state.auth.roomId
 			}
       //this.$socket.client.emit('closeRoom')
-      this.$store.state.auth.roomId = 0
+      this.$store.state.auth.roomId = null
       RoomListService.removeRoom(data)
             .then(response => {
                 this.$router.push({ name: 'RoomList'})
@@ -248,6 +256,11 @@ export default {
     uTimeBank(time)
     {
       this.$socket.client.emit('updateTimeBank', JSON.stringify(time))
+    },  
+    handleInterestRateChange(event) {
+      this.interestRate = event.target.value;
+      console.log("interest rate :" + this.interestRate)
+      this.$socket.client.emit('updateInterestRate', JSON.stringify(this.interestRate))
     },
     handleHover(s){
       this.hover = s;
@@ -261,7 +274,7 @@ export default {
 			return this.$store.state.auth.roomId
 			},
       currentUserId () {
-			return this.$store.state.auth.roomId
+			return this.$store.state.auth.userId
 			},
       message() {
       return this.hover === true ? "1.2 = 20 mins per hour. 1.5 = 30 mins per hour. 2 = 1 hour per hour. " : "Help?";
