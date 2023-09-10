@@ -27,8 +27,6 @@
 			id="modal-prevent-closing"
 			ref="modal"
 			title="Create Room"
-			@show="resetModal"
-			@hidden="resetModal"
 			@ok="handleOk">
 			<form ref="form" @submit.stop.prevent="handleSubmit">
 				<b-form-group
@@ -36,12 +34,12 @@
 				label-for="name-input"
 				invalid-feedback="Room Name"
 				description="Enter a name for this room"
-				:state="nameState">
+				>
 				<small v-if="errors" class="text-danger">{{errors}}</small>
 				<b-form-input
 				id="name-input"
 				v-model="newRoom.name"
-				:state="nameState"
+				
 				required
 				></b-form-input>
 				</b-form-group>
@@ -50,12 +48,11 @@
 				label-for="interest_rate-input"
 				invalid-feedback="Interest rate"
 				description="Enter the starting interest rate for this room"
-				:state="nameState">
+				>
 
 				<b-form-input
 				id="interest_rate-input"
 				v-model="newRoom.interest_rate"
-				:state="nameState"
 				required
 				></b-form-input>
 				</b-form-group>
@@ -115,8 +112,7 @@ export default {
 				interest_rate: "",
             },
 			roomname: '',
-			roomId: '', 
-			errors: '',
+			roomId: ''
 		}
 	},
 	methods: {
@@ -171,6 +167,9 @@ export default {
                 console.log(e);
             });
         },
+		handleOk() {
+    	// Implement the handleOk method logic here
+  		},
     },
 		computed: {
 			username () {
@@ -185,7 +184,7 @@ export default {
 		},
     mounted() {
         this.retrieveRooms();
-  },  
+	},  
 }
 </script>
 

@@ -37,7 +37,6 @@ class Room(db.Model):
     __tablename__ = "room"
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(60), nullable=False)
-    interest_rate = db.Column(db.Float, nullable=False)
     participants = db.relationship("RoomParticipants", lazy="subquery")
     startedAt = db.Column(db.DateTime, default=datetime.utcnow)
     endedAt = db.Column(db.DateTime, default=datetime.utcnow)#TO-DO
@@ -49,6 +48,8 @@ class RoomParticipants(db.Model):
     userId = db.Column(db.Integer, db.ForeignKey("user.id"), primary_key=True)
     timeBank = db.Column(db.DateTime, default=datetime.min)#Have add or remove button
     clock = db.Column(db.DateTime, default=datetime.min + timedelta(days=1))
+    interest_rate = db.Column(db.Float, nullable=False)
+
     #job = db.relationship("Job", lazy="subquery")
 
 class Job(db.Model):

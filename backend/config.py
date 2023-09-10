@@ -12,7 +12,7 @@ class Config(object):
     FLASK_ADMIN_SWATCH = 'cerulean'
 
 class DevelopmentConfig(Config):
-    DEBUG = True
+    DEBUG = False
 
 class ProductionConfig(Config):
     DEBUG = False

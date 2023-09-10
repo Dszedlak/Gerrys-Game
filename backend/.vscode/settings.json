@@ -1,4 +1,13 @@
 {
     "python.defaultInterpreterPath": "environment\\Scripts\\python.exe",
-    "python.linting.pylintArgs": ["--load-plugins pylint_flask_sqlalchemy"]
+    "python.linting.pylintArgs": ["--load-plugins pylint_flask_sqlalchemy"],
+    "terminal.integrated.profiles.windows": {
+        "PowerShell": {
+          "source": "PowerShell",
+          "icon": "terminal-powershell",
+          "args": ["-ExecutionPolicy", "Bypass"]
+        }
+      },
+      "terminal.integrated.defaultProfile.windows": "PowerShell",
 }
+

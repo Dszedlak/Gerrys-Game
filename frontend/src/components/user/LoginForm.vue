@@ -44,7 +44,7 @@ export default {
       }
       this.$store.dispatch("login", credentials)
       .then(() => {
-        this.$router.push("/me")
+        this.$router.push("/home")
       })
     }
   },

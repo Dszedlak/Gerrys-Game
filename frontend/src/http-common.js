@@ -1,7 +1,11 @@
 import axios from "axios";
+import { IP_ADDRESS } from "@/common/config";
+
+const ipAddress = IP_ADDRESS;
 
 export default axios.create({
-    baseURL: "http://localhost:5000/",
+  
+    baseURL: `http://${ipAddress}:5000/`,
     headers: {
         "Content-Type": "application/json",
         Authorization: {

@@ -5,6 +5,11 @@ USER_FIELDS = {
 	"username": fields.String,
 }
 
+LEADERBOARD_FIELDS = {
+	"username": fields.String,
+    "score": fields.Integer,
+}
+
 ROOMS_FIELDS = {
 	"id": fields.Integer,
 	"name": fields.String,

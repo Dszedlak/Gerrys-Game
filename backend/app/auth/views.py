@@ -23,7 +23,7 @@ def register():
     db.session.add(newUser)
     db.session.commit()
 
-    access_token = create_access_token(identity=newUser)
+    access_token = create_access_token(identity=newUser, expires_delta=datetime.timedelta(hours=12))
     return jsonify({'success': True, 'token': access_token}), 200
 
 @auth.route('/login', methods=['POST'])
@@ -36,7 +36,7 @@ def login():
 
     user = User.query.filter_by(username=username).one_or_none()
     if user is not None and user.verifyPassword(password):
-        access_token = create_access_token(identity=user)
+        access_token = create_access_token(identity=user, expires_delta=datetime.timedelta(hours=12))
         return jsonify({'success': True, 'token': access_token}), 200
         
     return jsonify({'errors': 'Bad username or password'}), 401 

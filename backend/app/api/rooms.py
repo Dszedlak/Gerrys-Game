@@ -3,7 +3,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from flask_socketio import join_room
 from datetime import datetime, timedelta
 from .. import db
-from ..models import Room, RoomParticipants, Government, Job
+from ..models import Room, RoomParticipants
 from .util import ROOMS_FIELDS,JOIN_ROOM_FIELDS,LEAVE_ROOM_FIELDS,roomParser,joinRoomParser, leaveRoomParser
 from ..websocket.game_session import GameSession
 from flask.json import jsonify

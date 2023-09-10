@@ -18,11 +18,13 @@ def on_join():
     room = userData.roomId  
     timeBank = getTimeBank(userData)
     clock = getClock(userData)
+    interestRate = getInterestRate(room).interest_rate
     join_room(room)
     emit('updateRoomId', {'data': room}, to=room)
     emit('setUserId', {'data':get_jwt_identity()})
     emit('updateClock', {'data': clock})
     emit('updateTimeBank', {'data': timeBank})
+    emit('updateInterestRate', {'data': interestRate})
 
 #NEED TO RETHINKING HOW THIS TIMEBANK/CLOCK IS STORED AND IN WHAT FORMAT. IS AN INTEGER REALLY THE SMARTEST IDEA?
 
@@ -53,6 +55,21 @@ def on_update(data):
     clock = getClock(userData)
     emit('updateClock', {'data': clock})
 
+@socketio.on('updateInterestRate')
+@jwt_required()
+def updateInterest(data):
+    userData = getUserData()
+    roomid = userData.roomId
+    action = json.loads(data)
+    room = Room.query.filter_by(id=roomid).first()
+    room_participants = RoomParticipants.query.filter_by(room_id=room).first()
+    room_participants.interest_rate = action
+    db.session.commit()
+    interestRate = getInterestRate(roomid).interest_rate
+    print(interestRate)
+    emit('updateInterestRate', {'data': interestRate})
+
+
 @socketio.on('updateTimeBank')
 @jwt_required()
 def on_update(data):
@@ -66,7 +83,7 @@ def on_update(data):
         userData.timeBank = datetime.min
     elif action == 'addInterest':
         time_in_mins = ((userData.timeBank - datetime.min).total_seconds()) / 60
-        total_interest = (time_in_mins * Room.query.filter_by(id=userData.roomId).first().interest_rate) - time_in_mins
+        total_interest = (time_in_mins * RoomParticipants.query.filter_by(roomId=userData.roomId).first().interest_rate) - time_in_mins
         userData.timeBank = userData.timeBank + timedelta(minutes=total_interest)
         if not userData.timeBank.minute % 5 == 0:
             discard = timedelta(minutes=userData.timeBank.minute % 10)
@@ -88,7 +105,7 @@ def on_update(data):
 @jwt_required()
 def on_interest_change(data):
     userData = getUserData()
-    room = Room.query.filter_by(id=userData.id).first()
+    room = Room.query.filter_by(id=userData.userId).first()
     room.interest_rate = data
     db.session.commit()
     interest_rate = data
@@ -110,6 +127,10 @@ def getUserData():
     userData = RoomParticipants.query.filter_by(userId=user).first()
     print(userData)
     return userData
+
+def getInterestRate(room_num: int):
+    room = Room.query.filter_by(id=room_num).first()
+    return room
 
 def timeFormat(time: datetime):
     days = ""

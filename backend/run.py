@@ -2,7 +2,7 @@ from app import createApp, socketio, db
 from os import getenv
 from app.websocket.game_session import GameSession
 
-configName = getenv("FLASK_ENV")
+configName = "production"
 app = createApp(configName)
 app.app_context().push()
 
@@ -15,5 +15,5 @@ app.app_context().push()
 #     e.run()
 
 if __name__ == "__main__":
-    socketio.run(app, port=5000)
+    socketio.run(app, host='0.0.0.0', port=5000)
     
