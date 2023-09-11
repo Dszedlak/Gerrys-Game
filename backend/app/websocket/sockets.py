@@ -18,13 +18,11 @@ def on_join():
     room = userData.roomId  
     timeBank = getTimeBank(userData)
     clock = getClock(userData)
-    interestRate = getInterestRate(room).interest_rate
     join_room(room)
     emit('updateRoomId', {'data': room}, to=room)
     emit('setUserId', {'data':get_jwt_identity()})
     emit('updateClock', {'data': clock})
     emit('updateTimeBank', {'data': timeBank})
-    emit('updateInterestRate', {'data': interestRate})
 
 #NEED TO RETHINKING HOW THIS TIMEBANK/CLOCK IS STORED AND IN WHAT FORMAT. IS AN INTEGER REALLY THE SMARTEST IDEA?
 
