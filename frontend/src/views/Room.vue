@@ -7,13 +7,13 @@
         </b-col>  
         <b-col>
           <!-- Conditionally render the div and dropdown based on the user's ID -->
-          <div v-if="currentUserId == currentRoomId || currentUserId == 1">
+          <div>
             <div>Interest Rate:</div>
             <select class="intselect" @change="handleInterestRateChange">
               <option disabled value="">Change interest rate?</option>
-              <option value=1.2>1.2</option>
-              <option value=1.5>1.5</option>
-              <option value=2>2</option>
+              <option value=1.16667>10 mins per hour</option>
+              <option value=1.33333>20 mins per hour</option>
+              <option value=1.5>30 mins per hour</option>
             </select>
             <p @mouseover="handleHover(true)" @mouseleave="handleHover(false)">
               {{ message }}

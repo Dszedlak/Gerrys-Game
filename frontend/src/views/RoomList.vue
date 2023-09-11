@@ -43,19 +43,7 @@
 				required
 				></b-form-input>
 				</b-form-group>
-				<b-form-group
-				label="Starting Interest Rate"
-				label-for="interest_rate-input"
-				invalid-feedback="Interest rate"
-				description="Enter the starting interest rate for this room"
-				>
-
-				<b-form-input
-				id="interest_rate-input"
-				v-model="newRoom.interest_rate"
-				required
-				></b-form-input>
-				</b-form-group>
+				
 			</form>
 				<template #modal-footer="{ cancel }">
 			<!-- Emulate built in modal footer ok and cancel button actions -->
@@ -109,7 +97,6 @@ export default {
 			selected : null,
 			newRoom: {
                 name: "",
-				interest_rate: "",
             },
 			roomname: '',
 			roomId: ''
@@ -131,8 +118,7 @@ export default {
 		},
 		createRoom() {
             var data = {
-                name: this.newRoom.name,
-				interest_rate: this.newRoom.interest_rate,
+                name: this.newRoom.name
             };
             RoomListService.createRoom(data)
             .then(response => {

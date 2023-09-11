@@ -26,20 +26,17 @@ class RoomListResource(Resource):
 		user = get_jwt_identity()
 		parsedArgs = roomParser.parse_args()
 		name = parsedArgs["name"]
-		print(parsedArgs["interest_rate"])
-		interest_rate = float(parsedArgs["interest_rate"])
-
 		if Room.query.filter_by(id=user).first():
 			return jsonify({'errors': 'Room already exists for this user. Please quit a room before making a new one.'}), 400
 		
-		room = Room(name=name, id=user, interest_rate=interest_rate)
+		room = Room(name=name, id=user)
 		db.session.add(room)
 		db.session.commit()
 		game = GameSession(name)
 		game.run()
 
 		roomId = user
-		participant = RoomParticipants(roomId=roomId, userId=user, timeBank=datetime.min, clock=(datetime.min + timedelta(days=1)))
+		participant = RoomParticipants(roomId=roomId, userId=user, timeBank=datetime.min, clock=(datetime.min + timedelta(days=1)), interest_rate=1.2)
 		db.session.add(participant)
 		db.session.commit()
 
@@ -53,7 +50,7 @@ class JoinRoomResource(Resource):
 		user = get_jwt_identity()
 		parsedArgs = joinRoomParser.parse_args()
 		roomId = parsedArgs['roomId']
-		participant = RoomParticipants(roomId=roomId, userId=user, timeBank=datetime.min, clock=(datetime.min + timedelta(days=1)))
+		participant = RoomParticipants(roomId=roomId, userId=user, timeBank=datetime.min, clock=(datetime.min + timedelta(days=1)), interest_rate=1.2)
 		db.session.add(participant)
 		db.session.commit()
 
