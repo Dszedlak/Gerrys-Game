@@ -1,38 +1,22 @@
-import Vue from "vue";
-import VueRouter from "vue-router";
-
-Vue.use(VueRouter);
+import { createRouter, createWebHistory } from 'vue-router'
+import Home from '@/views/Home.vue'
+import Rooms from '@/views/RoomList.vue'
+import Profile from '@/views/Profile.vue'
+import Login from '@/views/Login.vue'
+import Room from '@/views/Room.vue'
 
 const routes = [
-  {
-    path: '/rooms',
-    name: 'Rooms',
-    component: () => import('@/views/RoomList.vue')
-  },
-  {
-    path: '/me',
-    name: 'Profile',
-    component: () => import('@/views/Profile.vue')
-  },
-  {
-    path: '/login',
-    name: 'Login',
-    component: () => import('@/views/Login.vue')
-  },
-  {
-    path: '/room',
-    name: 'Room',
-    component: () => import('@/views/Room.vue')
-  },
-  {
-    path: '/home',
-    name: 'Home',
-    component: () => import('@/views/Home.vue')
-  }
+  { path: '/rooms', name: 'Rooms', component: Rooms },
+  { path: '/me', name: 'Profile', component: Profile },
+  { path: '/login', name: 'Login', component: Login },
+  { path: '/room', name: 'Room', component: Room },
+  { path: '/home', name: 'Home', component: Home },
+  { path: '/', redirect: '/home' } // <-- Add this line
 ]
 
-const router = new VueRouter({
-  routes
-});
+const router = createRouter({
+  history: createWebHistory(),
+  routes,
+})
 
 export default router

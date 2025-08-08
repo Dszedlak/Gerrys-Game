@@ -3,9 +3,9 @@ import JwtService from '@/services/JwtService'
 import AuthenticationService from '@/services/AuthenticationService'
 
 const state = {
+  token: localStorage.getItem('token') || '',
+  username: localStorage.getItem('username') || '',
   errors: null,
-  username: null,
-  isAuthenticated: !!JwtService.getToken(), 
   roomId: null, 
   userId: null
 }
@@ -84,13 +84,19 @@ const mutations = {
   setUser(state, { username, token }) {
     state.isAuthenticated = true;
     state.username = username;
+    state.token = token;
     state.errors = "";
+    localStorage.setItem('token', token);
+    localStorage.setItem('username', username);
     JwtService.saveToken(token);
   },
   purgeAuth(state) {
     state.isAuthenticated = false;
     state.username = null;
+    state.token = '';
     state.errors = "";
+    localStorage.removeItem('token');
+    localStorage.removeItem('username');
     JwtService.destroyToken();
   },
   setRoomId(state, {id}) {
@@ -99,10 +105,27 @@ const mutations = {
   leaveRoomId(state)
   {
     state.roomId = null;
+  },
+  setToken(state, token) {
+    state.token = token;
+  },
+  setUsername(state, username) {
+    state.username = username;
+  },
+  logout(state) {
+    state.token = '';
+    state.username = '';
+    localStorage.removeItem('token');
+    localStorage.removeItem('username');
+    ApiService.setHeader(''); // Remove token from axios
+  },
+  setErrors(state, errors) {
+    state.errors = errors;
   }
 };
 
 export default {
+  namespaced: true,
   state,
   mutations,
   getters,

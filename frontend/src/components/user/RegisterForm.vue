@@ -1,46 +1,54 @@
 <template>
-  <b-form @submit="onSubmit">
-    <b-form-group
+  <BForm @submit.prevent="onSubmit">
+    <BFormGroup
       label="Username:"
       description="Enter your desired username"
-      placeholder="username"
       label-class="font-weight-bold pt-0">
-      <b-form-input
+      <BFormInput
         v-model="username"
-        required>
-        </b-form-input>
-    </b-form-group>
-    <b-form-group
+        placeholder="username"
+        required
+      />
+    </BFormGroup>
+    <BFormGroup
       label="Password:"
       description="Enter your desired password"
-      placeholder="password"
       label-class="font-weight-bold pt-0">
-      <b-form-input
+      <BFormInput
         v-model="password"
         type="password"
-        required>
-        </b-form-input>
-    </b-form-group>
-    <b-form-group
+        placeholder="password"
+        required
+      />
+    </BFormGroup>
+    <BFormGroup
       label="Confirm password:"
       description="Enter the same password again"
-      placeholder="password"
       label-class="font-weight-bold pt-0">
-      <b-form-input
+      <BFormInput
         v-model="confirmPassword"
         type="password"
-        required>
-        </b-form-input>
-    </b-form-group>
+        placeholder="password"
+        required
+      />
+    </BFormGroup>
     <div class="form-group">
-      <small v-if="errors" class="text-danger">{{errors}}</small>
+      <small v-if="errors" class="text-danger">{{ errors }}</small>
     </div>
-    <b-button type="submit" class="btn btn-success">Register</b-button>
-  </b-form>
+    <BButton type="submit" variant="success">Register</BButton>
+  </BForm>
 </template>
 
 <script>
+import { BForm, BFormGroup, BFormInput, BButton } from 'bootstrap-vue-next'
+
 export default {
+  components: {
+    BForm,
+    BFormGroup,
+    BFormInput,
+    BButton
+  },
   data () {
     return {
       username: "",
@@ -65,6 +73,6 @@ export default {
     errors () {
       return this.$store.state.auth.errors
     }
-}
+  }
 }
 </script>

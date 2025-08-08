@@ -6,9 +6,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.models import User, db, RoomParticipants, Room
 import json
 import re
-from typing import List
-from datetime import datetime, timedelta, date
-from math import ceil
+from datetime import datetime, timedelta
 
 @socketio.on('join')
 @jwt_required()

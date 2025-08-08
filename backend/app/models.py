@@ -64,9 +64,13 @@ class Government(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     type = db.Column(db.String(60), default="Democracy")
     description = db.Column(db.String(), nullable=False)
+    members = db.relationship("GovernmentMember", back_populates="government", lazy="subquery")
 
-class Laws(db.Model):
-    __tablename__ = "laws"
+class GovernmentMember(db.Model):
+    __tablename__ = "government_member"
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(), nullable=False)
-    description = db.Column(db.String(), nullable=False)
+    government_id = db.Column(db.Integer, db.ForeignKey("government.id"))
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"))
+    role = db.Column(db.String(32), nullable=False)  # e.g. "leader", "advisor", "politburo"
+    government = db.relationship("Government", back_populates="members")
+    user = db.relationship("User")

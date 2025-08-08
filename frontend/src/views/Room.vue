@@ -126,165 +126,110 @@
   </div>
   
 </template>
-<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/socket.io-client/dist/socket.io.slim.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/vue-socket.io-extended"></script>
-<script>
+<script setup>
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { useRouter } from 'vue-router'
+import { useStore } from 'vuex'
+import { useSocket } from '@/composables/useSocket'
 import ClickToEdit from '@/components/helpers/ClickToEdit.vue'
-import VueSocketIOExt from 'vue-socket.io-extended';
-import io from 'socket.io-client';
-import Vue from 'vue';
-import store from '../store/index';
 import JwtService from '@/services/JwtService'
-import RoomListService from "@/services/RoomListService";
-import { IP_ADDRESS } from "@/common/config";
+import RoomListService from "@/services/RoomListService"
 
-const ipAddress = IP_ADDRESS;
+const store = useStore()
+const router = useRouter()
+const { socket, isConnected } = useSocket()
 
-var socket = io(`ws://${ipAddress}:5000/`,  {
-      transportOptions: {
-        polling: {
-            extraHeaders: {
-                Authorization: `Bearer ${JwtService.getToken()}`
-            }
-        }
-    }
-});
+const players = ref([])
+const clock = ref("")
+const timeBank = ref("")
+const interestRate = ref(0)
+const roomId = ref(null)
+const userId = ref("")
+const newComponent = ref(false)
+const hover = ref(false)
+const roomname = ref("test")
 
-Vue.use(VueSocketIOExt, socket, { store })
-export default {
-    components: {
-      ClickToEdit,
-    },
-    sockets: {
-    connect() {
-      console.log(`${JwtService.getToken()}`)
-      console.log("socket connected");  
-      this.$socket.client.emit('join');
-    },
-    UpdateUserStatus(data) {
-      this.players = [];
-      var users = JSON.parse(data.data)
-      for(let i = 0; i < users.length; i++){
-        this.players.push(users[i]);
-      }
-    },
-    updateClock(data)
-    {
-      this.clock = String(JSON.parse(data.data))
-    },
-    updateTimeBank(data)
-    {
-      this.timeBank = String(JSON.parse(data.data))
-    },
-    updateInterestRate(data)
-    {
-      console.log(data.data)
-      this.interestRate = String(JSON.parse(data.data))
-    },
-    updateRoomId(data)
-    {
-      this.$store.state.auth.roomId = data.data;
-      console.log("roomId: " + this.$store.state.auth.roomId)
-    },
-    setUserId(data)
-    {
-      this.$store.state.auth.userId = data.data;
-      console.log("userId: " + this.$store.state.auth.userId)
+// Socket event handlers
+socket.on('UpdateUserStatus', (data) => {
+  players.value = []
+  const users = JSON.parse(data.data)
+  for (let i = 0; i < users.length; i++) {
+    players.value.push(users[i])
+  }
+})
+socket.on('updateClock', (data) => {
+  clock.value = String(JSON.parse(data.data))
+})
+socket.on('updateTimeBank', (data) => {
+  timeBank.value = String(JSON.parse(data.data))
+})
+socket.on('updateInterestRate', (data) => {
+  interestRate.value = String(JSON.parse(data.data))
+})
+socket.on('updateRoomId', (data) => {
+  store.state.auth.roomId = data.data
+})
+socket.on('setUserId', (data) => {
+  store.state.auth.userId = data.data
+})
 
-    }
-  },
-  created() {
-    window.addEventListener("beforeunload", this.leaveRoom);
-  }, 
-  mounted() {
-    if (localStorage.getItem('reloaded')) {
-        localStorage.removeItem('reloaded');
-    } else {
-        localStorage.setItem('reloaded', '1');
-        location.reload();
-    }
-  },  
-  data() {
-    return {
-      players: [],
-      clock: "",
-      timeBank: "",
-      interestRate: 0,
-      roomId: null,
-      userId: "",
-      newComponent: false, 
-      hover: false,
-      roomname: "test",
-    }    
-  },
-  methods: {
-    changeComponent: function () {
-      this.newComponent = !this.newComponent
-    },
-    leaveRoom()
-    {
-			var data = {
-				roomId: this.$store.state.auth.roomId
-			}
-      this.$socket.client.emit('leave')
-			this.$store.state.auth.roomId = null;
-            RoomListService.leaveRoom(data)
-            .then(response => {
-                this.$router.push({ name: 'RoomList'})
-            })
-            .catch(e => {
-                console.log(e);
-            });
-    },
-    removeRoom()
-    {
-      var data = {
-				roomId: this.$store.state.auth.roomId
-			}
-      //this.$socket.client.emit('closeRoom')
-      this.$store.state.auth.roomId = null
-      RoomListService.removeRoom(data)
-            .then(response => {
-                this.$router.push({ name: 'RoomList'})
-            })
-            .catch(e => {
-                console.log(e);
-            });
-    },
-    uClock(time)
-    {
-      this.$socket.client.emit('updateClock', JSON.stringify(time))
-    },
-    uTimeBank(time)
-    {
-      this.$socket.client.emit('updateTimeBank', JSON.stringify(time))
-    },  
-    handleInterestRateChange(event) {
-      this.interestRate = event.target.value;
-      console.log("interest rate :" + this.interestRate)
-      this.$socket.client.emit('updateInterestRate', this.interestRate)
-    },
-    handleHover(s){
-      this.hover = s;
-    },
-  },
-  computed: {
-			username () {
-			return this.$store.state.auth.username
-			},
-			currentRoomId () {
-			return this.$store.state.auth.roomId
-			},
-      currentUserId () {
-			return this.$store.state.auth.userId
-			},
-      message() {
-      return this.hover === true ? "1.2 = 20 mins per hour. 1.5 = 30 mins per hour. 2 = 1 hour per hour. " : "Help?";
-      },
-		},
-  } 
+onMounted(() => {
+  window.addEventListener("beforeunload", leaveRoom)
+  if (localStorage.getItem('reloaded')) {
+    localStorage.removeItem('reloaded')
+  } else {
+    localStorage.setItem('reloaded', '1')
+    location.reload()
+  }
+})
 
+onBeforeUnmount(() => {
+  window.removeEventListener("beforeunload", leaveRoom)
+  socket.disconnect()
+})
+
+// Methods
+function changeComponent() {
+  newComponent.value = !newComponent.value
+}
+function leaveRoom() {
+  const data = { roomId: store.state.auth.roomId }
+  socket.emit('leave')
+  store.state.auth.roomId = null
+  RoomListService.leaveRoom(data)
+    .then(() => router.push({ name: 'RoomList' }))
+    .catch(e => console.log(e))
+}
+function removeRoom() {
+  const data = { roomId: store.state.auth.roomId }
+  store.state.auth.roomId = null
+  RoomListService.removeRoom(data)
+    .then(() => router.push({ name: 'RoomList' }))
+    .catch(e => console.log(e))
+}
+function uClock(time) {
+  socket.emit('updateClock', JSON.stringify(time))
+}
+function uTimeBank(time) {
+  socket.emit('updateTimeBank', JSON.stringify(time))
+}
+function handleInterestRateChange(event) {
+  interestRate.value = event.target.value
+  socket.emit('updateInterestRate', interestRate.value)
+}
+function handleHover(s) {
+  hover.value = s
+}
+
+// Computed
+const username = computed(() => store.state.auth.username)
+const currentRoomId = computed(() => store.state.auth.roomId)
+const currentUserId = computed(() => store.state.auth.userId)
+const message = computed(() =>
+  hover.value
+    ? "1.2 = 20 mins per hour. 1.5 = 30 mins per hour. 2 = 1 hour per hour. "
+    : "Help?"
+)
 </script>
 <style>
 

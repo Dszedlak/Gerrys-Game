@@ -1,31 +1,18 @@
 <template>
-    <b-form @submit="onSubmit">
-      <b-form-group
-        label="Username:"
-        description="Enter your username"
-        placeholder="username"
-        label-class="font-weight-bold pt-0">
-        <b-form-input
-          v-model="username"
-          required>
-          </b-form-input>
-      </b-form-group>
-      <b-form-group
-        label="Password:"
-        description="Enter your password"
-        placeholder="password"
-        label-class="font-weight-bold pt-0">
-        <b-form-input
-          v-model="password"
-          type="password"
-          required>
-          </b-form-input>
-      </b-form-group>
-      <div class="form-group">
+  <form @submit.prevent="onSubmit">
+    <div class="mb-3">
+      <label for="username" class="form-label">Username</label>
+      <input id="username" v-model="username" type="text" class="form-control" required />
+    </div>
+    <div class="mb-3">
+      <label for="password" class="form-label">Password</label>
+      <input id="password" v-model="password" type="password" class="form-control" required />
+    </div>
+    <div class="form-group">
       <small v-if="errors" class="text-danger">{{errors}}</small>
-      </div>
-      <b-button type="submit" class="btn btn-success">Login</b-button>
-    </b-form>
+    </div>
+    <button type="submit" class="btn btn-primary">Login</button>
+  </form>
 </template>
 
 <script>
@@ -52,6 +39,6 @@ export default {
     errors () {
       return this.$store.state.auth.errors
     }
-}
+  }
 }
 </script>
