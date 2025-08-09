@@ -17,6 +17,10 @@ if (token && username) {
   store.commit('auth/setUser', { username, token });
 }
 
+if (token) {
+  ApiService.setHeader(token)
+}
+
 const app = createApp(App)
 app.use(router)
 app.use(store)

@@ -8,7 +8,8 @@ from app import socketio
 
 thread_lock = Lock()
 
-class GameSession():
+
+class GameSession:
 
     def __init__(self, roomname):
         self._room = db.session.query(Room.id).filter_by(name=roomname).first()[0]
@@ -17,7 +18,7 @@ class GameSession():
 
     def getRoom(self) -> int:
         return self._room
-        
+
     def obj_dict(self):
         return self
 
@@ -26,22 +27,28 @@ class GameSession():
         self.thread = None
 
     def load_ready_partipants(self):
-        players=[]
-        session_query = db.session.query(RoomParticipants.userId).filter_by(roomId=self._room).all()
+        players = []
+        session_query = (
+            db.session.query(RoomParticipants.userId).filter_by(roomId=self._room).all()
+        )
 
         for participant in session_query:
-            players.append(db.session.query(User.username).filter_by(id=participant[0]).first()[0])
+            players.append(
+                db.session.query(User.username).filter_by(id=participant[0]).first()[0]
+            )
         jsonString = json.dumps(players)
-            
+
         print(jsonString)
-        return jsonString        
+        return jsonString
 
     def run(self):
         with thread_lock:
             if self.thread is None:
+
                 @copy_current_request_context
                 def start():
                     self.background_thread()
+
                 self.thread = Thread(target=start)
                 self.thread.daemon = True
                 self.thread.start()
@@ -51,7 +58,9 @@ class GameSession():
             while self._room > 0:
                 print(self.getRoom())
                 participants = self.load_ready_partipants()
-                self._socketio.emit('UpdateUserStatus', {'data':participants}, to=self._room)
+                self._socketio.emit(
+                    "UpdateUserStatus", {"data": participants}, to=self._room
+                )
                 self._socketio.sleep(1)
             if self._room == 0:
                 return

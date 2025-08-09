@@ -6,21 +6,6 @@
           <b-button class="butt"><a v-b-modal.LeaveRoomModal>{{ "Leave Room?" }}</a></b-button>
         </b-col>  
         <b-col>
-          <!-- Conditionally render the div and dropdown based on the user's ID -->
-          <div>
-            <div>Interest Rate:</div>
-            <select class="intselect" @change="handleInterestRateChange">
-              <option disabled value="">Change interest rate?</option>
-              <option value=1.16667>10 mins per hour</option>
-              <option value=1.33333>20 mins per hour</option>
-              <option value=1.5>30 mins per hour</option>
-            </select>
-            <p @mouseover="handleHover(true)" @mouseleave="handleHover(false)">
-              {{ message }}
-            </p>
-          </div>
-        </b-col>
-        <b-col>
           <div v-if="currentUserId == currentRoomId || currentUserId == 1"> 
           <b-button class="butt" ><a v-b-modal.removeRoomModal>{{ "End Game?" }}</a></b-button>
           </div>
@@ -51,46 +36,27 @@
       </b-col>
       <b-col></b-col>
     </b-row>
-    <b-row class="itemRow">
-      <b-col>
-        <h1>Time Bank</h1>
-        <Click-To-Edit id="" v-bind:value="timeBank" action="updateTimeBank"></Click-To-Edit>
-      </b-col>
-    </b-row>
-    <b-row>
-      <b-col></b-col>
-      <b-col cols="14" class="itemRowButtons">
-            <b-button-group class="mx-1">
-              <b-button class="addremovebutton" @click="uTimeBank(-60)">-1h</b-button>
-            </b-button-group>
-            
-            <b-button-group class="mx-1">
-              <b-button class="addremovebutton" @click="uTimeBank(60)">+1h</b-button>
-            </b-button-group>
-
-            <b-button-group class="mx-1">
-              <b-button class="emptyButton" @click="uTimeBank('clear')">Clear</b-button>
-            </b-button-group>
-
-            <b-button-group class="mx-1">
-              <b-button class="cashoutButton" @click="uTimeBank('cashout')">Cashout</b-button>
-            </b-button-group>
-
-            <b-button-group class="mx-1">
-              <b-button class="interestButton" @click="uTimeBank('addInterest')">+ Interest</b-button>
-            </b-button-group>
-      </b-col>
-      <b-col></b-col>
-    </b-row>
       <b-row class="itemRowPlayers">
         <b-col></b-col>
         <b-col cols="1.4">    
-          <h1 class="players">Players</h1>
-            <ul id="test">
-              <li v-for="value in players" v-bind:key="value">
-                <h5 class="list">{{ value }}</h5>
-              </li>
-            </ul>
+          <table class="table table-sm table-bordered" style="width:100%">
+            <thead>
+              <tr>
+                <th>Username</th>
+                <th>Job Title</th>
+                <th>Government Position</th>
+                <th>Bleed</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="p in participants" :key="p.user_id">
+                <td>{{ p.username || 'Unknown' }}</td>
+                <td>{{ p.job_name || '-' }}</td>
+                <td>{{ p.job_tier || '-' }}</td>
+                <td>{{ p.bleed }}</td>
+              </tr>
+            </tbody>
+          </table>
         </b-col>
         <b-col></b-col>
         
@@ -139,38 +105,27 @@ const store = useStore()
 const router = useRouter()
 const { socket, isConnected } = useSocket()
 
-const players = ref([])
 const clock = ref("")
-const timeBank = ref("")
-const interestRate = ref(0)
 const roomId = ref(null)
 const userId = ref("")
 const newComponent = ref(false)
 const hover = ref(false)
 const roomname = ref("test")
+const participants = ref([])
 
 // Socket event handlers
-socket.on('UpdateUserStatus', (data) => {
-  players.value = []
-  const users = JSON.parse(data.data)
-  for (let i = 0; i < users.length; i++) {
-    players.value.push(users[i])
-  }
-})
 socket.on('updateClock', (data) => {
   clock.value = String(JSON.parse(data.data))
-})
-socket.on('updateTimeBank', (data) => {
-  timeBank.value = String(JSON.parse(data.data))
-})
-socket.on('updateInterestRate', (data) => {
-  interestRate.value = String(JSON.parse(data.data))
 })
 socket.on('updateRoomId', (data) => {
   store.state.auth.roomId = data.data
 })
 socket.on('setUserId', (data) => {
   store.state.auth.userId = data.data
+})
+socket.on('UpdateUserStatus', (data) => {
+  const room = JSON.parse(data.data);
+  participants.value = room.participants || [];
 })
 
 onMounted(() => {
@@ -210,13 +165,6 @@ function removeRoom() {
 function uClock(time) {
   socket.emit('updateClock', JSON.stringify(time))
 }
-function uTimeBank(time) {
-  socket.emit('updateTimeBank', JSON.stringify(time))
-}
-function handleInterestRateChange(event) {
-  interestRate.value = event.target.value
-  socket.emit('updateInterestRate', interestRate.value)
-}
 function handleHover(s) {
   hover.value = s
 }
@@ -225,19 +173,8 @@ function handleHover(s) {
 const username = computed(() => store.state.auth.username)
 const currentRoomId = computed(() => store.state.auth.roomId)
 const currentUserId = computed(() => store.state.auth.userId)
-const message = computed(() =>
-  hover.value
-    ? "1.2 = 20 mins per hour. 1.5 = 30 mins per hour. 2 = 1 hour per hour. "
-    : "Help?"
-)
 </script>
 <style>
-
-.cashoutButton{
-  width: 83px;
-  height: 45px;
-  text-align: left;
-}
 
 .emptyButton{
   width: 62px;
@@ -259,11 +196,6 @@ const message = computed(() =>
   margin-right:0px
 }
 
-.interestButton{
-  width: 95px;
-  height: 45px;
-  text-align: left;
-}
 .itemRow{
   height: 118px;
   text-align: center;
@@ -282,7 +214,7 @@ const message = computed(() =>
   padding-right:40px;
 }
 
-.players {
+.itemRowPlayers {
   padding-left:40px;
 }
 

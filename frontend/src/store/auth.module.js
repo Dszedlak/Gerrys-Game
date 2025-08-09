@@ -45,14 +45,15 @@ const actions = {
     return new Promise((resolve, reject) => {
       AuthenticationService.register(credentials)
       .then(({ data }) => {
+        ApiService.setHeader(data.token) // <-- add this line
         context.commit('setUser', {
-          username: credentials.username, 
+          username: data.username,
           token: data.token
         });
         resolve(data);
       })
       .catch(({ response }) => {
-        context.commit("setError", response.data.errors);
+        context.commit('setErrors', response.data.message);
         reject(response);
       });
     });
@@ -89,6 +90,7 @@ const mutations = {
     localStorage.setItem('token', token);
     localStorage.setItem('username', username);
     JwtService.saveToken(token);
+    ApiService.setHeader(token); // Set the token in ApiService
   },
   purgeAuth(state) {
     state.isAuthenticated = false;

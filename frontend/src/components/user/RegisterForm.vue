@@ -63,9 +63,15 @@ export default {
         password: this.password, 
         confirmPassword: this.confirmPassword 
       };
-      this.$store.dispatch("register", credentials)
+      this.$store.dispatch('auth/register', credentials)
       .then(() => {
-        this.$router.push("/me")
+        this.$router.push('/rooms')
+      })
+      .catch(err => {
+        this.error = this.$store.state.auth.errors || 'Registration failed'
+      })
+      .finally(() => {
+        this.loading = false
       })
     }
   },

@@ -1,8 +1,9 @@
+import json
+import os
 from flask import Flask
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from flask_socketio import SocketIO
-from sqlalchemy.sql.operators import is_natural_self_precedent
 from sqlalchemy_utils import database_exists
 from flask_jwt_extended import JWTManager
 import config
@@ -21,16 +22,19 @@ def initDatabase(app):
             db.create_all()
 
             db.session.add(models.User(username="admin", password="szedlak123"))
-
-            #db.session.add(models.Government(name="Democracy", description="TEST1"))
-            #db.session.add(models.RoomState(name="Anarchy", description="TEST2"))
-            #db.session.add(models.RoomState(name="Communism", description="TEST3"))
-            #db.session.add(models.RoomState(name="Dictatorship", description="TEST3"))
-
-            #db.session.add(models.Laws(name="law1"), description="the big law1")
-            #db.session.add(models.Laws(name="law2"), description="the big law2")
-            #db.session.add(models.Laws(name="law3"), description="the big law3")
-            #db.session.add(models.Laws(name="law4"), description="the big law4")
+            
+            jobs_collection_path = os.path.join(os.path.dirname(__file__), "data_collections", "jobs.json")
+            #Its probably worth making this a separate function and more generic so it can be reused
+            with open(jobs_collection_path, "r", encoding="utf-8") as f:
+                jobs_data = json.load(f)
+                for job in jobs_data:
+                    if not models.Job.query.filter_by(id=job["id"]).first():
+                        db.session.add(models.Job(
+                            id=job["id"],
+                            tier=job["tier"],
+                            name=job["name"],
+                            type=job.get("type", ""),
+                        ))
 
             db.session.commit()
 

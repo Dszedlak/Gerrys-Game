@@ -1,44 +1,67 @@
 <template>
-  <form @submit.prevent="onSubmit">
-    <div class="mb-3">
-      <label for="username" class="form-label">Username</label>
-      <input id="username" v-model="username" type="text" class="form-control" required />
+  <BForm @submit.prevent="onSubmit">
+    <BFormGroup label="Username" label-for="username-input">
+      <BFormInput
+        id="username-input"
+        v-model="username"
+        required
+        placeholder="Enter username"
+      />
+    </BFormGroup>
+    <BFormGroup label="Password" label-for="password-input">
+      <BFormInput
+        id="password-input"
+        v-model="password"
+        type="password"
+        required
+        placeholder="Enter password"
+      />
+    </BFormGroup>
+    <div class="mb-2">
+      <small v-if="error" class="text-danger">{{ error }}</small>
     </div>
-    <div class="mb-3">
-      <label for="password" class="form-label">Password</label>
-      <input id="password" v-model="password" type="password" class="form-control" required />
-    </div>
-    <div class="form-group">
-      <small v-if="errors" class="text-danger">{{errors}}</small>
-    </div>
-    <button type="submit" class="btn btn-primary">Login</button>
-  </form>
+    <BButton type="submit" variant="primary" :disabled="loading">
+      Login
+    </BButton>
+  </BForm>
 </template>
 
 <script>
+import { ref } from 'vue'
+import { useStore } from 'vuex'
+import { useRouter } from 'vue-router'
+import { BForm, BFormGroup, BFormInput, BButton } from 'bootstrap-vue-next'
+
 export default {
-  data () {
-    return {
-      username: "",
-      password: "",
+  components: { BForm, BFormGroup, BFormInput, BButton },
+  setup() {
+    const store = useStore()
+    const router = useRouter()
+    const username = ref('')
+    const password = ref('')
+    const error = ref('')
+    const loading = ref(false)
+
+    const onSubmit = () => {
+      error.value = ''
+      loading.value = true
+      store.dispatch('auth/login', { username: username.value, password: password.value })
+        .then(({ data }) => {
+          context.commit('setUser', {
+            username: data.username, // use backend username
+            token: data.token
+          });
+          resolve(data);
+        })
+        .catch(err => {
+          error.value = store.state.auth.errors || 'Login failed'
+        })
+        .finally(() => {
+          loading.value = false
+        })
     }
-  },
-  methods: {
-    onSubmit () {
-      var credentials = {
-        username: this.username,
-        password: this.password
-      }
-      this.$store.dispatch("login", credentials)
-      .then(() => {
-        this.$router.push("/home")
-      })
-    }
-  },
-  computed: {
-    errors () {
-      return this.$store.state.auth.errors
-    }
+
+    return { username, password, error, loading, onSubmit }
   }
 }
 </script>
