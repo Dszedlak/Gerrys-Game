@@ -16,6 +16,7 @@
               <BTr v-for="(room, index) in rooms" :key="index">
                 <BTd>
                   <a href="#" @click.prevent="showJoinRoomModal(room.name, room.id)">{{ room.name }}</a>
+                  <BButton size="sm" class="ms-2" variant="primary" @click.prevent="quickJoin(room)">Join</BButton>
                 </BTd>
               </BTr>
             </BTbody>
@@ -66,16 +67,19 @@
     </BModal>
 
     <!-- Join Room Modal -->
-    <BModal id="JoinRoomModal" ref="joinRoomModal" title="Join Room:">
+    <BModal
+      id="JoinRoomModal"
+      ref="joinRoomModal"
+      title="Join Room:"
+      @ok="onConfirmJoin"
+      ok-title="Yes"
+      cancel-title="No"
+      :ok-disabled="joiningRoom"
+    >
       Are you sure you want to join room: {{ roomname }}
-      <template #modal-footer="{ cancel }">
-        <BButton size="sm" variant="success" @click="joinRoom">
-          Yes
-        </BButton>
-        <BButton size="sm" variant="danger" @click="cancel()">
-          No
-        </BButton>
-      </template>
+      <div class="mt-2">
+        <small v-if="localError" class="text-danger">{{ localError }}</small>
+      </div>
     </BModal>
 
     <!-- Leave Room Modal -->
@@ -117,6 +121,7 @@ export default {
       roomId: '',
       localError: '',
       creatingRoom: false
+  , joiningRoom: false
     }
   },
   methods: {
@@ -125,10 +130,44 @@ export default {
       this.newRoom.name = '';
       this.$refs.createRoomModal.show();
     },
+    async quickJoin(room) {
+      try {
+        this.roomname = room.name
+        this.roomId = room.id
+        console.log('[QuickJoin] Direct join for room:', room.name, 'id:', room.id)
+        this.joiningRoom = true
+        const payload = { roomId: Number(room.id) }
+        this.$store.commit('auth/setRoomId', { id: payload.roomId })
+        const resp = await RoomListService.joinRoom(payload)
+        console.log('[QuickJoin] Response status:', resp?.status)
+        if (resp && resp.status >= 200 && resp.status < 300) {
+          this.$router.push({ name: 'Room' })
+        } else {
+          this.localError = 'Failed to join room. Please try again.'
+        }
+      } catch (e) {
+        console.error('[QuickJoin] Error:', e)
+        this.localError = e?.response?.data?.errors || e?.response?.data?.message || 'Failed to join room.'
+      } finally {
+        this.joiningRoom = false
+      }
+    },
     showJoinRoomModal(roomname, roomId) {
       this.roomname = roomname;
       this.roomId = roomId;
+  this.localError = '';
+  this.joiningRoom = false;
+  console.log('[JoinRoom] Open modal for room:', roomname, 'id:', roomId)
       this.$refs.joinRoomModal.show();
+    },
+    async onConfirmJoin(bvModalEvt) {
+      // Keep the modal open while processing
+      bvModalEvt.preventDefault()
+      await this.joinRoom()
+      // If we reached here without error, hide the modal (route push already navigates)
+      if (!this.localError) {
+        this.$refs.joinRoomModal.hide()
+      }
     },
     showLeaveRoomModal(roomname, roomId) {
       this.roomname = roomname;
@@ -167,26 +206,51 @@ export default {
         this.creatingRoom = false;
       }
     },
-    joinRoom() {
-      var data = {
-        roomId: this.roomId
-      }
-      this.$store.state.auth.roomId = data.roomId;
-      RoomListService.joinRoom(data)
-        .then(response => {
-          this.$refs.joinRoomModal.hide();
+    async joinRoom() {
+      const data = { roomId: Number(this.roomId) }
+      this.localError = ''
+      this.joiningRoom = true
+      const prevRoomId = this.$store.state.auth.roomId
+      // Commit via mutation so reactivity is preserved
+      try {
+        console.log('[JoinRoom] Attempting join with payload:', data)
+        this.$store.commit('auth/setRoomId', { id: data.roomId })
+        const response = await RoomListService.joinRoom(data)
+        console.log('[JoinRoom] Response status:', response?.status)
+        // Optional: validate success shape if backend returns { success: true }
+        if (response && response.status >= 200 && response.status < 300) {
+          this.$refs.joinRoomModal.hide()
           this.$router.push({ name: 'Room' })
-        })
+        } else {
+          this.localError = 'Failed to join room. Please try again.'
+        }
+      } catch (e) {
+        console.error('[JoinRoom] Join failed:', e)
+        if (e.response && e.response.data) {
+          this.localError = e.response.data.errors || e.response.data.message || 'Failed to join room. Please try again.'
+        } else {
+          this.localError = 'Network error while joining room.'
+        }
+        console.log(this.localError)
+        // Revert optimistic update
+        if (prevRoomId) {
+          this.$store.commit('auth/setRoomId', { id: prevRoomId })
+        } else {
+          this.$store.commit('auth/leaveRoomId')
+        }
+      } finally {
+        this.joiningRoom = false
+      }
     },
     leaveRoom() {
       var data = {
         roomId: this.roomId
       }
-      this.$store.state.auth.roomId = 0;
+      this.$store.commit('auth/leaveRoomId')
       RoomListService.leaveRoom(data)
         .then(response => {
           this.$refs.leaveRoomModal.hide();
-          this.$router.push({ name: 'RoomList' })
+          this.$router.push({ name: 'Rooms' })
         })
         .catch(e => {
           console.log(e);

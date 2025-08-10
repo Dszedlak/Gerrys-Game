@@ -18,6 +18,7 @@ def on_join():
     emit("room_state", serialize_room(room), to=room.id)
     emit("setUserId", {"data": get_jwt_identity()})
     emit("updateClock", {"data": getClock(userData)})
+    print("user joined room:", room.id)
 
 
 @socketio.on("leave")

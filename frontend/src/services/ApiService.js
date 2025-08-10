@@ -19,16 +19,20 @@ const ApiService = {
     }
   },
   get(resource) {
-    return axios.get(resource);
+  console.debug('[ApiService] GET', axios.defaults.baseURL + '/' + resource)
+  return axios.get(resource);
   },
   post(resource, data) {
-    return axios.post(resource, data);
+  console.debug('[ApiService] POST', axios.defaults.baseURL + '/' + resource, data)
+  return axios.post(resource, data);
   },
   put(resource, data) {
-    return axios.put(resource, data);
+  console.debug('[ApiService] PUT', axios.defaults.baseURL + '/' + resource, data)
+  return axios.put(resource, data);
   },
   delete(resource) {
-    return axios.delete(resource);
+  console.debug('[ApiService] DELETE', axios.defaults.baseURL + '/' + resource)
+  return axios.delete(resource);
   }
 };
 

@@ -46,14 +46,10 @@ export default {
       error.value = ''
       loading.value = true
       store.dispatch('auth/login', { username: username.value, password: password.value })
-        .then(({ data }) => {
-          context.commit('setUser', {
-            username: data.username, // use backend username
-            token: data.token
-          });
-          resolve(data);
+        .then(() => {
+          router.push({ name: 'Home' })
         })
-        .catch(err => {
+        .catch(() => {
           error.value = store.state.auth.errors || 'Login failed'
         })
         .finally(() => {

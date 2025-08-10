@@ -15,27 +15,37 @@ const getters = {
     return state.username;
   },
   isAuthenticated (state) {
-    return this.isAuthenticated;
+    return !!state.token;
   },
   roomId (state) {
-    return this.roomId;
+  return state.roomId;
   }
 };
 
 const actions = {
   login(context, credentials)  {
-    return new Promise(resolve => {
+    return new Promise((resolve, reject) => {
       AuthenticationService.login(credentials)
-      .then(({ data }) => {
-        context.commit('setUser', {
-          username: credentials.username, 
-          token: data.token
+        .then(({ data }) => {
+          // Expecting { success, token, username }
+          if (data && data.success && data.token && data.username) {
+            context.commit('setUser', {
+              username: data.username, 
+              token: data.token
+            });
+            resolve(data);
+          } else {
+            context.commit("setError", "Invalid response from server");
+            reject("Invalid response from server");
+          }
+        })
+        .catch((error) => {
+          // error.response may not exist
+          const response = error.response || {};
+          const errMsg = (response.data && (response.data.errors || response.data.message)) || "Login failed";
+          context.commit("setError", errMsg);
+          reject(errMsg);
         });
-        resolve(data);
-      })
-      .catch(({ response }) => {
-        context.commit("setError", response.data.errors);
-      });
     });
   },
   logout(context) {
@@ -107,6 +117,9 @@ const mutations = {
   leaveRoomId(state)
   {
     state.roomId = null;
+  },
+  setUserId(state, id) {
+    state.userId = id;
   },
   setToken(state, token) {
     state.token = token;

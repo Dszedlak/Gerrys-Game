@@ -4,14 +4,19 @@ import JwtService from '@/services/JwtService'
 import { IP_ADDRESS } from "@/common/config"
 
 export function useSocket() {
-  const socket = io(`ws://${IP_ADDRESS}:5000/`, {
+  const token = JwtService.getToken()
+  const socket = io(`http://${IP_ADDRESS}:5000`, {
+    // Force polling so Authorization header is sent by the browser
+    transports: ['polling'],
     transportOptions: {
       polling: {
         extraHeaders: {
-          Authorization: `Bearer ${JwtService.getToken()}`
+          Authorization: `Bearer ${token}`
         }
       }
-    }
+    },
+    // Also pass token via auth for future server support
+    auth: { token }
   })
 
   const isConnected = ref(false)
