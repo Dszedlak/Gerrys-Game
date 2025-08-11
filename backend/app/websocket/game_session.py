@@ -1,4 +1,4 @@
-from app.models import Room, User, db, RoomParticipants
+from app.models import Room, User, db, RoomParticipants, serialize_room
 import json
 from threading import Lock
 from threading import Thread
@@ -61,6 +61,9 @@ class GameSession:
                 self._socketio.emit(
                     "UpdateUserStatus", {"data": participants}, to=self._room
                 )
+                room_obj = Room.query.get(self._room)
+                if room_obj:
+                    self._socketio.emit("room_state", serialize_room(room_obj), to=room_obj.id)
                 self._socketio.sleep(1)
             if self._room == 0:
                 return

@@ -22,19 +22,18 @@ def initDatabase(app):
             db.create_all()
 
             db.session.add(models.User(username="admin", password="szedlak123"))
-            
-            jobs_collection_path = os.path.join(os.path.dirname(__file__), "data_collections", "jobs.json")
-            #Its probably worth making this a separate function and more generic so it can be reused
-            with open(jobs_collection_path, "r", encoding="utf-8") as f:
-                jobs_data = json.load(f)
-                for job in jobs_data:
-                    if not models.Job.query.filter_by(id=job["id"]).first():
-                        db.session.add(models.Job(
-                            id=job["id"],
-                            tier=job["tier"],
-                            name=job["name"],
-                            type=job.get("type", ""),
-                        ))
+
+            # --- Load and insert jobs ---
+            from .data_collections.loader import load_jobs  # removed load_governments here
+            jobs_data = load_jobs()
+            for job in jobs_data:
+                if not models.Job.query.filter_by(id=job["id"]).first():
+                    db.session.add(models.Job(
+                        id=job["id"],
+                        tier=job["tier"],
+                        name=job["name"],
+                        type=job.get("type", ""),
+                    ))
 
             db.session.commit()
 

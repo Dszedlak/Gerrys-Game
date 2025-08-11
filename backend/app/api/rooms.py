@@ -3,7 +3,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from flask_socketio import join_room
 from datetime import datetime, timedelta
 from .. import db
-from ..models import Room, RoomParticipants
+from ..models import Room, RoomParticipants, Government, GovernmentMember, db
 from .util import (
     ROOMS_FIELDS,
     JOIN_ROOM_FIELDS,
@@ -15,6 +15,7 @@ from .util import (
 from ..websocket.game_session import GameSession
 from flask.json import jsonify
 import traceback
+from sqlalchemy import and_
 
 # Have a log for the game that logs peoples actions to show whether people are cheating
 
@@ -33,25 +34,34 @@ class RoomListResource(Resource):
     @marshal_with(ROOMS_FIELDS)
     def post(self):
         user = get_jwt_identity()
-        parsedArgs = roomParser.parse_args()
-        name = parsedArgs["name"]
-        if Room.query.filter_by(id=user).first():
-            return {"errors": "Room already exists for this user. Please quit a room before making a new one."}, 400  # changed
+        args = roomParser.parse_args()
+        name = args["name"]
 
-        room = Room(name=name, id=user)
+        if Room.query.filter_by(id=user).first():
+            return {"errors": "Room already exists for this user. Please quit a room before making a new one."}, 400
+
+        room = Room(id=user, name=name)
         db.session.add(room)
         db.session.commit()
-        game = GameSession(name)
-        game.run()
 
-        roomId = user
-        participant = RoomParticipants(
-            roomId=roomId, userId=user, clock=(datetime.min + timedelta(days=1))
-        )
+        # Create per-room Government without setting id
+        gov = Government(type="Democracy", room_id=room.id)
+        db.session.add(gov)
+        db.session.commit()
+
+        participant = RoomParticipants(roomId=room.id, userId=user, clock=(datetime.min + timedelta(days=1)))
         db.session.add(participant)
         db.session.commit()
 
-        gameThreads[user] = game
+        # If you manage a game object, guard None access
+        game = gameThreads.get(room.id)  # or however you key it
+        if game:
+            try:
+                game.closeRoom()
+            except Exception as e:
+                print(f"[createRoom] game.closeRoom error: {e}")
+            del gameThreads[room.id]
+
         return room
 
 
@@ -110,14 +120,48 @@ class LeaveRoomResource(Resource):
 
 class RemoveRoomResource(Resource):
     @jwt_required()
-    @marshal_with(LEAVE_ROOM_FIELDS)
     def post(self):
-        user = get_jwt_identity()
-        parsedArgs = leaveRoomParser.parse_args()
-        roomId = parsedArgs["roomId"]
-        Room.query.filter_by(id=roomId).delete()
-        RoomParticipants.query.filter_by(roomId=roomId).delete()
-        db.session.commit()
-        game: GameSession = gameThreads.get(user)
-        game.closeRoom()
-        del game
+        user_id = get_jwt_identity()
+        room = Room.query.filter_by(id=user_id).first()
+        if not room:
+            return {"errors": "Room not found"}, 404
+
+        room_id = room.id
+        print(f"[RemoveRoom] user={user_id} closing room {room_id}")
+
+        game = gameThreads.pop(room_id, None)
+        if game:
+            try:
+                game.closeRoom()
+            except Exception as e:
+                print(f"[RemoveRoom] game.closeRoom error: {e}")
+
+        try:
+            from app import socketio
+            socketio.emit("roomClosed", {"roomId": room_id}, to=room_id)
+        except Exception as e:
+            print(f"[RemoveRoom] socket emit error: {e}")
+
+        try:
+            # Get government ids for this room (usually one)
+            gov_ids = [gid for (gid,) in db.session.query(Government.id).filter_by(room_id=room_id).all()]
+            if gov_ids:
+                # Delete members by government_id (no join)
+                GovernmentMember.query.filter(GovernmentMember.government_id.in_(gov_ids)).delete(synchronize_session=False)
+                # Delete governments
+                Government.query.filter(Government.id.in_(gov_ids)).delete(synchronize_session=False)
+
+            # Delete participants
+            RoomParticipants.query.filter_by(roomId=room_id).delete(synchronize_session=False)
+
+            # Delete room
+            Room.query.filter_by(id=room_id).delete(synchronize_session=False)
+
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            print(f"[RemoveRoom][ERROR] {e}")
+            return {"errors": "Internal Server Error"}, 500
+
+        print(f"[RemoveRoom] room {room_id} removed")
+        return {"success": True}, 200

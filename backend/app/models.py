@@ -59,7 +59,7 @@ class RoomParticipants(db.Model):
     job_id = db.Column(db.Integer, db.ForeignKey("job.id"))
     job = db.relationship("Job")
     bleed = db.Column(db.Integer, default=0)
-
+    user = db.relationship("User")
 
 class Job(db.Model):
     __tablename__ = "job"
@@ -73,7 +73,6 @@ class Government(db.Model):
     __tablename__ = "government"
     id = db.Column(db.Integer, primary_key=True)
     type = db.Column(db.String(60), default="Democracy")
-    description = db.Column(db.String(), nullable=False)
     room_id = db.Column(db.Integer, db.ForeignKey("room.id"))
     members = db.relationship(
         "GovernmentMember", back_populates="government", lazy="subquery"
@@ -96,13 +95,13 @@ def serialize_room(room):
     return {
         "id": room.id,
         "name": room.name,
+        # Use room.id as owner if that's your convention (no created_by/owner_id columns)
+        "owner_id": room.id,
         "government": serialize_government(room.government),
         "participants": [
             {
                 "user_id": rp.userId,
-                "username": (
-                    rp.user.username if hasattr(rp, "user") and rp.user else None
-                ),
+                "username": (rp.user.username if hasattr(rp, "user") and rp.user else None),
                 "job_tier": rp.job.tier if rp.job else None,
                 "job_name": rp.job.name if rp.job else None,
                 "bleed": rp.bleed,
@@ -113,17 +112,15 @@ def serialize_room(room):
 
 
 def serialize_government(government):
-    if not government:
-        return None
+    if not government:        return None
     return {
-        "type": government.type,
-        "description": government.description,
+        "type": getattr(government, "type", None),
         "members": [
             {
                 "user_id": gm.user_id,
                 "username": gm.user.username if gm.user else None,
                 "role": gm.role,
             }
-            for gm in government.members
+            for gm in (government.members or [])
         ],
     }
