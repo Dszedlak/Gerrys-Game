@@ -7,6 +7,7 @@
             <b-button-group class="top-actions-group">
               <b-button class="butt" @click="openLeaveModal">Leave Room?</b-button>
               <b-button v-if="isAdmin" class="butt" variant="danger" @click="openRemoveModal">End Game?</b-button>
+              <b-button v-if="isAdmin" class="butt" variant="info" @click="openWheelSpinner">Spin Wheel</b-button>
             </b-button-group>
           </div>
         </b-col>
@@ -263,6 +264,9 @@
           </b-button>
         </div>
       </b-modal>
+
+      <!-- Wheel Spinner Component -->
+      <WheelSpinner ref="wheelSpinnerRef" :participants="participants" />
     </b-container>
   </div>
 </template>
@@ -274,6 +278,7 @@ import { useStore } from 'vuex'
 import { useSocket } from '@/composables/useSocket'
 import ClickToEdit from '@/components/helpers/ClickToEdit.vue'
 import RoomListService from '@/services/RoomListService'
+import WheelSpinner from '@/components/SpinWheel.vue'
 
 const store = useStore()
 const router = useRouter()
@@ -330,6 +335,7 @@ const governmentOptionsDisplay = computed(() => {
 // ADD: modal refs and busy flags (fixes ReferenceError)
 const leaveRoomModal = ref(null)
 const removeRoomModal = ref(null)
+const wheelSpinnerRef = ref(null)
 const isLeaving = ref(false)
 const isRemoving = ref(false)
 
@@ -474,6 +480,9 @@ function openLeaveModal() {
 }
 function openRemoveModal() {
   removeRoomModal.value && removeRoomModal.value.show()
+}
+function openWheelSpinner() {
+  wheelSpinnerRef.value?.open()
 }
 
 // Replace custom buttons logic with OK handlers that keep the modal open during async

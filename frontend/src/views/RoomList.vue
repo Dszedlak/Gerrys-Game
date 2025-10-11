@@ -30,7 +30,10 @@
       id="modal-prevent-closing"
       ref="createRoomModal"
       title="Create Room"
-      hide-footer
+      @ok="handleOkCreate"
+      ok-title="Create Room"
+      cancel-title="Cancel"
+      :ok-disabled="creatingRoom"
     >
       <form
         id="create-room-form"
@@ -51,19 +54,6 @@
           ></BFormInput>
         </BFormGroup>
       </form>
-      <template #modal-footer="{ cancel }">
-        <BButton
-          size="sm"
-          variant="success"
-          @click="createRoom"
-          :disabled="creatingRoom"
-        >
-          Create Room
-        </BButton>
-        <BButton size="sm" variant="danger" @click="cancel()">
-          Cancel
-        </BButton>
-      </template>
     </BModal>
 
     <!-- Join Room Modal -->
@@ -130,6 +120,19 @@ export default {
       this.newRoom.name = '';
       this.$refs.createRoomModal.show();
     },
+    async handleOkCreate(bvModalEvt) {
+      // Prevent modal from closing automatically
+      bvModalEvt.preventDefault()
+      console.log('[CreateRoom] OK button clicked')
+      await this.createRoom()
+      // If successful (no error), the createRoom method will hide modal and navigate
+      // If error, modal stays open to show error message
+    },
+    handleCreateRoom() {
+      // Trigger form validation and submission
+      console.log('[CreateRoom] Button clicked, calling createRoom()')
+      this.createRoom()
+    },
     async quickJoin(room) {
       try {
         this.roomname = room.name
@@ -184,17 +187,22 @@ export default {
         })
     },
     async createRoom() {
+      console.log('[CreateRoom] Method called, room name:', this.newRoom.name)
       this.localError = '';
       if (!this.newRoom.name) {
         this.localError = "Room name is required.";
+        console.log('[CreateRoom] Validation failed: no room name')
         return;
       }
+      console.log('[CreateRoom] Validation passed, creating room...')
       this.creatingRoom = true;
       try {
-        await RoomListService.createRoom({ name: this.newRoom.name });
+        const response = await RoomListService.createRoom({ name: this.newRoom.name });
+        console.log('[CreateRoom] Success:', response)
         this.$refs.createRoomModal.hide();
         this.$router.push({ name: 'Room' });
       } catch (e) {
+        console.error('[CreateRoom] Error:', e)
         // Try to show backend error if available
         if (e.response && e.response.data && e.response.data.message) {
           this.localError = e.response.data.message;

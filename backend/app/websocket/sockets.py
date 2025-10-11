@@ -160,13 +160,20 @@ def update_government(data):
 
 @socketio.on("balanceChange")
 @jwt_required()
-def balanceChange():
+def balanceChange(data=None):
     userData = getUserData()
     job_income = 0
     if userData.job:
         job_income = userData.job.tier * 10  # Example: tier 3 = 30 mins
+        print(f"[balanceChange] User job: {userData.job.name}, tier: {userData.job.tier}, income: {job_income}")
+    else:
+        print(f"[balanceChange] User has no job")
+    
     bleed_penalty = userData.bleed * 10
     net_income = job_income - bleed_penalty
+    
+    print(f"[balanceChange] Bleed: {userData.bleed}, penalty: {bleed_penalty}, net: {net_income}")
+    
     userData.clock += timedelta(minutes=net_income)
     db.session.commit()
     emit("updateClock", {"data": getClock(userData)})

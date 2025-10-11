@@ -55,16 +55,27 @@ const actions = {
     return new Promise((resolve, reject) => {
       AuthenticationService.register(credentials)
       .then(({ data }) => {
-        ApiService.setHeader(data.token) // <-- add this line
-        context.commit('setUser', {
-          username: data.username,
-          token: data.token
-        });
-        resolve(data);
+        console.log('[Register] Response data:', data)
+        // Check if backend returned token and username (like login does)
+        if (data && data.token && data.username) {
+          context.commit('setUser', {
+            username: data.username,
+            token: data.token
+          });
+          resolve(data);
+        } else {
+          // If no token returned, registration succeeded but need to login
+          console.log('[Register] No token in response, registration succeeded but not logged in')
+          context.commit("setError", "Registration succeeded, please login");
+          reject("Registration succeeded, please login");
+        }
       })
-      .catch(({ response }) => {
-        context.commit('setErrors', response.data.message);
-        reject(response);
+      .catch((error) => {
+        console.error('[Register] Error:', error)
+        const response = error.response || {};
+        const errMsg = (response.data && (response.data.errors || response.data.message)) || "Registration failed";
+        context.commit('setError', errMsg);
+        reject(error);
       });
     });
   },

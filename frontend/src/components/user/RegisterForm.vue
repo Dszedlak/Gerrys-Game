@@ -57,22 +57,44 @@ export default {
     }
   },
   methods: {
-    onSubmit () {
+    async onSubmit () {
       var credentials = { 
         username: this.username, 
         password: this.password, 
         confirmPassword: this.confirmPassword 
       };
-      this.$store.dispatch('auth/register', credentials)
-      .then(() => {
+      console.log('[Register] Submitting registration for:', this.username)
+      try {
+        await this.$store.dispatch('auth/register', credentials)
+        console.log('[Register] Registration successful, now logging in...')
+        // If registration didn't return a token, automatically login
+        await this.$store.dispatch('auth/login', {
+          username: this.username,
+          password: this.password
+        })
+        console.log('[Register] Auto-login successful, navigating to rooms')
         this.$router.push('/rooms')
-      })
-      .catch(err => {
-        this.error = this.$store.state.auth.errors || 'Registration failed'
-      })
-      .finally(() => {
+      } catch (err) {
+        console.error('[Register] Failed:', err)
+        // If registration succeeded but login failed, still show success
+        if (err === 'Registration succeeded, please login') {
+          try {
+            await this.$store.dispatch('auth/login', {
+              username: this.username,
+              password: this.password
+            })
+            console.log('[Register] Auto-login successful after registration')
+            this.$router.push('/rooms')
+          } catch (loginErr) {
+            console.error('[Register] Auto-login failed:', loginErr)
+            this.error = 'Registration succeeded, please login manually'
+          }
+        } else {
+          this.error = this.$store.state.auth.errors || 'Registration failed'
+        }
+      } finally {
         this.loading = false
-      })
+      }
     }
   },
   computed: {
