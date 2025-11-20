@@ -1,8 +1,9 @@
+import json
+import os
 from flask import Flask
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from flask_socketio import SocketIO
-from sqlalchemy.sql.operators import is_natural_self_precedent
 from sqlalchemy_utils import database_exists
 from flask_jwt_extended import JWTManager
 import config
@@ -22,15 +23,17 @@ def initDatabase(app):
 
             db.session.add(models.User(username="admin", password="szedlak123"))
 
-            #db.session.add(models.Government(name="Democracy", description="TEST1"))
-            #db.session.add(models.RoomState(name="Anarchy", description="TEST2"))
-            #db.session.add(models.RoomState(name="Communism", description="TEST3"))
-            #db.session.add(models.RoomState(name="Dictatorship", description="TEST3"))
-
-            #db.session.add(models.Laws(name="law1"), description="the big law1")
-            #db.session.add(models.Laws(name="law2"), description="the big law2")
-            #db.session.add(models.Laws(name="law3"), description="the big law3")
-            #db.session.add(models.Laws(name="law4"), description="the big law4")
+            # --- Load and insert jobs ---
+            from .data_collections.loader import load_jobs  # removed load_governments here
+            jobs_data = load_jobs()
+            for job in jobs_data:
+                if not models.Job.query.filter_by(id=job["id"]).first():
+                    db.session.add(models.Job(
+                        id=job["id"],
+                        tier=job["tier"],
+                        name=job["name"],
+                        type=job.get("type", ""),
+                    ))
 
             db.session.commit()
 

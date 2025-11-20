@@ -1,0 +1,20 @@
+
+
+[
+    {
+        "id": 1,
+        "type": "Democracy"
+    },
+    {
+        "id": 2,
+        "type": "Republic"
+    },
+    {
+        "id": 3,
+        "type": "Dictatorship"
+    },
+    {
+        "id": 4,
+        "type": "Communism"
+    }
+]

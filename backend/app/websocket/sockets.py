@@ -1,41 +1,75 @@
-from app.models import db
+from app.models import db, serialize_room, serialize_government
 
 from flask_socketio import emit, join_room, leave_room, send
 from app import socketio
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from app.models import User, db, RoomParticipants, Room
+from app.models import User, db, RoomParticipants, Room, Job, Government, GovernmentMember
 import json
 import re
-from typing import List
-from datetime import datetime, timedelta, date
-from math import ceil
+from datetime import datetime, timedelta
+from app.data_collections.loader import get_collections
 
-@socketio.on('join')
+def _is_room_member(room_id: int, user_id: int) -> bool:
+    return RoomParticipants.query.filter_by(roomId=room_id, userId=user_id).first() is not None
+
+def _get_user_participation(user_id, room_id=None):
+    q = RoomParticipants.query.filter_by(userId=user_id)
+    if room_id is not None:
+        q = q.filter_by(roomId=room_id)
+    return q.first()
+
+@socketio.on("join")
 @jwt_required()
-def on_join():        
-    userData = getUserData()
-    print(userData)
-    room = userData.roomId  
-    timeBank = getTimeBank(userData)
-    clock = getClock(userData)
-    join_room(room)
-    emit('updateRoomId', {'data': room}, to=room)
-    emit('setUserId', {'data':get_jwt_identity()})
-    emit('updateClock', {'data': clock})
-    emit('updateTimeBank', {'data': timeBank})
+def on_join(payload=None):
+    user_id = get_jwt_identity()
+    data = {}
+    if isinstance(payload, (str, bytes)):
+        try:
+            data = json.loads(payload)
+        except Exception:
+            data = {}
+    elif isinstance(payload, dict):
+        data = payload or {}
 
-#NEED TO RETHINKING HOW THIS TIMEBANK/CLOCK IS STORED AND IN WHAT FORMAT. IS AN INTEGER REALLY THE SMARTEST IDEA?
+    room_id = data.get("roomId")
+    userData = _get_user_participation(user_id, room_id)
+    if not userData:
+        print(f"[join] No RoomParticipants for user {user_id} (roomId={room_id})")
+        emit("error", {"message": "Join the room first"})
+        return
 
-@socketio.on('leave')
+    room = Room.query.get(userData.roomId)
+    if not room:
+        emit("error", {"message": "Room not found"})
+        return
+
+    join_room(room.id)
+    print(f"[join] user {user_id} joined socket room {room.id}")
+
+    # Send collections for dropdowns, then room state
+    emit("updateCollectionData", {"data": get_collections()})
+    emit("room_state", serialize_room(room), to=room.id)
+    emit("setUserId", {"data": get_jwt_identity()})
+    emit("updateClock", {"data": getClock(userData)})
+    print("user joined room:", room.id)
+
+
+@socketio.on("leave")
 @jwt_required()
-def on_leave():
-    userData = getUserData()
-    room = userData.roomId  
-    leave_room(room)
-    print("disconnected fam")
-    send(str(get_jwt_identity()) + ' has left the room.', to=room)
+def on_leave(payload=None):
+    user_id = get_jwt_identity()
+    room_id = None
+    if isinstance(payload, dict):
+        room_id = payload.get("roomId")
+    userData = _get_user_participation(user_id, room_id)
+    if not userData:
+        print(f"[leave] No participation for user {user_id} (roomId={room_id})")
+        return
+    leave_room(userData.roomId)
+    print(f"[leave] user {user_id} left socket room {userData.roomId}")
 
-@socketio.on('updateClock')
+
+@socketio.on("updateClock")
 @jwt_required()
 def on_update(data):
     userData = getUserData()
@@ -45,79 +79,141 @@ def on_update(data):
         userData.clock = userData.clock + timedelta(minutes=action)
     print(action)
 
-    pattern = re.compile(r'\d{2}•\d{2}•\d{2}')
+    pattern = re.compile(r"\d{2}•\d{2}•\d{2}")
     if isinstance(action, str) and re.match(pattern, action):
         diff_in_mins = getTimeDiff(action, userData.clock)
         userData.clock = userData.clock - timedelta(minutes=diff_in_mins)
     db.session.commit()
     clock = getClock(userData)
-    emit('updateClock', {'data': clock})
-
-@socketio.on('updateInterestRate')
-@jwt_required()
-def updateInterest(data):
-    userData = getUserData()
-    roomid = userData.roomId
-    action = json.loads(data)
-    room_participants = RoomParticipants.query.filter_by(roomId=roomid).first()
-    room_participants.interest_rate = action
-    db.session.commit()
-    interestRate = getInterestRate(roomid).interest_rate
-    print(interestRate)
-    emit('updateInterestRate', {'data': interestRate})
+    emit("updateClock", {"data": clock})
 
 
-@socketio.on('updateTimeBank')
-@jwt_required()
-def on_update(data):
-    userData = getUserData()
-    action = json.loads(data)
-    if isinstance(action, int):
-        userData.timeBank = userData.timeBank + timedelta(minutes=action)
-    if action == 'clear' or action == 'cashout':
-        if action == 'cashout':
-            userData.clock = userData.clock + timedelta(days=userData.timeBank.day - 1, hours=userData.timeBank.hour, minutes=userData.timeBank.minute)
-        userData.timeBank = datetime.min
-    elif action == 'addInterest':
-        time_in_mins = ((userData.timeBank - datetime.min).total_seconds()) / 60
-        print(RoomParticipants.query.filter_by(roomId=userData.roomId).first().interest_rate)
-        total_interest = (time_in_mins * RoomParticipants.query.filter_by(roomId=userData.roomId).first().interest_rate) - time_in_mins
-        userData.timeBank = userData.timeBank + timedelta(minutes=total_interest)
-        if not userData.timeBank.minute % 5 == 0:
-            discard = timedelta(minutes=userData.timeBank.minute % 10)
-            userData.timeBank -= discard
-            if discard >= timedelta(minutes=5):
-                userData.timeBank += timedelta(minutes=10)
-    pattern = re.compile(r'\d{2}•\d{2}•\d{2}')
-    if isinstance(action, str) and re.match(pattern, action):
-        diff_in_mins = getTimeDiff(action, userData.timeBank)
-        userData.timeBank = userData.timeBank - timedelta(minutes=diff_in_mins)
-            
-    db.session.commit()
-    timeBank = getTimeBank(userData)
-    clock = getClock(userData)
-    emit('updateTimeBank', {'data': timeBank})
-    emit('updateClock', {'data': clock})
-
-# @socketio.on('updateInterestRate')
-# @jwt_required()
-# def on_interest_change(data):
-#     userData = getUserData()
-#     room = Room.query.filter_by(id=userData.userId).first()    
-#     room.interest_rate = data
-#     db.session.commit()
-#     interest_rate = data
-#     print(interest_rate)
-#     emit('updateInterestRate', {'data': interest_rate})
-
-@socketio.on('connect')
+@socketio.on("connect")
 @jwt_required()
 def on_connect():
     print("Client Connected")
 
-@socketio.on('disconnect')
+
+@socketio.on("disconnect")
 def disconnect():
     print("Client Disconnected")
+
+
+@socketio.on("updateGovernment")
+@jwt_required()
+def update_government(data):
+    user_id = get_jwt_identity()
+    print("attempting to change government")
+    userData = RoomParticipants.query.filter_by(userId=user_id).first()
+    if not userData:
+        emit("error", {"message": "Not in a room"}); return
+
+    action = json.loads(data) if isinstance(data, (str, bytes)) else dict(data)
+    gov_type = (action.get("type") or "").strip()
+    if gov_type not in {"Democracy", "Dictatorship", "Republic", "Communism"}:
+        emit("error", {"message": "Invalid government type"}); return
+
+    room = Room.query.get(userData.roomId)
+    if not room:
+        emit("error", {"message": "Room not found"}); return
+
+    government = room.government or Government(type=gov_type, room_id=room.id)
+    government.type = gov_type
+    db.session.add(government)
+    db.session.flush()
+
+    GovernmentMember.query.filter_by(government_id=government.id).delete(synchronize_session=False)
+
+    members_to_add = []
+    if gov_type == "Dictatorship":
+        dictator = action.get("dictator")
+        if dictator is None or not _is_room_member(room.id, int(dictator)):
+            db.session.rollback(); emit("error", {"message": "Invalid dictator"}); return
+        members_to_add.append(("dictator", int(dictator)))
+    elif gov_type == "Republic":
+        head = action.get("head_of_state"); advisors = action.get("advisors") or []
+        if head is None or len(advisors) != 2:
+            db.session.rollback(); emit("error", {"message": "Need head_of_state + 2 advisors"}); return
+        ids = [int(head)] + [int(a) for a in advisors]
+        if len(set(ids)) != 3 or not all(_is_room_member(room.id, uid) for uid in ids):
+            db.session.rollback(); emit("error", {"message": "Invalid republic members"}); return
+        members_to_add.append(("head_of_state", int(head)))
+        for adv in advisors:
+            members_to_add.append(("advisor", int(adv)))
+    elif gov_type == "Communism":
+        politburo = action.get("politburo") or []
+        if len(politburo) != 3:
+            db.session.rollback(); emit("error", {"message": "Need 3 politburo members"}); return
+        ids = [int(x) for x in politburo]
+        if len(set(ids)) != 3 or not all(_is_room_member(room.id, uid) for uid in ids):
+            db.session.rollback(); emit("error", {"message": "Invalid politburo members"}); return
+        for pid in ids:
+            members_to_add.append(("politburo", pid))
+
+    for role, uid in members_to_add:
+        db.session.add(GovernmentMember(government_id=government.id, user_id=uid, role=role))
+
+    db.session.commit()
+    print(serialize_room(room))
+    emit("room_state", serialize_room(room), to=room.id)
+
+
+@socketio.on("balanceChange")
+@jwt_required()
+def balanceChange(data=None):
+    userData = getUserData()
+    job_income = 0
+    if userData.job:
+        job_income = userData.job.tier * 10  # Example: tier 3 = 30 mins
+        print(f"[balanceChange] User job: {userData.job.name}, tier: {userData.job.tier}, income: {job_income}")
+    else:
+        print(f"[balanceChange] User has no job")
+    
+    bleed_penalty = userData.bleed * 10
+    net_income = job_income - bleed_penalty
+    
+    print(f"[balanceChange] Bleed: {userData.bleed}, penalty: {bleed_penalty}, net: {net_income}")
+    
+    userData.clock += timedelta(minutes=net_income)
+    db.session.commit()
+    emit("updateClock", {"data": getClock(userData)})
+
+
+@socketio.on("updateJob")
+@jwt_required()
+def update_job(data):
+    userData = getUserData()
+    action = json.loads(data)
+    job_id = action.get("job_id", None)
+
+    if job_id is None:
+        userData.job_id = None
+    else:
+        job = Job.query.filter_by(id=job_id).first()
+        if not job or job.tier > 6:
+            emit("error", {"message": "Invalid job selection."})
+            return
+        userData.job_id = job.id
+
+    db.session.commit()
+    # Notify all clients in the room of the updated room state
+    room = Room.query.filter_by(id=userData.roomId).first()
+    emit("room_state", serialize_room(room), to=room.id)
+
+
+@socketio.on("updateBleed")
+@jwt_required()
+def update_bleed(data):
+    print("attempting to update bleed" + data)
+    userData = getUserData()
+    action = json.loads(data)
+    bleed_amount = int(action)
+    userData.bleed += bleed_amount
+    db.session.commit()
+    room = Room.query.filter_by(id=userData.roomId).first()
+    print(serialize_room(room))
+    emit("room_state", serialize_room(room), to=room.id)
+
 
 def getUserData():
     username = get_jwt_identity()
@@ -125,9 +221,6 @@ def getUserData():
     userData = RoomParticipants.query.filter_by(userId=user).first()
     return userData
 
-def getInterestRate(room_num: int):
-    room = RoomParticipants.query.filter_by(roomId=room_num).first()
-    return room
 
 def timeFormat(time: datetime):
     days = ""
@@ -136,26 +229,30 @@ def timeFormat(time: datetime):
     else:
         time = time - timedelta(days=1)
         days = str(time)[8:10]
-    
+
     hours = str(time)[11:13]
     minutes = str(time)[14:16]
 
-    return days+"•"+hours+"•"+minutes
+    return days + "•" + hours + "•" + minutes
+
 
 def getClock(userData) -> datetime:
     return json.dumps(timeFormat(userData.clock), indent=4, sort_keys=True, default=str)
 
-def getTimeBank(userData) -> datetime: 
-    return json.dumps(timeFormat(userData.timeBank), indent=4, sort_keys=True, default=str)
 
-def getTimeDiff(newTime: str, oldTime: datetime) -> int: 
+def getTimeDiff(newTime: str, oldTime: datetime) -> int:
     dhs = getDayHourSec(newTime)
     dhs = oldTime - dhs
     diff = dhs.total_seconds() / 60
     return diff
 
+
 def getDayHourSec(time: str) -> datetime:
     ddhhmm = re.sub("[^0-9]", "", time)
     newTime = datetime.min
-    newTime = newTime + timedelta(days=int(str(ddhhmm)[:2]), hours=int(str(ddhhmm)[2:4]), minutes=int(str(ddhhmm)[4:6]))
+    newTime = newTime + timedelta(
+        days=int(str(ddhhmm)[:2]),
+        hours=int(str(ddhhmm)[2:4]),
+        minutes=int(str(ddhhmm)[4:6]),
+    )
     return newTime

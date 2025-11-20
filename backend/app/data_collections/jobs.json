@@ -1,0 +1,110 @@
+[
+  {
+    "id": 1,
+    "tier": 1,
+    "name": "Phone Scammer",
+    "type": "Illicit"
+  },
+  {
+    "id": 2,
+    "tier": 2,
+    "name": "Prostitute",
+    "type": "Illicit"
+  },
+  {
+    "id": 3,
+    "tier": 3,
+    "name": "Chaos Creator",
+    "type": "Illicit"
+  },
+  {
+    "id": 4,
+    "tier": 3,
+    "name": "Assassin",
+    "type": "Illicit"
+  },
+  {
+    "id": 5,
+    "tier": 3,
+    "name": "Drug Dealer",
+    "type": "Illicit"
+  },
+  {
+    "id": 6,
+    "tier": 3,
+    "name": "Pimp",
+    "type": "Illicit"
+  },
+  {
+    "id": 7,
+    "tier": 1,
+    "name": "Teacher",
+    "type": "Public Service"
+  },
+  {
+    "id": 8,
+    "tier": 2,
+    "name": "Legal Advisor",
+    "type": "Public Service"
+  },
+  {
+    "id": 9,
+    "tier": 3,
+    "name": "Doctor",
+    "type": "Public Service"
+  },
+  {
+    "id": 10,
+    "tier": 3,
+    "name": "Charity Commissioner",
+    "type": "Public Service"
+  },
+  {
+    "id": 11,
+    "tier": 3,
+    "name": "Chief of Police",
+    "type": "Public Service"
+  },
+  {
+    "id": 12,
+    "tier": 3,
+    "name": "Judge",
+    "type": "Public Service"
+  },
+  {
+    "id": 13,
+    "tier": 1,
+    "name": "Data Analyst",
+    "type": "Finance"
+  },
+  {
+    "id": 14,
+    "tier": 2,
+    "name": "Accountant",
+    "type": "Finance"
+  },
+  {
+    "id": 15,
+    "tier": 3,
+    "name": "CFO",
+    "type": "Finance"
+  },
+  {
+    "id": 17,
+    "tier": 3,
+    "name": "Time Keeper",
+    "type": "Finance"
+  },
+  {
+    "id": 18,
+    "tier": 3,
+    "name": "Real Estate Officer",
+    "type": "Finance"
+  },
+  {
+    "id": 19,
+    "tier": 3,
+    "name": "Market Official",
+    "type": "Finance"
+  }
+]

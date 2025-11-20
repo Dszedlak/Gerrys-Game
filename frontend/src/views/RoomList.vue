@@ -1,199 +1,307 @@
 <template>
-<div id="app">
-	<b-container class="bv-example-row">
-		<div v-if="username">
-		<b-button v-b-modal.modal-prevent-closing>Create Room</b-button>
-		</div>
-		<b-row>
-		<b-col>
-				<b-table-simple hover small caption-top responive>
-					<b-thead>
-						<b-tr>
-							<b-th>Name</b-th>
-						</b-tr>
-					</b-thead>
-					<b-tbody>
-					<b-tr
-					v-for="(room, index) in rooms"
-					:key="index">
-						<b-td><a v-b-modal.JoinRoomModal roomname="room" roomId="room" @click="sendInfo(room.name, room.id)">{{ room.name }}</a></b-td>
-					</b-tr>
-					</b-tbody>
-				</b-table-simple>
-			</b-col>
-		</b-row>
-		</b-container>
-			<b-modal 
-			id="modal-prevent-closing"
-			ref="modal"
-			title="Create Room"
-			@ok="handleOk">
-			<form ref="form" @submit.stop.prevent="handleSubmit">
-				<b-form-group
-				label="Room name"
-				label-for="name-input"
-				invalid-feedback="Room Name"
-				description="Enter a name for this room"
-				>
-				<small v-if="errors" class="text-danger">{{errors}}</small>
-				<b-form-input
-				id="name-input"
-				v-model="newRoom.name"
-				
-				required
-				></b-form-input>
-				</b-form-group>
-				
-			</form>
-				<template #modal-footer="{ cancel }">
-			<!-- Emulate built in modal footer ok and cancel button actions -->
-			
-			<b-button size="sm" variant="success" @click="createRoom()">
-				Create Room
-			</b-button>
-			<b-button size="sm" variant="danger" @click="cancel()">
-				Cancel
-			</b-button>
-			<!-- Button with custom close trigger value -->      
-			</template>
-			</b-modal>
-				
-					<b-modal id="JoinRoomModal" ref="modal" title="Join Room:">Are you sure you want to join room: {{roomname}}
-					<template #modal-footer="{ cancel }">
-				<!-- Emulate built in modal footer ok and cancel button actions -->
-			
-					<b-button size="sm" variant="success" @click="joinRoom()">
-						Yes
-					</b-button>
-					<b-button size="sm" variant="danger" @click="cancel()">
-						No
-					</b-button>
-					<!-- Button with custom close trigger value -->      
-					</template>	
-					</b-modal>	
-					<b-modal id="LeaveRoomModal" ref="modal" title="Leave Room:">Are you sure you want to Leave room: {{roomname}}
-					<template #modal-footer="{ cancel }">
-				<!-- Emulate built in modal footer ok and cancel button actions -->
-			
-					<b-button size="sm" variant="success" @click="leaveRoom()">
-						Yes
-					</b-button>
-					<b-button size="sm" variant="danger" @click="cancel()">
-						No
-					</b-button>
-					<!-- Button with custom close trigger value -->      
-					</template>	
-					</b-modal>
-	</div>
-	
+  <div id="app">
+    <BContainer class="bv-example-row">
+      <div v-if="username">
+        <BButton @click="showCreateRoomModal">Create Room</BButton>
+      </div>
+      <BRow>
+        <BCol>
+          <BTableSimple hover small caption-top responsive>
+            <BThead>
+              <BTr>
+                <BTh>Name</BTh>
+              </BTr>
+            </BThead>
+            <BTbody>
+              <BTr v-for="(room, index) in rooms" :key="index">
+                <BTd>
+                  <a href="#" @click.prevent="showJoinRoomModal(room.name, room.id)">{{ room.name }}</a>
+                  <BButton size="sm" class="ms-2" variant="primary" @click.prevent="quickJoin(room)">Join</BButton>
+                </BTd>
+              </BTr>
+            </BTbody>
+          </BTableSimple>
+        </BCol>
+      </BRow>
+    </BContainer>
+
+    <!-- Create Room Modal -->
+    <BModal
+      id="modal-prevent-closing"
+      ref="createRoomModal"
+      title="Create Room"
+      @ok="handleOkCreate"
+      ok-title="Create Room"
+      cancel-title="Cancel"
+      :ok-disabled="creatingRoom"
+    >
+      <form
+        id="create-room-form"
+        ref="form"
+        @submit.stop.prevent="createRoom"
+      >
+        <BFormGroup
+          label="Room name"
+          label-for="name-input"
+          invalid-feedback="Room Name"
+          description="Enter a name for this room"
+        >
+          <small v-if="localError" class="text-danger">{{ localError }}</small>
+          <BFormInput
+            id="name-input"
+            v-model="newRoom.name"
+            required
+          ></BFormInput>
+        </BFormGroup>
+      </form>
+    </BModal>
+
+    <!-- Join Room Modal -->
+    <BModal
+      id="JoinRoomModal"
+      ref="joinRoomModal"
+      title="Join Room:"
+      @ok="onConfirmJoin"
+      ok-title="Yes"
+      cancel-title="No"
+      :ok-disabled="joiningRoom"
+    >
+      Are you sure you want to join room: {{ roomname }}
+      <div class="mt-2">
+        <small v-if="localError" class="text-danger">{{ localError }}</small>
+      </div>
+    </BModal>
+
+    <!-- Leave Room Modal -->
+    <BModal id="LeaveRoomModal" ref="leaveRoomModal" title="Leave Room:">
+      Are you sure you want to Leave room: {{ roomname }}
+      <template #modal-footer="{ cancel }">
+        <BButton size="sm" variant="success" @click="leaveRoom">
+          Yes
+        </BButton>
+        <BButton size="sm" variant="danger" @click="cancel()">
+          No
+        </BButton>
+      </template>
+    </BModal>
+  </div>
 </template>
+
 <script>
+import {
+  BContainer, BRow, BCol, BButton, BModal, BFormGroup, BFormInput,
+  BTableSimple, BThead, BTbody, BTr, BTh, BTd
+} from 'bootstrap-vue-next'
 import RoomListService from "@/services/RoomListService";
+
 export default {
-	name: 'RoomList',
-	data() {
-		return {
-			rooms: [],
-			selected : null,
-			newRoom: {
-                name: "",
-            },
-			roomname: '',
-			roomId: ''
-		}
-	},
-	methods: {
-		sendInfo(roomname, roomId) {
-        this.roomname = roomname;
-		this.roomId = roomId;
-    	},
-		retrieveRooms() {
-			RoomListService.getRooms()
-			.then(response => {
-				this.rooms = response.data;
-			})
-			.catch(e => {
-				console.log(e);
-			})
-		},
-		createRoom() {
-            var data = {
-                name: this.newRoom.name
-            };
-            RoomListService.createRoom(data)
-            .then(response => {
-                this.$router.push({ name: 'Room'})
-            })
-			.catch(e => {
-                this.errors = "Room already exists for this user. Please quit the previous room to create a new one."
-				console.log(this.errors)
-            });
-        },
-		joinRoom() {
-			var data = {
-				roomId: this.roomId
-			}
-			this.$store.state.auth.roomId = data.data;
-            RoomListService.joinRoom(data)
-            .then(response => {
-                this.$router.push({ name: 'Room'})
-            })
-            
-        },
-		leaveRoom() {
-			var data = {
-				roomId: this.roomId
-			}
-			this.$store.state.auth.roomId = 0;
-            RoomListService.leaveRoom(data)
-            .then(response => {
-                this.$router.push({ name: 'RoomList'})
-            })
-            .catch(e => {
-                console.log(e);
-            });
-        },
-		handleOk() {
-    	// Implement the handleOk method logic here
-  		},
-    },
-		computed: {
-			username () {
-			return this.$store.state.auth.username
-			},
-			currentRoomId () {
-			return this.$store.state.auth.roomId
-			},
-			errors () {
-      		return this.$store.state.auth.errors
+  name: 'RoomList',
+  components: {
+    BContainer, BRow, BCol, BButton, BModal, BFormGroup, BFormInput,
+    BTableSimple, BThead, BTbody, BTr, BTh, BTd
+  },
+  data() {
+    return {
+      rooms: [],
+      selected: null,
+      newRoom: {
+        name: "",
+      },
+      roomname: '',
+      roomId: '',
+      localError: '',
+      creatingRoom: false
+  , joiningRoom: false
     }
-		},
-    mounted() {
-        this.retrieveRooms();
-	},  
+  },
+  methods: {
+    showCreateRoomModal() {
+      this.localError = '';
+      this.newRoom.name = '';
+      this.$refs.createRoomModal.show();
+    },
+    async handleOkCreate(bvModalEvt) {
+      // Prevent modal from closing automatically
+      bvModalEvt.preventDefault()
+      console.log('[CreateRoom] OK button clicked')
+      await this.createRoom()
+      // If successful (no error), the createRoom method will hide modal and navigate
+      // If error, modal stays open to show error message
+    },
+    handleCreateRoom() {
+      // Trigger form validation and submission
+      console.log('[CreateRoom] Button clicked, calling createRoom()')
+      this.createRoom()
+    },
+    async quickJoin(room) {
+      try {
+        this.roomname = room.name
+        this.roomId = room.id
+        console.log('[QuickJoin] Direct join for room:', room.name, 'id:', room.id)
+        this.joiningRoom = true
+        const payload = { roomId: Number(room.id) }
+        this.$store.commit('auth/setRoomId', { id: payload.roomId })
+        const resp = await RoomListService.joinRoom(payload)
+        console.log('[QuickJoin] Response status:', resp?.status)
+        if (resp && resp.status >= 200 && resp.status < 300) {
+          this.$router.push({ name: 'Room' })
+        } else {
+          this.localError = 'Failed to join room. Please try again.'
+        }
+      } catch (e) {
+        console.error('[QuickJoin] Error:', e)
+        this.localError = e?.response?.data?.errors || e?.response?.data?.message || 'Failed to join room.'
+      } finally {
+        this.joiningRoom = false
+      }
+    },
+    showJoinRoomModal(roomname, roomId) {
+      this.roomname = roomname;
+      this.roomId = roomId;
+  this.localError = '';
+  this.joiningRoom = false;
+  console.log('[JoinRoom] Open modal for room:', roomname, 'id:', roomId)
+      this.$refs.joinRoomModal.show();
+    },
+    async onConfirmJoin(bvModalEvt) {
+      // Keep the modal open while processing
+      bvModalEvt.preventDefault()
+      await this.joinRoom()
+      // If we reached here without error, hide the modal (route push already navigates)
+      if (!this.localError) {
+        this.$refs.joinRoomModal.hide()
+      }
+    },
+    showLeaveRoomModal(roomname, roomId) {
+      this.roomname = roomname;
+      this.roomId = roomId;
+      this.$refs.leaveRoomModal.show();
+    },
+    retrieveRooms() {
+      RoomListService.getRooms()
+        .then(response => {
+          this.rooms = response.data;
+        })
+        .catch(e => {
+          console.log(e);
+        })
+    },
+    async createRoom() {
+      console.log('[CreateRoom] Method called, room name:', this.newRoom.name)
+      this.localError = '';
+      if (!this.newRoom.name) {
+        this.localError = "Room name is required.";
+        console.log('[CreateRoom] Validation failed: no room name')
+        return;
+      }
+      console.log('[CreateRoom] Validation passed, creating room...')
+      this.creatingRoom = true;
+      try {
+        const response = await RoomListService.createRoom({ name: this.newRoom.name });
+        console.log('[CreateRoom] Success:', response)
+        this.$refs.createRoomModal.hide();
+        this.$router.push({ name: 'Room' });
+      } catch (e) {
+        console.error('[CreateRoom] Error:', e)
+        // Try to show backend error if available
+        if (e.response && e.response.data && e.response.data.message) {
+          this.localError = e.response.data.message;
+        } else {
+          this.localError = "Room already exists for this user. Please quit the previous room to create a new one.";
+        }
+        console.log(this.localError);
+      } finally {
+        this.creatingRoom = false;
+      }
+    },
+    async joinRoom() {
+      const data = { roomId: Number(this.roomId) }
+      this.localError = ''
+      this.joiningRoom = true
+      const prevRoomId = this.$store.state.auth.roomId
+      // Commit via mutation so reactivity is preserved
+      try {
+        console.log('[JoinRoom] Attempting join with payload:', data)
+        this.$store.commit('auth/setRoomId', { id: data.roomId })
+        const response = await RoomListService.joinRoom(data)
+        console.log('[JoinRoom] Response status:', response?.status)
+        // Optional: validate success shape if backend returns { success: true }
+        if (response && response.status >= 200 && response.status < 300) {
+          this.$refs.joinRoomModal.hide()
+          this.$router.push({ name: 'Room' })
+        } else {
+          this.localError = 'Failed to join room. Please try again.'
+        }
+      } catch (e) {
+        console.error('[JoinRoom] Join failed:', e)
+        if (e.response && e.response.data) {
+          this.localError = e.response.data.errors || e.response.data.message || 'Failed to join room. Please try again.'
+        } else {
+          this.localError = 'Network error while joining room.'
+        }
+        console.log(this.localError)
+        // Revert optimistic update
+        if (prevRoomId) {
+          this.$store.commit('auth/setRoomId', { id: prevRoomId })
+        } else {
+          this.$store.commit('auth/leaveRoomId')
+        }
+      } finally {
+        this.joiningRoom = false
+      }
+    },
+    leaveRoom() {
+      var data = {
+        roomId: this.roomId
+      }
+      this.$store.commit('auth/leaveRoomId')
+      RoomListService.leaveRoom(data)
+        .then(response => {
+          this.$refs.leaveRoomModal.hide();
+          this.$router.push({ name: 'Rooms' })
+        })
+        .catch(e => {
+          console.log(e);
+        });
+    }
+  },
+  computed: {
+    username() {
+      return this.$store.state.auth.username
+    },
+    currentRoomId() {
+      return this.$store.state.auth.roomId
+    },
+    errors() {
+      return this.$store.state.auth.errors
+    }
+  },
+  mounted() {
+    this.retrieveRooms();
+  },
 }
 </script>
 
 <style>
-.itemRow{
+.itemRow {
   height: 118px;
   text-align: center;
 }
 
 .leaveButtons {
-	padding-top: 50px;
+  padding-top: 50px;
 }
 
 tr {
-	font-size:25px;
-    text-align: center;
-    vertical-align: middle;
+  font-size: 25px;
+  text-align: center;
+  vertical-align: middle;
 }
 
 .butt {
-	height: 45px;
+  height: 45px;
 }
 .bv-example-row {
-	padding-left: 120px;
+  padding-left: 120px;
 }
 </style>

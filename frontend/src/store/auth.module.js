@@ -3,9 +3,9 @@ import JwtService from '@/services/JwtService'
 import AuthenticationService from '@/services/AuthenticationService'
 
 const state = {
+  token: localStorage.getItem('token') || '',
+  username: localStorage.getItem('username') || '',
   errors: null,
-  username: null,
-  isAuthenticated: !!JwtService.getToken(), 
   roomId: null, 
   userId: null
 }
@@ -15,27 +15,37 @@ const getters = {
     return state.username;
   },
   isAuthenticated (state) {
-    return this.isAuthenticated;
+    return !!state.token;
   },
   roomId (state) {
-    return this.roomId;
+  return state.roomId;
   }
 };
 
 const actions = {
   login(context, credentials)  {
-    return new Promise(resolve => {
+    return new Promise((resolve, reject) => {
       AuthenticationService.login(credentials)
-      .then(({ data }) => {
-        context.commit('setUser', {
-          username: credentials.username, 
-          token: data.token
+        .then(({ data }) => {
+          // Expecting { success, token, username }
+          if (data && data.success && data.token && data.username) {
+            context.commit('setUser', {
+              username: data.username, 
+              token: data.token
+            });
+            resolve(data);
+          } else {
+            context.commit("setError", "Invalid response from server");
+            reject("Invalid response from server");
+          }
+        })
+        .catch((error) => {
+          // error.response may not exist
+          const response = error.response || {};
+          const errMsg = (response.data && (response.data.errors || response.data.message)) || "Login failed";
+          context.commit("setError", errMsg);
+          reject(errMsg);
         });
-        resolve(data);
-      })
-      .catch(({ response }) => {
-        context.commit("setError", response.data.errors);
-      });
     });
   },
   logout(context) {
@@ -45,15 +55,27 @@ const actions = {
     return new Promise((resolve, reject) => {
       AuthenticationService.register(credentials)
       .then(({ data }) => {
-        context.commit('setUser', {
-          username: credentials.username, 
-          token: data.token
-        });
-        resolve(data);
+        console.log('[Register] Response data:', data)
+        // Check if backend returned token and username (like login does)
+        if (data && data.token && data.username) {
+          context.commit('setUser', {
+            username: data.username,
+            token: data.token
+          });
+          resolve(data);
+        } else {
+          // If no token returned, registration succeeded but need to login
+          console.log('[Register] No token in response, registration succeeded but not logged in')
+          context.commit("setError", "Registration succeeded, please login");
+          reject("Registration succeeded, please login");
+        }
       })
-      .catch(({ response }) => {
-        context.commit("setError", response.data.errors);
-        reject(response);
+      .catch((error) => {
+        console.error('[Register] Error:', error)
+        const response = error.response || {};
+        const errMsg = (response.data && (response.data.errors || response.data.message)) || "Registration failed";
+        context.commit('setError', errMsg);
+        reject(error);
       });
     });
   },
@@ -84,13 +106,20 @@ const mutations = {
   setUser(state, { username, token }) {
     state.isAuthenticated = true;
     state.username = username;
+    state.token = token;
     state.errors = "";
+    localStorage.setItem('token', token);
+    localStorage.setItem('username', username);
     JwtService.saveToken(token);
+    ApiService.setHeader(token); // Set the token in ApiService
   },
   purgeAuth(state) {
     state.isAuthenticated = false;
     state.username = null;
+    state.token = '';
     state.errors = "";
+    localStorage.removeItem('token');
+    localStorage.removeItem('username');
     JwtService.destroyToken();
   },
   setRoomId(state, {id}) {
@@ -99,10 +128,30 @@ const mutations = {
   leaveRoomId(state)
   {
     state.roomId = null;
+  },
+  setUserId(state, id) {
+    state.userId = id;
+  },
+  setToken(state, token) {
+    state.token = token;
+  },
+  setUsername(state, username) {
+    state.username = username;
+  },
+  logout(state) {
+    state.token = '';
+    state.username = '';
+    localStorage.removeItem('token');
+    localStorage.removeItem('username');
+    ApiService.setHeader(''); // Remove token from axios
+  },
+  setErrors(state, errors) {
+    state.errors = errors;
   }
 };
 
 export default {
+  namespaced: true,
   state,
   mutations,
   getters,

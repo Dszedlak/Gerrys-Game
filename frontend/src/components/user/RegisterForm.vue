@@ -1,46 +1,54 @@
 <template>
-  <b-form @submit="onSubmit">
-    <b-form-group
+  <BForm @submit.prevent="onSubmit">
+    <BFormGroup
       label="Username:"
       description="Enter your desired username"
-      placeholder="username"
       label-class="font-weight-bold pt-0">
-      <b-form-input
+      <BFormInput
         v-model="username"
-        required>
-        </b-form-input>
-    </b-form-group>
-    <b-form-group
+        placeholder="username"
+        required
+      />
+    </BFormGroup>
+    <BFormGroup
       label="Password:"
       description="Enter your desired password"
-      placeholder="password"
       label-class="font-weight-bold pt-0">
-      <b-form-input
+      <BFormInput
         v-model="password"
         type="password"
-        required>
-        </b-form-input>
-    </b-form-group>
-    <b-form-group
+        placeholder="password"
+        required
+      />
+    </BFormGroup>
+    <BFormGroup
       label="Confirm password:"
       description="Enter the same password again"
-      placeholder="password"
       label-class="font-weight-bold pt-0">
-      <b-form-input
+      <BFormInput
         v-model="confirmPassword"
         type="password"
-        required>
-        </b-form-input>
-    </b-form-group>
+        placeholder="password"
+        required
+      />
+    </BFormGroup>
     <div class="form-group">
-      <small v-if="errors" class="text-danger">{{errors}}</small>
+      <small v-if="errors" class="text-danger">{{ errors }}</small>
     </div>
-    <b-button type="submit" class="btn btn-success">Register</b-button>
-  </b-form>
+    <BButton type="submit" variant="success">Register</BButton>
+  </BForm>
 </template>
 
 <script>
+import { BForm, BFormGroup, BFormInput, BButton } from 'bootstrap-vue-next'
+
 export default {
+  components: {
+    BForm,
+    BFormGroup,
+    BFormInput,
+    BButton
+  },
   data () {
     return {
       username: "",
@@ -49,22 +57,50 @@ export default {
     }
   },
   methods: {
-    onSubmit () {
+    async onSubmit () {
       var credentials = { 
         username: this.username, 
         password: this.password, 
         confirmPassword: this.confirmPassword 
       };
-      this.$store.dispatch("register", credentials)
-      .then(() => {
-        this.$router.push("/me")
-      })
+      console.log('[Register] Submitting registration for:', this.username)
+      try {
+        await this.$store.dispatch('auth/register', credentials)
+        console.log('[Register] Registration successful, now logging in...')
+        // If registration didn't return a token, automatically login
+        await this.$store.dispatch('auth/login', {
+          username: this.username,
+          password: this.password
+        })
+        console.log('[Register] Auto-login successful, navigating to rooms')
+        this.$router.push('/rooms')
+      } catch (err) {
+        console.error('[Register] Failed:', err)
+        // If registration succeeded but login failed, still show success
+        if (err === 'Registration succeeded, please login') {
+          try {
+            await this.$store.dispatch('auth/login', {
+              username: this.username,
+              password: this.password
+            })
+            console.log('[Register] Auto-login successful after registration')
+            this.$router.push('/rooms')
+          } catch (loginErr) {
+            console.error('[Register] Auto-login failed:', loginErr)
+            this.error = 'Registration succeeded, please login manually'
+          }
+        } else {
+          this.error = this.$store.state.auth.errors || 'Registration failed'
+        }
+      } finally {
+        this.loading = false
+      }
     }
   },
   computed: {
     errors () {
       return this.$store.state.auth.errors
     }
-}
+  }
 }
 </script>
