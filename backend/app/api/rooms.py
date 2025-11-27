@@ -62,6 +62,12 @@ class RoomListResource(Resource):
                 print(f"[createRoom] game.closeRoom error: {e}")
             del gameThreads[room.id]
 
+        # Start background thread for this room
+        game_session = GameSession(room.name)
+        game_session.run()
+        gameThreads[room.id] = game_session
+        print(f"[createRoom] Started background thread for room {room.id}")
+
         return room
 
 
@@ -86,7 +92,15 @@ class JoinRoomResource(Resource):
 
             existing = RoomParticipants.query.filter_by(roomId=room_id, userId=user_id).first()
             if existing:
-                print(f"[JoinRoom] User {user_id} already in room {room_id}")
+                print(f"[JoinRoom] User {user_id} already in room {room_id}, clock={existing.clock}")
+                
+                # Ensure game session is running for existing room
+                if room_id not in gameThreads:
+                    print(f"[JoinRoom] Starting background thread for existing room {room_id}")
+                    game_session = GameSession(room.name)
+                    game_session.run()
+                    gameThreads[room_id] = game_session
+                
                 return {"roomId": room_id}, 200  # changed
 
             participant = RoomParticipants(
@@ -97,6 +111,13 @@ class JoinRoomResource(Resource):
             db.session.add(participant)
             db.session.commit()
             print(f"[JoinRoom] User {user_id} joined room {room_id}")
+            
+            # Ensure game session is running
+            if room_id not in gameThreads:
+                print(f"[JoinRoom] Starting background thread for room {room_id}")
+                game_session = GameSession(room.name)
+                game_session.run()
+                gameThreads[room_id] = game_session
 
             return {"roomId": room_id}, 200  # changed
         except Exception as e:
@@ -165,3 +186,59 @@ class RemoveRoomResource(Resource):
 
         print(f"[RemoveRoom] room {room_id} removed")
         return {"success": True}, 200
+
+
+class RoomHistoryResource(Resource):
+    @jwt_required()
+    def get(self):
+        """Get clock history for a room to display end-game graph"""
+        from flask import request
+        room_id = request.args.get('roomId', type=int)
+        
+        print(f"[RoomHistory] Request for room {room_id}")
+        
+        if not room_id:
+            return {"errors": "roomId is required"}, 400
+        
+        # Verify user has access to this room
+        user_id = get_jwt_identity()
+        participant = RoomParticipants.query.filter_by(roomId=room_id, userId=user_id).first()
+        if not participant:
+            print(f"[RoomHistory] Access denied for user {user_id} to room {room_id}")
+            return {"errors": "Access denied"}, 403
+        
+        # Fetch all clock history for this room
+        from app.models import ClockHistory
+        from datetime import datetime, timedelta
+        
+        history = ClockHistory.query.filter_by(room_id=room_id).order_by(ClockHistory.timestamp).all()
+        
+        print(f"[RoomHistory] Found {len(history)} history entries for room {room_id}")
+        
+        # Helper function to convert clock datetime to minutes
+        def clock_to_minutes(clock_dt):
+            """Convert datetime clock to total minutes (days * 24 * 60 + hours * 60 + minutes)"""
+            if not clock_dt:
+                return 0
+            # Subtract datetime.min (1970-01-01) to get timedelta
+            delta = clock_dt - datetime.min
+            return int(delta.total_seconds() / 60)
+        
+        # Group by user
+        user_data = {}
+        for entry in history:
+            if entry.user_id not in user_data:
+                username = entry.user.username if entry.user else f"User {entry.user_id}"
+                user_data[entry.user_id] = {
+                    "user_id": entry.user_id,
+                    "username": username,
+                    "snapshots": []
+                }
+            
+            user_data[entry.user_id]["snapshots"].append({
+                "timestamp": entry.timestamp.isoformat(),
+                "clock_minutes": clock_to_minutes(entry.clock_value)
+            })
+        
+        print(f"[RoomHistory] Returning data for {len(user_data)} users")
+        return {"history": list(user_data.values())}, 200

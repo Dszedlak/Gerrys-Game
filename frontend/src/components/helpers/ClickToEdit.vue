@@ -13,9 +13,16 @@
       </span>
   </template>
   <script>
+    import { useSocket } from '@/composables/useSocket'
+    
     export default {
     
     props: ['value', 'action'],
+    
+    setup() {
+      const { socket } = useSocket()
+      return { socket }
+    },
     
     data () {
       
@@ -32,7 +39,7 @@
               this.valueLocal = event.target.value;
               this.edit = false; 
               this.$emit('input', this.valueLocal)
-              this.$socket.client.emit(this.action, JSON.stringify(this.valueLocal))
+              this.socket.emit(this.action, JSON.stringify(this.valueLocal))
           }
         },
         esc(event){
@@ -40,7 +47,7 @@
             event.target.value = this.oldValue;
             this.edit = false; 
             this.$emit('input', this.valueLocal);
-            this.$socket.client.emit(this.action, JSON.stringify(event.target.value))
+            this.socket.emit(this.action, JSON.stringify(event.target.value))
         }
     },
     watch: {
@@ -52,7 +59,7 @@
     
     directives: {
       focus: {
-          inserted (el) {
+          mounted (el) {
               el.focus()
           }
       }

@@ -21,6 +21,10 @@ class RoomListService {
   removeRoom(data) {
     return ApiService.post("rooms/remove", data);
   }
+
+  getRoomHistory(roomId) {
+    return ApiService.get(`rooms/history?roomId=${roomId}`);
+  }
 };
 
 export default new RoomListService();
