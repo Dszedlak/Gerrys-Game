@@ -16,5 +16,9 @@
     {
         "id": 4,
         "type": "Communism"
+    },
+    {
+        "id": 5,
+        "type": "Anarchy"
     }
 ]

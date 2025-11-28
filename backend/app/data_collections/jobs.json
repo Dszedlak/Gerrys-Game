@@ -1,5 +1,11 @@
 [
   {
+    "id": 0,
+    "tier": 0,
+    "name": "Unemployed",
+    "type": "Unemployed"
+  },
+  {
     "id": 1,
     "tier": 1,
     "name": "Phone Scammer",

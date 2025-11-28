@@ -59,6 +59,8 @@ class RoomParticipants(db.Model):
     job_id = db.Column(db.Integer, db.ForeignKey("job.id"))
     job = db.relationship("Job")
     bleed = db.Column(db.Integer, default=0)
+    heat = db.Column(db.Integer, default=0)
+    perk = db.Column(db.String(32), default=None)  # "Manager", "Senior", or "Executive"
     user = db.relationship("User")
 
 class Job(db.Model):
@@ -91,7 +93,30 @@ class GovernmentMember(db.Model):
     user = db.relationship("User")
 
 
+class ClockHistory(db.Model):
+    __tablename__ = "clock_history"
+    id = db.Column(db.Integer, primary_key=True)
+    room_id = db.Column(db.Integer, db.ForeignKey("room.id"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    clock_value = db.Column(db.DateTime, nullable=False)  # Snapshot of clock at this moment
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)  # When snapshot was taken
+    user = db.relationship("User")
+
+
 def serialize_room(room):
+    from datetime import datetime, timedelta
+    
+    def timeFormat(time: datetime):
+        days = ""
+        if time.day == 1:
+            days = "00"
+        else:
+            time = time - timedelta(days=1)
+            days = str(time)[8:10]
+        hours = str(time)[11:13]
+        minutes = str(time)[14:16]
+        return days + "•" + hours + "•" + minutes
+    
     return {
         "id": room.id,
         "name": room.name,
@@ -105,6 +130,9 @@ def serialize_room(room):
                 "job_tier": rp.job.tier if rp.job else None,
                 "job_name": rp.job.name if rp.job else None,
                 "bleed": rp.bleed,
+                "heat": rp.heat,
+                "perk": rp.perk,
+                "clock": timeFormat(rp.clock) if rp.clock else "00•00•00",
             }
             for rp in room.participants
         ],

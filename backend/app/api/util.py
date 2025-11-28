@@ -11,7 +11,7 @@ ROOMS_FIELDS = {
     "startedAt": fields.DateTime(attribute="startedAt"),
     "endedAt": fields.DateTime(attribute="endedAt"),
     "governmentType": fields.String(
-        attribute=lambda x: x.government.type if x.government else None
+        attribute=lambda x: x.government.type if hasattr(x, 'government') and x.government else None
     ),
     # Optionally, add a nested government field for members, etc.
 }

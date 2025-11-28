@@ -19,6 +19,9 @@
         </div>
         <div v-if="winner" class="winner-result mt-4">
           <h3>🎉 Winner: <span class="winner-name">{{ winner }}</span> 🎉</h3>
+          <div v-if="showCustomActions" class="custom-actions mt-3">
+            <slot name="winner-actions" :winner="winner"></slot>
+          </div>
         </div>
       </div>
     </div>
@@ -29,7 +32,8 @@
 import { ref, computed } from 'vue'
 
 const props = defineProps({
-  participants: { type: Array, required: true, default: () => [] }
+  participants: { type: Array, required: true, default: () => [] },
+  showCustomActions: { type: Boolean, default: false }
 })
 
 const wheelModal = ref(null)
@@ -117,7 +121,7 @@ function spinWheel() {
 
 function onSpinEnd() {}
 
-defineExpose({ open })
+defineExpose({ open, winner, spinWheel, wheelModal })
 </script>
 
 <style scoped>

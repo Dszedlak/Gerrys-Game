@@ -43,15 +43,17 @@ def on_join(payload=None):
         emit("error", {"message": "Room not found"})
         return
 
-    join_room(room.id)
-    print(f"[join] user {user_id} joined socket room {room.id}")
+    room_identifier = str(room.id)
+    join_room(room_identifier)
+    print(f"[join] user {user_id} joined socket room {room_identifier}")
+    print(f"[join] userData.clock = {userData.clock}, formatted = {timeFormat(userData.clock)}")
 
     # Send collections for dropdowns, then room state
     emit("updateCollectionData", {"data": get_collections()})
-    emit("room_state", serialize_room(room), to=room.id)
+    emit("room_state", serialize_room(room), to=room_identifier)
     emit("setUserId", {"data": get_jwt_identity()})
     emit("updateClock", {"data": getClock(userData)})
-    print("user joined room:", room.id)
+    print("user joined room:", room_identifier)
 
 
 @socketio.on("leave")
@@ -85,8 +87,20 @@ def on_update(data):
         userData.clock = userData.clock - timedelta(minutes=diff_in_mins)
     db.session.commit()
     clock = getClock(userData)
+    
+    # Emit to the user who made the update
     emit("updateClock", {"data": clock})
-
+    
+    # Broadcast this user's clock update to everyone in the room
+    room = Room.query.get(userData.roomId)
+    if room:
+        formatted_clock = timeFormat(userData.clock)
+        room_identifier = str(room.id)
+        print(f"[updateClock] Broadcasting clock update for user {userData.userId}: {formatted_clock} to room {room_identifier}")
+        socketio.emit("userClockUpdate", {
+            "user_id": userData.userId,
+            "clock": formatted_clock
+        }, room=room_identifier)
 
 @socketio.on("connect")
 @jwt_required()
@@ -110,7 +124,7 @@ def update_government(data):
 
     action = json.loads(data) if isinstance(data, (str, bytes)) else dict(data)
     gov_type = (action.get("type") or "").strip()
-    if gov_type not in {"Democracy", "Dictatorship", "Republic", "Communism"}:
+    if gov_type not in {"Democracy", "Dictatorship", "Republic", "Communism", "Anarchy"}:
         emit("error", {"message": "Invalid government type"}); return
 
     room = Room.query.get(userData.roomId)
@@ -155,7 +169,7 @@ def update_government(data):
 
     db.session.commit()
     print(serialize_room(room))
-    emit("room_state", serialize_room(room), to=room.id)
+    emit("room_state", serialize_room(room), to=str(room.id))
 
 
 @socketio.on("balanceChange")
@@ -169,14 +183,54 @@ def balanceChange(data=None):
     else:
         print(f"[balanceChange] User has no job")
     
+    # Add perk bonus
+    perk_bonus = 0
+    if userData.perk == "Manager":
+        perk_bonus = 10
+    elif userData.perk == "Senior":
+        perk_bonus = 20
+    elif userData.perk == "Executive":
+        perk_bonus = 30
+    
+    # Check if government is Communism
+    room = Room.query.get(userData.roomId)
+    communist_penalty = 0
+    if room and room.government and room.government.type == "Communism":
+        communist_penalty = 10
+        print(f"[balanceChange] Communist government detected, applying -10 minute penalty")
+    
     bleed_penalty = userData.bleed * 10
-    net_income = job_income - bleed_penalty
+    net_income = job_income + perk_bonus - bleed_penalty - communist_penalty
     
-    print(f"[balanceChange] Bleed: {userData.bleed}, penalty: {bleed_penalty}, net: {net_income}")
+    print(f"[balanceChange] Bleed: {userData.bleed}, penalty: {bleed_penalty}, perk: {userData.perk}, perk_bonus: {perk_bonus}, communist_penalty: {communist_penalty}, net: {net_income}")
     
-    userData.clock += timedelta(minutes=net_income)
+    # Calculate new clock value, but don't let it go below datetime.min (00•00•00)
+    try:
+        new_clock = userData.clock + timedelta(minutes=net_income)
+        # Ensure it doesn't go below datetime.min
+        if new_clock < datetime.min:
+            userData.clock = datetime.min
+            print(f"[balanceChange] Clock would underflow, setting to 00•00•00")
+        else:
+            userData.clock = new_clock
+    except (OverflowError, ValueError):
+        # If overflow occurs, set to minimum
+        userData.clock = datetime.min
+        print(f"[balanceChange] Clock overflow detected, setting to 00•00•00")
+    
     db.session.commit()
-    emit("updateClock", {"data": getClock(userData)})
+    
+    # Emit to the user who made the update
+    formatted_clock = timeFormat(userData.clock)
+    emit("updateClock", {"data": formatted_clock})
+    
+    # Broadcast this user's clock update to everyone in the room
+    if room:
+        room_identifier = str(room.id)
+        socketio.emit("userClockUpdate", {
+            "user_id": userData.userId,
+            "clock": formatted_clock
+        }, room=room_identifier)
 
 
 @socketio.on("updateJob")
@@ -186,6 +240,7 @@ def update_job(data):
     action = json.loads(data)
     job_id = action.get("job_id", None)
 
+    job = None
     if job_id is None:
         userData.job_id = None
     else:
@@ -196,9 +251,17 @@ def update_job(data):
         userData.job_id = job.id
 
     db.session.commit()
-    # Notify all clients in the room of the updated room state
+    db.session.flush()  # Ensure changes are immediately visible
+    
+    # Send targeted update for just this user's job
     room = Room.query.filter_by(id=userData.roomId).first()
-    emit("room_state", serialize_room(room), to=room.id)
+    socketio.emit("userJobUpdate", {
+        "user_id": userData.userId,
+        "job_name": job.name if job else None,
+        "job_tier": job.tier if job else None
+    }, room=str(room.id))
+    
+    print(f"[updateJob] Sent job update for user {userData.userId}: {job.name if job else 'None'}")
 
 
 @socketio.on("updateBleed")
@@ -212,7 +275,124 @@ def update_bleed(data):
     db.session.commit()
     room = Room.query.filter_by(id=userData.roomId).first()
     print(serialize_room(room))
-    emit("room_state", serialize_room(room), to=room.id)
+    emit("room_state", serialize_room(room), to=str(room.id))
+
+
+@socketio.on("updatePerk")
+@jwt_required()
+def update_perk(data):
+    print("attempting to update perk: " + str(data))
+    userData = getUserData()
+    action = json.loads(data) if isinstance(data, (str, bytes)) else data
+    perk_value = action.get("perk", None) if isinstance(action, dict) else action
+    
+    # Validate perk value
+    if perk_value not in [None, "Manager", "Senior", "Executive"]:
+        emit("error", {"message": "Invalid perk value"})
+        return
+    
+    userData.perk = perk_value
+    db.session.commit()
+    db.session.flush()  # Ensure changes are immediately visible
+    
+    room = Room.query.filter_by(id=userData.roomId).first()
+    # Send targeted update for just this user's perk
+    socketio.emit("userPerkUpdate", {
+        "user_id": userData.userId,
+        "perk": perk_value
+    }, room=str(room.id))
+    
+    print(f"[updatePerk] Sent perk update for user {userData.userId}: {perk_value}")
+
+
+@socketio.on("updateHeat")
+@jwt_required()
+def update_heat(data):
+    print("attempting to update heat" + data)
+    userData = getUserData()
+    action = json.loads(data)
+    heat_amount = int(action)
+    userData.heat += heat_amount
+    db.session.commit()
+    room = Room.query.filter_by(id=userData.roomId).first()
+    print(serialize_room(room))
+    emit("room_state", serialize_room(room), to=str(room.id))
+
+
+@socketio.on("balanceBooks")
+@jwt_required()
+def balance_books(data=None):
+    print("[balanceBooks] Starting wealth redistribution")
+    user_id = get_jwt_identity()
+    userData = RoomParticipants.query.filter_by(userId=user_id).first()
+    if not userData:
+        emit("error", {"message": "Not in a room"})
+        return
+    
+    room = Room.query.get(userData.roomId)
+    if not room:
+        emit("error", {"message": "Room not found"})
+        return
+    
+    # Get all participants
+    participants = RoomParticipants.query.filter_by(roomId=room.id).all()
+    if len(participants) < 2:
+        emit("error", {"message": "Need at least 2 players to balance books"})
+        return
+    
+    # Calculate total minutes up to 12 hours per person
+    TWELVE_HOURS_MINUTES = 12 * 60
+    total_shareable_minutes = 0
+    participant_data = []
+    
+    for p in participants:
+        # Convert clock to total minutes from epoch
+        clock_delta = p.clock - datetime.min
+        total_minutes = int(clock_delta.total_seconds() / 60)
+        
+        shareable = min(total_minutes, TWELVE_HOURS_MINUTES)
+        excess = max(0, total_minutes - TWELVE_HOURS_MINUTES)
+        
+        total_shareable_minutes += shareable
+        participant_data.append({
+            'participant': p,
+            'total_minutes': total_minutes,
+            'shareable': shareable,
+            'excess': excess
+        })
+    
+    # Calculate equal share (round to nearest 10 minutes)
+    equal_share = total_shareable_minutes // len(participants)
+    equal_share = round(equal_share / 10) * 10
+    
+    # Redistribute wealth
+    for data in participant_data:
+        p = data['participant']
+        new_total = equal_share + data['excess']
+        p.clock = datetime.min + timedelta(minutes=new_total)
+    
+    db.session.commit()
+    print(f"[balanceBooks] Redistributed {total_shareable_minutes} minutes equally among {len(participants)} players")
+    
+    # Print each user's final clock value
+    print("[balanceBooks] Final clock values:")
+    for data in participant_data:
+        p = data['participant']
+        username = p.user.username if hasattr(p, 'user') and p.user else f"User_{p.userId}"
+        clock_formatted = timeFormat(p.clock)
+        print(f"  - {username} (ID: {p.userId}): {clock_formatted}")
+    
+    # Create a dict of all users' updated clocks
+    all_clocks = {}
+    for data in participant_data:
+        p = data['participant']
+        all_clocks[p.userId] = timeFormat(p.clock)
+    
+    # Broadcast all clock updates to the room
+    socketio.emit("updateAllClocks", {"clocks": all_clocks}, to=str(room.id))
+    
+    # Broadcast room_state to update participant list
+    emit("room_state", serialize_room(room), to=str(room.id))
 
 
 def getUserData():
