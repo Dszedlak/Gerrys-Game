@@ -49,7 +49,7 @@ class RoomListResource(Resource):
         db.session.add(gov)
         db.session.commit()
 
-        participant = RoomParticipants(roomId=room.id, userId=user, clock=(datetime.min + timedelta(days=1)))
+        participant = RoomParticipants(roomId=room.id, userId=user, clock=(datetime.min + timedelta(days=1, hours=2)))
         db.session.add(participant)
         db.session.commit()
 
@@ -106,7 +106,7 @@ class JoinRoomResource(Resource):
             participant = RoomParticipants(
                 roomId=room_id,
                 userId=user_id,
-                clock=(datetime.min + timedelta(days=1)),
+                clock=(datetime.min + timedelta(days=1, hours=2)),
             )
             db.session.add(participant)
             db.session.commit()
@@ -237,7 +237,13 @@ class RoomHistoryResource(Resource):
             
             user_data[entry.user_id]["snapshots"].append({
                 "timestamp": entry.timestamp.isoformat(),
-                "clock_minutes": clock_to_minutes(entry.clock_value)
+                "clock_minutes": clock_to_minutes(entry.clock_value),
+                "bleed": entry.bleed,
+                "heat": entry.heat,
+                "job_name": entry.job_name,
+                "perk": entry.perk,
+                "government_type": entry.government_type,
+                "government_role": entry.government_role
             })
         
         print(f"[RoomHistory] Returning data for {len(user_data)} users")

@@ -402,6 +402,253 @@ def getUserData():
     return userData
 
 
+@socketio.on("setApprovalStatus")
+@jwt_required()
+def set_approval_status(data=None):
+    """Set player's approval status in government"""
+    print("[setApprovalStatus] Received request")
+    user_id = get_jwt_identity()
+    
+    try:
+        payload = json.loads(data) if isinstance(data, str) else data
+        approval_status = payload.get("status")  # 'approve', 'disapprove', 'abstain', or None to clear
+    except Exception as e:
+        print(f"[setApprovalStatus] Parse error: {e}")
+        emit("error", {"message": "Invalid payload"})
+        return
+    
+    userData = RoomParticipants.query.filter_by(userId=user_id).first()
+    if not userData:
+        emit("error", {"message": "Not in a room"})
+        return
+    
+    room = Room.query.get(userData.roomId)
+    if not room:
+        emit("error", {"message": "Room not found"})
+        return
+    
+    # Allow setting approval status even without government
+    # Store in a custom field or use existing field
+    if approval_status is None:
+        # Clear approval status
+        userData.perk = None
+    else:
+        userData.perk = f"approval:{approval_status}"
+    db.session.commit()
+    
+    print(f"[setApprovalStatus] User {user_id} set approval to {approval_status}")
+    
+    # Broadcast to all players in room
+    room_identifier = str(room.id)
+    socketio.emit("approvalStatusUpdated", {
+        "user_id": user_id,
+        "username": db.session.query(User.username).filter_by(id=user_id).scalar(),
+        "status": approval_status
+    }, to=room_identifier)
+
+
+@socketio.on("partakeGovVote")
+@jwt_required()
+def partake_gov_vote(data=None):
+    """Player participates in government vote"""
+    print("[partakeGovVote] Received request")
+    user_id = get_jwt_identity()
+    
+    try:
+        payload = json.loads(data) if isinstance(data, str) else data
+        vote_choice = payload.get("choice")  # 'yes', 'no', 'abstain', or None to clear
+    except Exception as e:
+        print(f"[partakeGovVote] Parse error: {e}")
+        emit("error", {"message": "Invalid payload"})
+        return
+    
+    userData = RoomParticipants.query.filter_by(userId=user_id).first()
+    if not userData:
+        emit("error", {"message": "Not in a room"})
+        return
+    
+    room = Room.query.get(userData.roomId)
+    if not room:
+        emit("error", {"message": "Room not found"})
+        return
+    
+    # Update the participant's vote in the database
+    userData.gov_vote = vote_choice
+    db.session.commit()
+    
+    print(f"[partakeGovVote] User {user_id} voted {vote_choice}")
+    
+    # Broadcast vote to room
+    room_identifier = str(room.id)
+    socketio.emit("voteRecorded", {
+        "user_id": user_id,
+        "username": db.session.query(User.username).filter_by(id=user_id).scalar(),
+        "vote": vote_choice
+    }, to=room_identifier)
+
+def timeFormat(time: datetime):
+    days = ""
+    if time.day == 1:
+        days = "00"
+    else:
+        time = time - timedelta(days=1)
+        days = str(time)[8:10]
+
+    hours = str(time)[11:13]
+    minutes = str(time)[14:16]
+
+    return days + "•" + hours + "•" + minutes
+
+
+# Dictator bidding state storage (in-memory, per room)
+dictator_bids = {}  # { room_id: { user_id: bid_amount, ... } }
+
+@socketio.on("startDictatorBidding")
+@jwt_required()
+def start_dictator_bidding(data=None):
+    """Initiates dictator bidding when admin selects Dictatorship"""
+    print("[startDictatorBidding] Received request")
+    user_id = get_jwt_identity()
+    
+    userData = RoomParticipants.query.filter_by(userId=user_id).first()
+    if not userData:
+        emit("error", {"message": "Not in a room"})
+        return
+    
+    room = Room.query.get(userData.roomId)
+    if not room:
+        emit("error", {"message": "Room not found"})
+        return
+    
+    # Initialize bidding for this room
+    dictator_bids[room.id] = {}
+    
+    # Broadcast to all players to open bidding modal
+    room_identifier = str(room.id)
+    socketio.emit("startDictatorBidding", {}, to=room_identifier)
+    print(f"[startDictatorBidding] Bidding started for room {room.id}")
+
+@socketio.on("placeDictatorBid")
+@jwt_required()
+def place_dictator_bid(data=None):
+    """Player places a bid for dictator"""
+    print("[placeDictatorBid] Received request")
+    user_id = get_jwt_identity()
+    
+    try:
+        payload = json.loads(data) if isinstance(data, str) else data
+        bid_amount = payload.get("bid_amount")
+    except Exception as e:
+        print(f"[placeDictatorBid] Parse error: {e}")
+        emit("error", {"message": "Invalid payload"})
+        return
+    
+    if not isinstance(bid_amount, (int, float)) or bid_amount <= 0:
+        emit("error", {"message": "Invalid bid amount"})
+        return
+    
+    userData = RoomParticipants.query.filter_by(userId=user_id).first()
+    if not userData:
+        emit("error", {"message": "Not in a room"})
+        return
+    
+    room = Room.query.get(userData.roomId)
+    if not room:
+        emit("error", {"message": "Room not found"})
+        return
+    
+    # Record the bid
+    if room.id not in dictator_bids:
+        dictator_bids[room.id] = {}
+    
+    dictator_bids[room.id][user_id] = bid_amount
+    
+    # Build tally for broadcast
+    tally = {}
+    for participant in RoomParticipants.query.filter_by(roomId=room.id):
+        tally[participant.userId] = participant.userId in dictator_bids[room.id]
+    
+    # Broadcast tally update
+    room_identifier = str(room.id)
+    socketio.emit("biddingTallyUpdate", {"tally": tally}, to=room_identifier)
+    print(f"[placeDictatorBid] User {user_id} bid {bid_amount} in room {room.id}")
+
+@socketio.on("concludeDictatorBidding")
+@jwt_required()
+def conclude_dictator_bidding(data=None):
+    """Admin concludes bidding and determines winner"""
+    print("[concludeDictatorBidding] Received request")
+    user_id = get_jwt_identity()
+    
+    userData = RoomParticipants.query.filter_by(userId=user_id).first()
+    if not userData:
+        emit("error", {"message": "Not in a room"})
+        return
+    
+    room = Room.query.get(userData.roomId)
+    if not room:
+        emit("error", {"message": "Room not found"})
+        return
+    
+    # Check if user is admin (first participant in room by roomId, sorted by userId)
+    first_participant = RoomParticipants.query.filter_by(roomId=room.id).order_by(RoomParticipants.userId.asc()).first()
+    if not first_participant or first_participant.userId != user_id:
+        emit("error", {"message": "Only admin can conclude bidding"})
+        return
+    
+    # Find winner (highest bid)
+    room_bids = dictator_bids.get(room.id, {})
+    if not room_bids:
+        emit("error", {"message": "No bids placed"})
+        return
+    
+    winner_id = max(room_bids.keys(), key=lambda k: room_bids[k])
+    winner_bid_minutes = room_bids[winner_id]
+    winner_name = db.session.query(User.username).filter_by(id=winner_id).scalar()
+    
+    # Update winner's clock (subtract the bid amount in minutes)
+    winner_participant = RoomParticipants.query.filter_by(userId=winner_id, roomId=room.id).first()
+    if winner_participant:
+        winner_participant.clock = winner_participant.clock - timedelta(minutes=winner_bid_minutes)
+        db.session.commit()
+        print(f"[concludeDictatorBidding] Winner {winner_name} (ID: {winner_id}) clock reduced by {winner_bid_minutes} min")
+    
+    # Create or update government for this room
+    government = room.government or Government(type="Dictatorship", room_id=room.id)
+    government.type = "Dictatorship"
+    db.session.add(government)
+    db.session.flush()
+    
+    # Clear old government members
+    GovernmentMember.query.filter_by(government_id=government.id).delete(synchronize_session=False)
+    
+    # Add dictator as government member
+    gov_member = GovernmentMember(
+        government_id=government.id,
+        user_id=winner_id,
+        role="dictator"
+    )
+    db.session.add(gov_member)
+    db.session.commit()
+    
+    # Clear bidding data
+    if room.id in dictator_bids:
+        del dictator_bids[room.id]
+    
+    # Broadcast winner to all players
+    room_identifier = str(room.id)
+    socketio.emit("dictatorWinner", {
+        "winner_id": winner_id,
+        "winner_name": winner_name
+    }, to=room_identifier)
+    
+    # Broadcast room state update
+    room_state = serialize_room(room)
+    socketio.emit("room_state", room_state, to=room_identifier)
+    
+    print(f"[concludeDictatorBidding] Winner: {winner_name} (ID: {winner_id}) in room {room.id}")
+
+
 def timeFormat(time: datetime):
     days = ""
     if time.day == 1:

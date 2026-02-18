@@ -21,7 +21,8 @@
     "id": 3,
     "tier": 3,
     "name": "Chaos Creator",
-    "type": "Illicit"
+    "type": "Illicit",
+    "note": "Option 2 is time virus to all alive players including themselves"
   },
   {
     "id": 4,
@@ -32,7 +33,7 @@
   {
     "id": 5,
     "tier": 3,
-    "name": "Drug Dealer",
+    "name": "Syndicate Leader",
     "type": "Illicit"
   },
   {
@@ -57,19 +58,15 @@
     "id": 9,
     "tier": 3,
     "name": "Doctor",
-    "type": "Public Service"
+    "type": "Public Service",
+    "note": "Forces player to pay 1.5 hours to heal bleeding effect on other players"
   },
   {
     "id": 10,
     "tier": 3,
     "name": "Charity Commissioner",
-    "type": "Public Service"
-  },
-  {
-    "id": 11,
-    "tier": 3,
-    "name": "Chief of Police",
-    "type": "Public Service"
+    "type": "Public Service",
+    "note": "Forces player to sacrifice item so another player gets +1 heat removed (usable twice)"
   },
   {
     "id": 12,
@@ -108,9 +105,16 @@
     "type": "Finance"
   },
   {
-    "id": 19,
+    "id": 20,
     "tier": 3,
-    "name": "Market Official",
+    "name": "Tax Officer",
     "type": "Finance"
+  },
+  {
+    "id": 21,
+    "tier": 3,
+    "name": "Manager",
+    "type": "Finance",
+    "note": "+1 against War and win all draws against War"
   }
 ]

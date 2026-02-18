@@ -1,42 +1,47 @@
 <template>
-  <BForm @submit.prevent="onSubmit">
-    <BFormGroup
-      label="Username:"
-      description="Enter your desired username"
-      label-class="font-weight-bold pt-0">
-      <BFormInput
-        v-model="username"
-        placeholder="username"
-        required
-      />
-    </BFormGroup>
-    <BFormGroup
-      label="Password:"
-      description="Enter your desired password"
-      label-class="font-weight-bold pt-0">
-      <BFormInput
-        v-model="password"
-        type="password"
-        placeholder="password"
-        required
-      />
-    </BFormGroup>
-    <BFormGroup
-      label="Confirm password:"
-      description="Enter the same password again"
-      label-class="font-weight-bold pt-0">
-      <BFormInput
-        v-model="confirmPassword"
-        type="password"
-        placeholder="password"
-        required
-      />
-    </BFormGroup>
-    <div class="form-group">
-      <small v-if="errors" class="text-danger">{{ errors }}</small>
-    </div>
-    <BButton type="submit" variant="success">Register</BButton>
-  </BForm>
+  <div class="form-container">
+    <BForm @submit.prevent="onSubmit">
+      <BFormGroup
+        label="Username:"
+        description="Enter your desired username"
+        label-class="font-weight-bold pt-0">
+        <BFormInput
+          v-model="username"
+          placeholder="username"
+          required
+          class="form-input"
+        />
+      </BFormGroup>
+      <BFormGroup
+        label="Password:"
+        description="Enter your desired password"
+        label-class="font-weight-bold pt-0">
+        <BFormInput
+          v-model="password"
+          type="password"
+          placeholder="password"
+          required
+          class="form-input"
+        />
+      </BFormGroup>
+      <BFormGroup
+        label="Confirm password:"
+        description="Enter the same password again"
+        label-class="font-weight-bold pt-0">
+        <BFormInput
+          v-model="confirmPassword"
+          type="password"
+          placeholder="password"
+          required
+          class="form-input"
+        />
+      </BFormGroup>
+      <div class="form-group">
+        <small v-if="errors" class="text-danger error-message">{{ errors }}</small>
+      </div>
+      <BButton type="submit" variant="success" class="submit-btn">Register</BButton>
+    </BForm>
+  </div>
 </template>
 
 <script>
@@ -104,3 +109,50 @@ export default {
   }
 }
 </script>
+<style scoped>
+.form-container {
+  background: white;
+  border-radius: 12px;
+  padding: 30px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.form-input {
+  border-radius: 8px;
+  border: 2px solid #e8e8e8;
+  padding: 10px 12px;
+  transition: all 0.3s ease;
+}
+
+.form-input:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.submit-btn {
+  width: 100%;
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+  margin-top: 10px;
+}
+
+.submit-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(40, 167, 69, 0.5);
+}
+
+.submit-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.error-message {
+  display: block;
+  margin-bottom: 10px;
+  font-weight: 500;
+}
+</style>

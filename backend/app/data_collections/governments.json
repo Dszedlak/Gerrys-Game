@@ -6,19 +6,13 @@
         "type": "Democracy"
     },
     {
-        "id": 2,
-        "type": "Republic"
-    },
-    {
         "id": 3,
-        "type": "Dictatorship"
+        "type": "Dictatorship",
+        "note": "Dictator receives +10 minutes income and 2 abilities immediately. Chosen by one vote blind auction."
     },
     {
         "id": 4,
-        "type": "Communism"
-    },
-    {
-        "id": 5,
-        "type": "Anarchy"
+        "type": "Communism",
+        "note": "Politburo composed of two players. Leaders receive 10 minutes extra per turn. Peasants pay 20 minutes per turn to the state."
     }
 ]

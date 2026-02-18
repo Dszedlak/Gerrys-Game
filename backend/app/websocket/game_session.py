@@ -74,14 +74,30 @@ class GameSession:
 
     def _save_clock_snapshots(self, room):
         """Save current clock values for all participants to history"""
-        from app.models import ClockHistory
+        from app.models import ClockHistory, GovernmentMember
         try:
             snapshot_count = 0
             for participant in room.participants:
+                # Get government role if in government
+                gov_role = None
+                if room.government:
+                    gov_member = GovernmentMember.query.filter_by(
+                        government_id=room.government.id,
+                        user_id=participant.userId
+                    ).first()
+                    if gov_member:
+                        gov_role = gov_member.role
+                
                 snapshot = ClockHistory(
                     room_id=room.id,
                     user_id=participant.userId,
-                    clock_value=participant.clock
+                    clock_value=participant.clock,
+                    bleed=participant.bleed,
+                    heat=participant.heat,
+                    job_name=participant.job.name if participant.job else None,
+                    perk=participant.perk,
+                    government_type=room.government.type if room.government else None,
+                    government_role=gov_role
                 )
                 db.session.add(snapshot)
                 snapshot_count += 1

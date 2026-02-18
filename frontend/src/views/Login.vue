@@ -1,16 +1,20 @@
 <template>
-  <BRow align-h="center">
-    <BCol cols="8">
-      <BTabs content-class="mt-3">
-        <BTab title="Login">
-          <LoginForm />
-        </BTab>
-        <BTab title="Register">
-          <RegisterForm />
-        </BTab>
-      </BTabs>
-    </BCol>
-  </BRow>
+  <div class="login-container">
+    <BRow align-h="center">
+      <BCol cols="8">
+        <div class="tabs-wrapper">
+          <BTabs content-class="mt-3" nav-class="tabs-nav">
+            <BTab title="Login">
+              <LoginForm />
+            </BTab>
+            <BTab title="Register">
+              <RegisterForm />
+            </BTab>
+          </BTabs>
+        </div>
+      </BCol>
+    </BRow>
+  </div>
 </template>
 
 <script>
@@ -40,3 +44,22 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.login-container {
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  padding: 40px 20px;
+  margin: -8px -8px 0 -8px;
+}
+
+.tabs-wrapper {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  width: 100%;
+}
+</style>

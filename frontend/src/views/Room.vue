@@ -39,15 +39,16 @@
         <b-col></b-col>
       </b-row>
 
-      <!-- The Market Section (above the table) -->
+      <!-- The Senate Section (above the table) -->
       <b-row class="mt-4">
         <b-col>
           <div class="center-row">
-            <h3>The Market</h3>
+            <h3>The Senate</h3>
           </div>
-          <div class="market-controls mt-2">
-            <b-button class="market-btn" variant="success" @click="sellConsumable">Sell a Consumable (+30m)</b-button>
-            <b-button class="market-btn" variant="primary" @click="sellTimeCounter">Sell a Time Counter (+2.5h)</b-button>
+          <div class="senate-controls mt-2">
+            <b-button class="senate-btn" variant="info" @click="setApprovalStatus">Set Approval Status</b-button>
+            <b-button class="senate-btn" variant="warning" @click="partakeGovVote">Partake in Government Vote</b-button>
+            <b-button class="senate-btn" variant="secondary" @click="showVoteColumn = !showVoteColumn">{{ showVoteColumn ? 'Hide' : 'Show' }} Senate Tabs</b-button>
           </div>
         </b-col>
       </b-row>
@@ -140,12 +141,14 @@
       <!-- Participants table -->
       <b-row class="itemRowPlayers mt-4"> <!-- add top margin above the table -->
         <b-col></b-col>
-        <b-col cols="1.4">
+        <b-col cols="4">
           <table class="table table-sm table-bordered" style="width:100%">
             <thead>
               <tr>
                 <th>Username</th>
                 <th>Job Title</th>
+                <th v-if="showVoteColumn">Approval</th>
+                <th v-if="showVoteColumn">Vote</th>
                 <th class="bleed-header">
                   <!-- wrap in a flex container for perfect centering -->
                   <div class="bleed-header-inner">
@@ -207,11 +210,21 @@
                     :alt="p.perk"
                   />
                 </td>
+                <td v-if="showVoteColumn" class="approval-cell">
+                  <span v-if="p.approval_status && p.user_id === currentUserId" @click="clearApprovalStatus" class="approval-badge" :class="'approval-' + p.approval_status" style="cursor: pointer;">{{ p.approval_status }}</span>
+                  <span v-else-if="p.approval_status" class="approval-badge" :class="'approval-' + p.approval_status">{{ p.approval_status }}</span>
+                  <span v-else class="approval-badge approval-empty">—</span>
+                </td>
+                <td v-if="showVoteColumn" class="vote-cell">
+                  <span v-if="p.gov_vote && p.user_id === currentUserId" @click="clearGovVote" class="vote-badge" :class="'vote-' + p.gov_vote" style="cursor: pointer;">{{ p.gov_vote }}</span>
+                  <span v-else-if="p.gov_vote" class="vote-badge" :class="'vote-' + p.gov_vote">{{ p.gov_vote }}</span>
+                  <span v-else class="vote-badge vote-empty">—</span>
+                </td>
                 <td>{{ p.bleed }}</td>
                 <td>{{ p.heat }}</td>
               </tr>
               <tr v-if="!activePlayers.length">
-                <td colspan="4" class="text-center">No participants yet</td>
+                <td colspan="6" class="text-center">No participants yet</td>
               </tr>
             </tbody>
           </table>
@@ -222,7 +235,7 @@
       <!-- Dropped Players table -->
       <b-row v-if="droppedPlayers.length > 0" class="itemRowPlayers mt-3">
         <b-col></b-col>
-        <b-col cols="1.4">
+        <b-col cols="4">
           <h5 class="text-muted">Dropped Players</h5>
           <table class="table table-sm table-bordered dropped-table" style="width:100%">
             <thead>
@@ -276,6 +289,124 @@
         </template>
       </b-modal>
 
+      <!-- Approval Status Modal -->
+      <b-modal
+        id="approvalStatusModal"
+        ref="approvalStatusModal"
+        title="Set Approval Status"
+        @ok="confirmApprovalStatus"
+        ok-title="Submit"
+        cancel-title="Cancel"
+      >
+        <div class="mb-3">
+          <label for="approvalSelect" class="form-label">Choose your approval status:</label>
+          <select v-model="selectedApprovalOption" id="approvalSelect" class="form-select">
+            <option :value="null">-- Select --</option>
+            <option value="approve">Approve</option>
+            <option value="disapprove">Disapprove</option>
+            <option value="abstain">Abstain</option>
+          </select>
+        </div>
+      </b-modal>
+
+      <!-- Government Vote Modal -->
+      <b-modal
+        id="govVoteModal"
+        ref="govVoteModal"
+        title="Cast Your Vote"
+        @ok="confirmGovVote"
+        ok-title="Submit"
+        cancel-title="Cancel"
+      >
+        <div class="mb-3">
+          <label for="voteSelect" class="form-label">Choose your vote:</label>
+          <select v-model="selectedVoteOption" id="voteSelect" class="form-select">
+            <option :value="null">-- Select --</option>
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+            <option value="abstain">Abstain</option>
+          </select>
+        </div>
+      </b-modal>
+
+      <!-- Dictator Bidding Modal -->
+      <b-modal
+        id="dictatorBiddingModal"
+        ref="dictatorBiddingModal"
+        title="Dictator Auction - Place Your Bid"
+        hide-footer
+        no-close-on-backdrop
+        no-close-on-esc
+        size="lg"
+      >
+        <div class="dictator-bid-container">
+          <!-- Time Display -->
+          <div class="bid-display-section mb-4">
+            <p class="bid-instruction">Bid for the right to be the Dictator!</p>
+            <div class="bid-time-big">
+              {{ String(Math.floor(bidTimeMinutes / 60)).padStart(2, '0') }}:{{ String(bidTimeMinutes % 60).padStart(2, '0') }}
+            </div>
+          </div>
+
+          <!-- Time Control Buttons -->
+          <div class="bid-buttons-section mb-4">
+            <div class="bid-button-row mb-2">
+              <b-button size="lg" variant="outline-danger" @click="bidTimeMinutes = Math.max(0, bidTimeMinutes - 60)" class="bid-btn">-1h</b-button>
+              <b-button size="lg" variant="outline-danger" @click="bidTimeMinutes = Math.max(0, bidTimeMinutes - 30)" class="bid-btn">-30</b-button>
+              <b-button size="lg" variant="outline-danger" @click="bidTimeMinutes = Math.max(0, bidTimeMinutes - 20)" class="bid-btn">-20</b-button>
+              <b-button size="lg" variant="outline-danger" @click="bidTimeMinutes = Math.max(0, bidTimeMinutes - 10)" class="bid-btn">-10</b-button>
+            </div>
+            <div class="bid-button-row">
+              <b-button size="lg" variant="outline-success" @click="bidTimeMinutes = bidTimeMinutes + 10" class="bid-btn">+10</b-button>
+              <b-button size="lg" variant="outline-success" @click="bidTimeMinutes = bidTimeMinutes + 20" class="bid-btn">+20</b-button>
+              <b-button size="lg" variant="outline-success" @click="bidTimeMinutes = bidTimeMinutes + 30" class="bid-btn">+30</b-button>
+              <b-button size="lg" variant="outline-success" @click="bidTimeMinutes = bidTimeMinutes + 60" class="bid-btn">+1h</b-button>
+            </div>
+          </div>
+
+          <!-- Place Bid Button -->
+          <b-button variant="primary" size="lg" @click="placeDictatorBid" class="w-100 mb-4 place-bid-btn">
+            <strong>Place Bid</strong>
+          </b-button>
+
+          <!-- Bidding Status -->
+          <div class="bidding-status-section">
+            <h6 class="mb-3">Bidding Status:</h6>
+            <div class="bidding-tally">
+              <div v-for="participant in participants" :key="participant.user_id" class="tally-item">
+                <span class="participant-name">{{ participant.username }}</span>
+                <span v-if="biddingTally[participant.user_id]" class="badge bg-success">✓ Bid Placed</span>
+                <span v-else class="badge bg-warning text-dark">⏳ Awaiting Bid</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Admin Conclude Button -->
+          <div v-if="isAdmin" class="admin-section mt-4 pt-4 border-top">
+            <b-button variant="success" size="lg" @click="concludeDictatorBidding" class="w-100">
+              <strong>Conclude Bidding</strong>
+            </b-button>
+          </div>
+        </div>
+      </b-modal>
+
+      <!-- Dictator Bidding Winner Modal -->
+      <b-modal
+        id="dictatorBiddingWinnerModal"
+        ref="dictatorBiddingWinnerModal"
+        title="Auction Results"
+        hide-footer
+        centered
+      >
+        <div class="text-center">
+          <h3 class="mb-3">SOLD!</h3>
+          <p class="lead">To the highest bidder:</p>
+          <h2 class="text-success mb-4">{{ dictatorWinner }}</h2>
+          <p class="text-muted">The winner has been crowned Dictator!</p>
+          <b-button variant="primary" @click="dictatorBiddingWinnerModal?.hide()" class="w-100">OK</b-button>
+        </div>
+      </b-modal>
+
       <!-- End Game modal -->
       <b-modal
         id="removeRoomModal"
@@ -298,8 +429,9 @@
       <b-modal
         id="historyGraphModal"
         ref="historyGraphModal"
-        title="Game History"
+        title="Game History - Clock Tracking (includes Government, Job, Bleed, Heat, Perk)"
         size="xl"
+        body-class="p-4"
       >
         <div v-if="loadingHistory" class="text-center">
           <p>Loading game history...</p>
@@ -307,7 +439,7 @@
         <div v-else-if="historyError" class="alert alert-danger">
           {{ historyError }}
         </div>
-        <div v-else-if="chartData" style="height: 400px;">
+        <div v-else-if="chartData" style="height: 500px;">
           <Line :data="chartData" :options="chartOptions" />
         </div>
         <div v-else class="text-center">
@@ -536,26 +668,22 @@ const roomname = ref('test')
 const participants = ref([])
 const activePlayers = computed(() => {
   const active = participants.value.filter(p => {
-    // Check if clock is "00•00•00" (out of time)
-    const isDead = p.clock && p.clock === '00•00•00'
-    if (p.clock === '00•00•00') {
-      console.log('[activePlayers] Player', p.username, 'has clock:', p.clock, 'isDead:', isDead)
-    }
+    // Check if clock is "00•00•00" (out of time) or player is dead
+    if (!p || !p.clock) return true // include if no clock info
+    const isDead = String(p.clock).trim() === '00•00•00'
     return !isDead
   })
-  console.log('[activePlayers] Computed:', active.length, 'active players')
+  console.log('[activePlayers] Filtered:', active.length, 'active from', participants.value.length, 'total')
   return active
 })
 const droppedPlayers = computed(() => {
   const dropped = participants.value.filter(p => {
-    // Dropped if clock is "00•00•00"
-    const isDead = p.clock && p.clock === '00•00•00'
-    if (isDead) {
-      console.log('[droppedPlayers] Player', p.username, 'has clock:', p.clock, 'typeof:', typeof p.clock)
-    }
+    // Dropped if clock is "00•00•00" or player is dead
+    if (!p || !p.clock) return false // exclude if no clock info
+    const isDead = String(p.clock).trim() === '00•00•00'
     return isDead
   })
-  console.log('[droppedPlayers] Computed:', dropped.length, 'dropped players')
+  console.log('[droppedPlayers] Filtered:', dropped.length, 'dropped players')
   return dropped
 })
 
@@ -573,6 +701,8 @@ const historyGraphModal = ref(null)
 const loadingHistory = ref(false)
 const historyError = ref(null)
 const chartData = ref(null)
+const selectedPlayersForGraph = ref([])
+const allGraphPlayers = ref([])
 const chartOptions = ref({
   responsive: true,
   maintainAspectRatio: false,
@@ -642,8 +772,23 @@ const leaveRoomModal = ref(null)
 const removeRoomModal = ref(null)
 const wheelSpinnerRef = ref(null)
 const politburoWheelModal = ref(null)
+const approvalStatusModal = ref(null)
+const govVoteModal = ref(null)
 const isLeaving = ref(false)
 const isRemoving = ref(false)
+const showVoteColumn = ref(false)
+const selectedApprovalOption = ref(null)
+const selectedVoteOption = ref(null)
+
+// Dictator bidding state
+const dictatorBiddingModal = ref(null)
+const dictatorBiddingWinnerModal = ref(null)
+const biddingActive = ref(false)
+const biddingTally = ref({}) // { userId: true/false indicating if they've bid }
+const currentUserBid = ref(null)
+const bidTimeMinutes = ref(0)
+const dictatorWinner = ref(null)
+const concludeBiddingModal = ref(null)
 
 // Politburo wheel state
 const politburoMembers = ref([])
@@ -868,8 +1013,58 @@ socket.on('room_state', (payload) => {
   console.debug('[room_state] owner:', room?.owner_id || room?.created_by, 'government:', room?.government)
 })
 
+// Senate event listeners
+socket.on('approvalStatusUpdated', (data) => {
+  console.log('[approvalStatusUpdated]', data)
+  // Update participant approval status in the UI
+  const participant = participants.value.find(p => p.user_id === data.user_id)
+  if (participant) {
+    participant.approval_status = data.status
+  }
+})
+
+socket.on('voteRecorded', (data) => {
+  console.log('[voteRecorded]', data)
+  // Update participant government vote in the UI
+  const participant = participants.value.find(p => p.user_id === data.user_id)
+  if (participant) {
+    participant.gov_vote = data.vote
+  }
+})
+
+socket.on('startDictatorBidding', (data) => {
+  console.log('[startDictatorBidding] Bidding started')
+  biddingActive.value = true
+  biddingTally.value = {}
+  currentUserBid.value = null
+  bidTimeMinutes.value = 0
+  
+  // Initialize tally with all participants
+  participants.value.forEach(p => {
+    biddingTally.value[p.user_id] = false
+  })
+  
+  // Open bidding modal for all players
+  dictatorBiddingModal.value && dictatorBiddingModal.value.show()
+})
+
+socket.on('biddingTallyUpdate', (data) => {
+  console.log('[biddingTallyUpdate]', data)
+  biddingTally.value = data.tally || {}
+})
+
+socket.on('dictatorWinner', (data) => {
+  console.log('[dictatorWinner]', data)
+  biddingActive.value = false
+  dictatorWinner.value = data.winner_name
+  dictatorBiddingModal.value && dictatorBiddingModal.value.hide()
+  dictatorBiddingWinnerModal.value && dictatorBiddingWinnerModal.value.show()
+})
+
 onMounted(async () => {
-  window.addEventListener('beforeunload', leaveRoom)
+  // Don't delete participant data on page refresh/reload - participants should persist
+  // window.addEventListener('beforeunload', leaveRoom)
+  
   if (!store.state.auth.roomId) {
     router.push({ name: 'Rooms' })
     return
@@ -884,12 +1079,12 @@ onMounted(async () => {
 
   // IMPORTANT: emit socket "join" so server adds you to the room and broadcasts room_state
   if (socket.connected) {
-    console.log('[Room] Emitting socket join')
-    socket.emit('join')
+    console.log('[Room] Emitting socket join with roomId:', store.state.auth.roomId)
+    socket.emit('join', { roomId: Number(store.state.auth.roomId) })
   } else {
     socket.once('connect', () => {
-      console.log('[Room] Emitting socket join after connect')
-      socket.emit('join')
+      console.log('[Room] Emitting socket join after connect with roomId:', store.state.auth.roomId)
+      socket.emit('join', { roomId: Number(store.state.auth.roomId) })
     })
   }
 
@@ -906,7 +1101,8 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
-  window.removeEventListener('beforeunload', leaveRoom)
+  // Don't remove listener since we're not adding it anymore
+  // window.removeEventListener('beforeunload', leaveRoom)
   socket.disconnect()
   // bus.off('room:leave', openLeaveModal)
   // bus.off('room:end')
@@ -986,6 +1182,11 @@ async function confirmRemove() {
         '#FF9F40', '#FF6384', '#C9CBCF', '#4BC0C0', '#FF6384'
       ]
       
+      // Track all players for filter
+      allGraphPlayers.value = history.map(h => h.username)
+      // Select all players by default
+      selectedPlayersForGraph.value = [...allGraphPlayers.value]
+      
       // Helper function to convert minutes to DD•HH•MM format
       const formatClock = (minutes) => {
         const days = Math.floor(minutes / 1440) // 1440 minutes in a day
@@ -994,34 +1195,142 @@ async function confirmRemove() {
         return `${String(days).padStart(2, '0')}•${String(hours).padStart(2, '0')}•${String(mins).padStart(2, '0')}`
       }
       
+      // Calculate game start time from first snapshot
+      let gameStartTime = null
+      if (history.length > 0 && history[0].snapshots.length > 0) {
+        gameStartTime = new Date(history[0].snapshots[0].timestamp).getTime()
+      }
+      
       const datasets = history.map((playerData, index) => ({
         label: playerData.username,
-        data: playerData.snapshots.map(s => ({
-          x: new Date(s.timestamp).toLocaleTimeString(),
-          y: s.clock_minutes
-        })),
+        data: playerData.snapshots.map((s, idx) => {
+          // Calculate relative time in minutes from game start
+          const snapshotTime = new Date(s.timestamp).getTime()
+          const relativeMinutes = Math.round((snapshotTime - gameStartTime) / 60000)
+          return {
+            x: `${Math.floor(relativeMinutes / 60)}h ${relativeMinutes % 60}m`,
+            y: s.clock_minutes,
+            timestamp: s.timestamp,
+            bleed: s.bleed,
+            heat: s.heat,
+            job_name: s.job_name,
+            perk: s.perk,
+            government_type: s.government_type,
+            government_role: s.government_role
+          }
+        }),
         borderColor: colors[index % colors.length],
         backgroundColor: colors[index % colors.length] + '40',
-        tension: 0.4
+        tension: 0.4,
+        pointRadius: 3,
+        pointHoverRadius: 5
       }))
       
       chartData.value = {
         datasets: datasets
       }
       
-      // Update chart options with custom Y-axis formatter
+      // Update chart options with custom Y-axis formatter, tooltip formatter, and zoom plugin
       chartOptions.value = {
-        ...chartOptions.value,
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+          mode: 'index',
+          intersect: false
+        },
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: {
+              usePointStyle: true,
+              padding: 15
+            }
+          },
+          title: {
+            display: true,
+            text: 'Player Clocks Over Time',
+            font: { size: 16, weight: 'bold' }
+          },
+          tooltip: {
+            backgroundColor: 'rgba(0,0,0,0.9)',
+            padding: 12,
+            titleFont: { size: 12, weight: 'bold' },
+            bodyFont: { size: 10 },
+            displayColors: true,
+            callbacks: {
+              title: function(context) {
+                if (context.length > 0) {
+                  return context[0].dataset.label
+                }
+                return ''
+              },
+              label: function(context) {
+                const timeValue = context.parsed.y
+                const minutesValue = Math.round(timeValue)
+                const formattedTime = formatClock(minutesValue)
+                return `Time: ${formattedTime} (${minutesValue} mins)`
+              },
+              afterLabel: function(context) {
+                const point = context.raw
+                const lines = []
+                
+                // Add real-world time
+                if (point.timestamp) {
+                  const realTime = new Date(point.timestamp)
+                  lines.push(`Real Time: ${realTime.toLocaleTimeString()}`)
+                }
+                
+                // Add government info
+                if (point.government_type) {
+                  let govInfo = `Gov: ${point.government_type}`
+                  if (point.government_role) {
+                    govInfo += ` (${point.government_role})`
+                  }
+                  lines.push(govInfo)
+                } else {
+                  lines.push('Gov: None')
+                }
+                
+                // Add job info
+                lines.push(`Job: ${point.job_name || 'None'}`)
+                
+                // Add perk info
+                lines.push(`Perk: ${point.perk || 'None'}`)
+                
+                // Add bleed/heat
+                lines.push(`Bleed: ${point.bleed}, Heat: ${point.heat}`)
+                
+                return lines
+              }
+            }
+          }
+        },
         scales: {
-          ...chartOptions.value.scales,
           y: {
-            ...chartOptions.value.scales.y,
+            beginAtZero: true,
+            title: {
+              display: true,
+              text: 'Time (DD•HH•MM)'
+            },
             ticks: {
               callback: function(value) {
                 return formatClock(value)
               }
             }
+          },
+          x: {
+            title: {
+              display: true,
+              text: 'Game Time'
+            },
+            ticks: {
+              maxRotation: 45,
+              minRotation: 0
+            }
           }
+        },
+        animation: {
+          duration: 0
         }
       }
     } else {
@@ -1052,6 +1361,30 @@ async function finalizeRemoveRoom() {
   } finally {
     isRemoving.value = false
   }
+}
+
+// Graph filtering and formatting
+const filteredChartData = computed(() => {
+  if (!chartData.value || !chartData.value.datasets) return chartData.value
+  
+  const newData = {
+    ...chartData.value,
+    datasets: chartData.value.datasets.filter(dataset => {
+      if (selectedPlayersForGraph.value.length === 0) return true // Show all if none selected
+      return selectedPlayersForGraph.value.includes(dataset.label)
+    })
+  }
+  return newData
+})
+
+function togglePlayerFilter(playerName) {
+  const index = selectedPlayersForGraph.value.indexOf(playerName)
+  if (index > -1) {
+    selectedPlayersForGraph.value.splice(index, 1)
+  } else {
+    selectedPlayersForGraph.value.push(playerName)
+  }
+  selectedPlayersForGraph.value = [...selectedPlayersForGraph.value] // Trigger reactivity
 }
 
 // Keep for beforeunload safety (silent best-effort)
@@ -1092,12 +1425,60 @@ const isCommunist = computed(() => {
   return govType && String(govType).toLowerCase() === 'communism'
 })
 
-// Market actions
-function sellConsumable() {
-  socket.emit('updateClock', JSON.stringify(30))
+// Senate actions
+function setApprovalStatus() {
+  console.log('Opening approval status modal')
+  selectedApprovalOption.value = null
+  approvalStatusModal.value?.show()
 }
-function sellTimeCounter() {
-  socket.emit('updateClock', JSON.stringify(150))
+
+function confirmApprovalStatus() {
+  if (selectedApprovalOption.value) {
+    console.log('Setting approval status to:', selectedApprovalOption.value)
+    socket.emit('setApprovalStatus', JSON.stringify({ status: selectedApprovalOption.value }))
+    approvalStatusModal.value?.hide()
+  }
+}
+
+function openApprovalModal() {
+  setApprovalStatus()
+}
+
+function clearApprovalStatus() {
+  console.log('Clearing approval status')
+  const participant = participants.value.find(p => p.user_id === currentUserId.value)
+  if (participant) {
+    participant.approval_status = null
+  }
+  socket.emit('setApprovalStatus', JSON.stringify({ status: null }))
+}
+
+function partakeGovVote() {
+  console.log('Opening government vote modal')
+  selectedVoteOption.value = null
+  showVoteColumn.value = true
+  govVoteModal.value?.show()
+}
+
+function confirmGovVote() {
+  if (selectedVoteOption.value) {
+    console.log('Casting vote:', selectedVoteOption.value)
+    socket.emit('partakeGovVote', JSON.stringify({ choice: selectedVoteOption.value }))
+    govVoteModal.value?.hide()
+  }
+}
+
+function openVoteModal() {
+  partakeGovVote()
+}
+
+function clearGovVote() {
+  console.log('Clearing government vote')
+  const participant = participants.value.find(p => p.user_id === currentUserId.value)
+  if (participant) {
+    participant.gov_vote = null
+  }
+  socket.emit('partakeGovVote', JSON.stringify({ choice: null }))
 }
 
 // ADD: Get Paid handler -> emits "balanceChange"
@@ -1151,6 +1532,26 @@ function onGovernmentChange() {
     return
   }
 
+  if (typeName === 'Dictatorship') {
+    // Start dictator bidding process
+    biddingActive.value = true
+    biddingTally.value = {}
+    currentUserBid.value = null
+    bidTimeMinutes.value = 0
+    
+    // Initialize tally with all participants
+    participants.value.forEach(p => {
+      biddingTally.value[p.user_id] = false
+    })
+    
+    // Broadcast to all players to open bidding modal
+    socket.emit('startDictatorBidding', JSON.stringify({ initiatedBy: currentUserId.value }))
+    
+    // Open bidding modal for admin
+    dictatorBiddingModal.value && dictatorBiddingModal.value.show()
+    return
+  }
+
   if (typeName === 'Communism') {
     // Open special politburo wheel modal
     govForm.value = {
@@ -1189,6 +1590,26 @@ watch(selectedJobId, (v) => {
 watch(selectedPerk, (v) => {
   socket.emit('updatePerk', JSON.stringify({ perk: v }))
 })
+
+// Dictator bidding functions
+function placeDictatorBid() {
+  if (bidTimeMinutes.value <= 0) {
+    alert('Please enter a valid bid amount (greater than 0)')
+    return
+  }
+  
+  console.log('[placeDictatorBid] Bidding:', bidTimeMinutes.value, 'minutes')
+  socket.emit('placeDictatorBid', JSON.stringify({ bid_amount: bidTimeMinutes.value }))
+  
+  // Reset time input
+  bidTimeMinutes.value = 0
+}
+
+function concludeDictatorBidding() {
+  if (!isAdmin.value) return
+  console.log('[concludeDictatorBidding] Concluding bidding')
+  socket.emit('concludeDictatorBidding', JSON.stringify({}))
+}
 
 // Build and emit payload based on govForm
 function submitGovernment() {
@@ -1444,13 +1865,14 @@ function spinForNextMember() {
 
 function addToPolitburo() {
   // Get the winner directly from the wheel component
-  const winnerName = politburoWheelRef.value?.winner
-  if (!winnerName) return
+  const winnerData = politburoWheelRef.value?.winner
+  if (!winnerData) return
   
-  const participant = participants.value.find(p => 
-    p.username === winnerName || 
-    (p.username && p.username.toString() === winnerName.toString())
-  )
+  // Winner is now an object with {text, value} where value is the user_id
+  const userId = winnerData.value || winnerData
+  const winnerName = winnerData.text || winnerData
+  
+  const participant = participants.value.find(p => p.user_id === userId)
   
   if (!participant || !participant.user_id) {
     console.error('[Politburo] Could not find participant for winner:', winnerName)
@@ -1545,6 +1967,64 @@ function shareTheWealth() {
 </script>
 
 <style>
+#app {
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  padding: 5px 20px 30px 20px;
+}
+
+/* Remove nested box styling */
+.top-actions {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 0;
+  margin-top: 0;
+}
+
+.top-actions-group { 
+  gap: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+}
+
+.top-actions-group .butt {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  border: none !important;
+  color: white !important;
+  font-weight: 600 !important;
+  border-radius: 8px !important;
+  padding: 12px 20px !important;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3) !important;
+  transition: all 0.2s ease !important;
+  height: auto !important;
+}
+
+.top-actions-group .butt:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4) !important;
+}
+
+.top-actions-group .butt[variant="danger"] {
+  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%) !important;
+  box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3) !important;
+}
+
+.top-actions-group .butt[variant="danger"]:hover {
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4) !important;
+}
+
+.top-actions-group .butt[variant="info"] {
+  background: linear-gradient(135deg, #17a2b8 0%, #138496 100%) !important;
+  box-shadow: 0 2px 8px rgba(23, 162, 184, 0.3) !important;
+}
+
+.top-actions-group .butt[variant="info"]:hover {
+  box-shadow: 0 4px 12px rgba(23, 162, 184, 0.4) !important;
+}
+
 .dropped-table {
   opacity: 0.6;
 }
@@ -1568,33 +2048,98 @@ function shareTheWealth() {
 }
 
 .addremovebuttonClock{
-  width: 52px;
+  width: auto;
+  padding: 1px 18px !important;
   height: 45px;
-  text-align: left;
-  margin-right:0px
+  text-align: center;
+  margin-right: 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  border: none !important;
+  color: white !important;
+  font-weight: 700 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3) !important;
+  transition: all 0.2s ease !important;
+  font-size: 1.05em !important;
+}
+
+.addremovebuttonClock:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4) !important;
+}
+
+.addremovebuttonClock:active {
+  transform: translateY(0) !important;
 }
 
 .itemRow{
-  height: 118px;
+  height: auto;
   text-align: center;
+  padding: 30px 10px;
+  margin-bottom: 3px;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.itemRow h1 {
+  color: #333;
+  font-size: 2em;
+  font-weight: 700;
+  margin-bottom: 20px;
+}
+
+/* Clock styling with arm background effect */
+.itemRow #clock {
+  font-size: 4em;
+  font-weight: bold;
+  color: #00ff00;
+  font-family: 'Courier New', monospace;
+  text-shadow: 0 0 10px rgba(0, 255, 0, 0.5),
+               0 0 20px rgba(0, 255, 0, 0.3);
+  background: radial-gradient(ellipse at center, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.9) 100%);
+  border: 3px solid #000;
+  border-radius: 15px;
+  padding: 30px 50px;
+  display: inline-block;
+  letter-spacing: 8px;
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.5), inset 0 0 30px rgba(0, 255, 0, 0.1);
 }
 
 .itemRowButtons{
-  height: 75px;
+  height: auto;
+  padding: 20px;
 }
 
 .itemRowButtonsClock{
-  height: 75px;
+  height: auto;
+  padding: 20px;
 }
 
 .itemRowPlayers{
-  height: 150px;
-  padding-right:40px;
-  padding-left:40px;
-  margin-top: 40px; /* adjust to taste: 16–32px */
+  height: auto;
+  padding-right: 20px;
+  padding-left: 20px;
+  margin-top: 30px;
+  margin-bottom: 30px;
+  position: relative;
+  z-index: 1;
+  clear: both;
 }
 
 /* Fixed header row height */
+.table {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  margin-top: 20px;
+}
+
+.table thead {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+}
+
 .table thead tr {
   height: 50px;
 }
@@ -1602,6 +2147,33 @@ function shareTheWealth() {
 .table thead th {
   vertical-align: middle;
   height: 50px;
+  border: none !important;
+  color: #000 !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.3);
+  text-align: center !important;
+  font-family: 'Courier New', monospace !important;
+  font-size: 1.15em !important;
+}
+
+.table tbody td {
+  border-color: #e8e8e8 !important;
+  padding: 15px !important;
+  vertical-align: middle;
+  color: #333 !important;
+  font-weight: 500;
+  text-align: center !important;
+  font-size: 1.1em !important;
+}
+
+.table tbody tr {
+  transition: background-color 0.2s ease;
+}
+
+.table tbody tr:hover {
+  background-color: #f8f9fa !important;
 }
 
 .intselect {
@@ -1617,7 +2189,7 @@ ul {
   justify-content: center;
   align-items: center;
   gap: 12px; /* space between button groups */
-  margin-top: 16px;
+  margin-top: 8px;
   margin-bottom: 16px;
 }
 
@@ -1629,6 +2201,10 @@ ul {
 .dropdowns {
   flex-wrap: wrap;
   gap: 12px;
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
 }
 .dropdown-w {
   min-width: 240px;   /* existing size, unchanged */
@@ -1701,8 +2277,57 @@ ul {
   justify-content: center;
   gap: 16px;
   margin-bottom: 24px;
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
+  flex-wrap: wrap;
 }
-.market-btn { min-width: 200px; }
+.market-btn { 
+  min-width: 200px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  border: none !important;
+  color: white !important;
+  font-weight: 600 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3) !important;
+  transition: all 0.2s ease !important;
+  padding: 12px 20px !important;
+}
+
+.market-btn:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4) !important;
+}
+
+.senate-controls {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 24px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
+}
+.senate-btn { 
+  min-width: 200px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  border: none !important;
+  color: white !important;
+  font-weight: 600 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3) !important;
+  transition: all 0.2s ease !important;
+  padding: 12px 20px !important;
+}
+
+.senate-btn:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4) !important;
+}
 
 /* Icons next to usernames (slightly larger) */
 .gov-icon {
@@ -1770,6 +2395,8 @@ td > .gov-icon { transform: translateY(-1px); }
 /* center the values in the Bleed and Heat columns */
 .table td:nth-child(3) { text-align: center; }
 .table td:nth-child(4) { text-align: center; }
+.table td:nth-child(5) { text-align: center; }
+.table td:nth-child(6) { text-align: center; }
 
 /* Fixed row height for consistent sizing */
 .table tbody tr {
@@ -1806,6 +2433,64 @@ td > .gov-icon { transform: translateY(-1px); }
   min-width: 120px;
 }
 
+/* Approval and Vote badges */
+.approval-cell,
+.vote-cell {
+  text-align: center;
+}
+
+.approval-badge,
+.vote-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.85em;
+  font-weight: 600;
+  min-width: 60px;
+}
+
+.approval-empty,
+.vote-empty {
+  color: #999;
+  background: #f0f0f0;
+}
+
+.approval-approve {
+  background: #d4edda;
+  color: #155724;
+}
+
+.approval-disapprove {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.approval-abstain {
+  background: #e2e3e5;
+  color: #383d41;
+}
+
+.vote-yes {
+  background: #d4edda;
+  color: #155724;
+}
+
+.vote-no {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.vote-abstain {
+  background: #e2e3e5;
+  color: #383d41;
+}
+
+.table th:nth-child(4),
+.table td:nth-child(4) {
+  width: 120px;
+  min-width: 120px;
+}
+
 /* Perk icons inline with job titles */
 .perk-icon {
   height: 40px;
@@ -1822,12 +2507,6 @@ td > .gov-icon { transform: translateY(-1px); }
 /* optional: small spacing tweak */
 .bleed-btn-minus { margin-right: 2px; }
 .bleed-btn-plus  { margin-left: 2px; }
-
-.top-actions {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
 
 /* Space between the buttons */
 .top-actions-group { gap: 10px; } /* modern browsers */
@@ -1873,5 +2552,223 @@ td > .gov-icon { transform: translateY(-1px); }
   display: flex;
   justify-content: center;
   gap: 10px;
+}
+
+.bidding-tally {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tally-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+.participant-name {
+  font-weight: 500;
+}
+
+.tally-item .badge {
+  font-size: 0.8em;
+}
+
+.bid-time-display {
+  font-size: 2em;
+  font-weight: bold;
+  color: #007bff;
+  font-family: 'Courier New', monospace;
+}
+
+.bid-time-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.time-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.time-label {
+  font-weight: 600;
+  font-size: 0.9em;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.time-buttons {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.time-value {
+  font-size: 1.5em;
+  font-weight: bold;
+  font-family: 'Courier New', monospace;
+  min-width: 50px;
+  text-align: center;
+}
+
+.time-buttons .btn {
+  padding: 6px 12px;
+  font-weight: bold;
+}
+
+/* Dictator Bidding Modal Styles */
+.dictator-bid-container {
+  padding: 10px 0;
+}
+
+.bid-display-section {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  padding: 30px 20px;
+  text-align: center;
+  color: white;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.bid-instruction {
+  margin: 0;
+  font-size: 1.1em;
+  margin-bottom: 15px;
+  font-weight: 500;
+}
+
+.bid-time-big {
+  font-size: 4em;
+  font-weight: bold;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 8px;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.bid-buttons-section {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.bid-button-row {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.bid-btn {
+  flex: 1;
+  padding: 12px 8px;
+  font-weight: 600;
+  border-width: 2px;
+  transition: all 0.2s ease;
+}
+
+.bid-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.bid-btn:active {
+  transform: translateY(0);
+}
+
+.place-bid-btn {
+  padding: 16px;
+  font-size: 1.1em;
+  letter-spacing: 1px;
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+  transition: all 0.3s ease;
+}
+
+.place-bid-btn:hover {
+  box-shadow: 0 6px 20px rgba(0, 123, 255, 0.5);
+  transform: translateY(-2px);
+}
+
+.bidding-status-section {
+  background: #f0f4ff;
+  border-radius: 12px;
+  padding: 20px;
+  border-left: 4px solid #667eea;
+}
+
+.bidding-status-section h6 {
+  color: #495057;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 0.85em;
+}
+
+.admin-section {
+  padding-top: 20px;
+}
+
+.admin-section .btn {
+  padding: 14px;
+  font-size: 1.05em;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+  transition: all 0.3s ease;
+}
+
+.admin-section .btn:hover {
+  box-shadow: 0 6px 20px rgba(40, 167, 69, 0.5);
+  transform: translateY(-2px);
+}
+
+/* Graph Filter Styles */
+.graph-filters {
+  background: white;
+  border-radius: 10px;
+  padding: 15px;
+  border: 1px solid #e0e0e0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.graph-filters h6 {
+  margin: 0 0 12px 0;
+  color: #333;
+  font-weight: 600;
+  font-size: 0.95em;
+}
+
+.player-filter-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.player-filter-buttons .btn {
+  padding: 6px 12px;
+  font-size: 0.85em;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.player-filter-buttons .btn-primary {
+  box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
+}
+
+.player-filter-buttons .btn-outline-secondary {
+  color: #666;
+  border-color: #ccc;
+}
+
+.chart-controls-info {
+  background: #f8f9fa;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border-left: 3px solid #667eea;
 }
 </style>

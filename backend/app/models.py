@@ -61,6 +61,8 @@ class RoomParticipants(db.Model):
     bleed = db.Column(db.Integer, default=0)
     heat = db.Column(db.Integer, default=0)
     perk = db.Column(db.String(32), default=None)  # "Manager", "Senior", or "Executive"
+    approval_status = db.Column(db.String(32), default=None)  # "approve", "disapprove", "abstain", or None
+    gov_vote = db.Column(db.String(32), default=None)  # "yes", "no", "abstain", or None
     user = db.relationship("User")
 
 class Job(db.Model):
@@ -100,6 +102,12 @@ class ClockHistory(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     clock_value = db.Column(db.DateTime, nullable=False)  # Snapshot of clock at this moment
     timestamp = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)  # When snapshot was taken
+    bleed = db.Column(db.Integer, default=0)  # Bleed value at this moment
+    heat = db.Column(db.Integer, default=0)  # Heat value at this moment
+    job_name = db.Column(db.String(60), nullable=True)  # Job name at this moment
+    perk = db.Column(db.String(32), nullable=True)  # Perk at this moment
+    government_type = db.Column(db.String(60), nullable=True)  # Government type at this moment
+    government_role = db.Column(db.String(32), nullable=True)  # Government role at this moment
     user = db.relationship("User")
 
 

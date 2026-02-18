@@ -18,7 +18,7 @@
           <b-button variant="primary" size="lg" :disabled="isSpinning" @click="spinWheel" class="spin-button">{{ isSpinning ? 'Spinning...' : 'SPIN!' }}</b-button>
         </div>
         <div v-if="winner" class="winner-result mt-4">
-          <h3>🎉 Winner: <span class="winner-name">{{ winner }}</span> 🎉</h3>
+          <h3>🎉 Winner: <span class="winner-name">{{ winner.text || winner }}</span> 🎉</h3>
           <div v-if="showCustomActions" class="custom-actions mt-3">
             <slot name="winner-actions" :winner="winner"></slot>
           </div>
@@ -114,7 +114,11 @@ function spinWheel() {
   const targetRotation = baseRotation + (360 - winnerSliceMiddle)
   currentRotation.value = targetRotation
   setTimeout(() => {
-    winner.value = wheelItems.value[winnerIndex].text
+    // Store both the text (for display) and value (for lookup)
+    winner.value = {
+      text: wheelItems.value[winnerIndex].text,
+      value: wheelItems.value[winnerIndex].value
+    }
     isSpinning.value = false
   }, 5000)
 }

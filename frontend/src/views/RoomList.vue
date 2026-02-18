@@ -1,28 +1,41 @@
 <template>
   <div id="app">
     <BContainer class="bv-example-row">
-      <div v-if="username">
-        <BButton @click="showCreateRoomModal">Create Room</BButton>
+      <div v-if="username" class="create-room-btn-container">
+        <BButton @click="showCreateRoomModal">+ Create Room</BButton>
       </div>
-      <BRow>
-        <BCol>
-          <BTableSimple hover small caption-top responsive>
-            <BThead>
-              <BTr>
-                <BTh>Name</BTh>
-              </BTr>
-            </BThead>
-            <BTbody>
-              <BTr v-for="(room, index) in rooms" :key="index">
-                <BTd>
-                  <a href="#" @click.prevent="showJoinRoomModal(room.name, room.id)">{{ room.name }}</a>
-                  <BButton size="sm" class="ms-2" variant="primary" @click.prevent="quickJoin(room)">Join</BButton>
-                </BTd>
-              </BTr>
-            </BTbody>
-          </BTableSimple>
-        </BCol>
-      </BRow>
+      
+      <div v-if="!username" class="no-auth-message">
+        <p>Please log in to see available rooms.</p>
+      </div>
+      
+      <div v-else-if="rooms.length === 0" class="no-rooms-message">
+        <p>No rooms available. Create one to get started!</p>
+      </div>
+      
+      <div v-else class="rooms-list">
+        <div v-for="(room, index) in rooms" :key="index" class="room-card">
+          <div class="room-header">
+            <h3 class="room-name">{{ room.name }}</h3>
+          </div>
+          <div class="room-actions">
+            <BButton 
+              variant="primary" 
+              @click.prevent="showJoinRoomModal(room.name, room.id)"
+              class="room-btn-preview"
+            >
+              View Details
+            </BButton>
+            <BButton 
+              variant="success" 
+              @click.prevent="quickJoin(room)"
+              class="room-btn-join"
+            >
+              Join Game
+            </BButton>
+          </div>
+        </div>
+      </div>
     </BContainer>
 
     <!-- Create Room Modal -->
@@ -283,25 +296,169 @@ export default {
 </script>
 
 <style>
+#app {
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  min-height: 100vh;
+  padding: 5px 20px 30px 20px;
+}
+
+.bv-example-row {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
 .itemRow {
-  height: 118px;
+  height: auto;
   text-align: center;
+  margin-bottom: 30px;
 }
 
 .leaveButtons {
   padding-top: 50px;
 }
 
-tr {
-  font-size: 25px;
-  text-align: center;
-  vertical-align: middle;
+/* Create Room Button - Prominent Styling */
+.create-room-btn-container {
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: center;
 }
 
-.butt {
-  height: 45px;
+.create-room-btn-container button {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  border: none !important;
+  border-radius: 10px !important;
+  padding: 14px 32px !important;
+  font-weight: 700 !important;
+  font-size: 1.1em !important;
+  transition: all 0.3s ease !important;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4) !important;
+  color: white !important;
+  letter-spacing: 0.5px;
 }
-.bv-example-row {
-  padding-left: 120px;
+
+.create-room-btn-container button:hover {
+  transform: translateY(-3px) !important;
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6) !important;
+}
+
+.create-room-btn-container button:active {
+  transform: translateY(-1px) !important;
+}
+
+/* Empty state messages */
+.no-auth-message,
+.no-rooms-message {
+  background: white;
+  border-radius: 12px;
+  padding: 60px 40px;
+  text-align: center;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  margin-top: 40px;
+}
+
+.no-auth-message p,
+.no-rooms-message p {
+  color: #999;
+  font-size: 1.1em;
+  margin: 0;
+}
+
+/* Rooms List Layout - Full Width Rows */
+.rooms-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+/* Room Card Styling - Full Width Row */
+.room-card {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: row;
+  height: auto;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  align-items: center;
+}
+
+.room-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+  background: white;
+}
+
+.room-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 70px;
+  min-width: 180px;
+  flex-shrink: 0;
+}
+
+.room-name {
+  margin: 0;
+  font-size: 1.1em;
+  font-weight: 700;
+  text-align: center;
+  word-break: break-word;
+}
+
+.room-actions {
+  padding: 12px 20px;
+  display: flex;
+  gap: 10px;
+  flex-direction: row;
+  flex-grow: 1;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.room-btn-preview,
+.room-btn-join {
+  flex: 0 0 auto;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 10px 20px !important;
+  transition: all 0.2s ease;
+  border: none !important;
+  font-size: 0.95em;
+}
+
+.room-btn-preview {
+  background: #667eea !important;
+  color: white !important;
+}
+
+.room-btn-preview:hover {
+  background: #764ba2 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4) !important;
+}
+
+.room-btn-join {
+  background: #28a745 !important;
+  color: white !important;
+}
+
+.room-btn-join:hover {
+  background: #20c997 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4) !important;
+}
+
+/* Responsive Grid */
+@media (max-width: 768px) {
+  .rooms-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
