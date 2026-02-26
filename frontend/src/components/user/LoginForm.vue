@@ -67,39 +67,50 @@ export default {
 </script>
 <style scoped>
 .form-container {
-  background: white;
+  background: #0f1535;
   border-radius: 12px;
   padding: 30px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 0 20px rgba(0, 255, 65, 0.2), inset 0 0 15px rgba(0, 255, 65, 0.05);
+  border: 1px solid rgba(0, 255, 65, 0.2);
 }
 
 .form-input {
   border-radius: 8px;
-  border: 2px solid #e8e8e8;
+  border: 2px solid rgba(0, 255, 65, 0.3);
   padding: 10px 12px;
   transition: all 0.3s ease;
+  background: #0a0e27;
+  color: #00ff41;
+}
+
+.form-input::placeholder {
+  color: rgba(0, 255, 65, 0.5);
 }
 
 .form-input:focus {
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  border-color: #00ff41;
+  box-shadow: 0 0 15px rgba(0, 255, 65, 0.3), inset 0 0 10px rgba(0, 255, 65, 0.05);
+  background: #0a0e27;
+  color: #00ff41;
 }
 
 .submit-btn {
   width: 100%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border: none;
+  background: #0f1535;
+  border: 2px solid #00ff41;
   border-radius: 8px;
   padding: 12px 24px;
   font-weight: 600;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 0 15px rgba(0, 255, 65, 0.3);
   margin-top: 10px;
+  color: #00ff41;
 }
 
 .submit-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+  box-shadow: 0 0 30px rgba(0, 255, 65, 0.6);
+  text-shadow: 0 0 8px rgba(0, 255, 65, 0.6);
 }
 
 .submit-btn:active:not(:disabled) {
@@ -110,5 +121,6 @@ export default {
   display: block;
   margin-bottom: 10px;
   font-weight: 500;
+  color: #ff4444;
 }
 </style>

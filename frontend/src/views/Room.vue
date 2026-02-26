@@ -14,13 +14,12 @@
       </b-row>
       <b-row class="itemRow">
         <b-col>
-          <h1>Clock</h1>
           <!-- FIX: correct component tag -->
           <ClickToEdit id="clock" :value="clock" action="updateClock" />
         </b-col>
       </b-row>
-      <b-row>
-        <b-col>
+      <b-row class="justify-content-center">
+        <b-col cols="12">
           <div class="clock-controls">
             <b-button-group class="mx-1">
               <b-button class="addremovebuttonClock" @click="uClock(-60)">-1h</b-button>
@@ -36,119 +35,114 @@
             </b-button-group>
           </div>
         </b-col>
-        <b-col></b-col>
       </b-row>
 
-      <!-- The Senate Section (above the table) -->
-      <b-row class="mt-4">
+      <!-- Get Paid Button Section -->
+      <b-row class="mt-3 mb-3">
         <b-col>
           <div class="center-row">
-            <h3>The Senate</h3>
-          </div>
-          <div class="senate-controls mt-2">
-            <b-button class="senate-btn" variant="info" @click="setApprovalStatus">Set Approval Status</b-button>
-            <b-button class="senate-btn" variant="warning" @click="partakeGovVote">Partake in Government Vote</b-button>
-            <b-button class="senate-btn" variant="secondary" @click="showVoteColumn = !showVoteColumn">{{ showVoteColumn ? 'Hide' : 'Show' }} Senate Tabs</b-button>
+            <b-button
+              class="btn-get-paid"
+              variant="warning"
+              :disabled="isPaying"
+              @click="getPaid"
+              title="Request pay based on your current job"
+            >
+              {{ isPaying ? 'Getting Paid…' : 'Get Paid' }}
+            </b-button>
           </div>
         </b-col>
       </b-row>
 
-      <!-- Centered dropdowns for Government and Job -->
-      <b-row class="mt-3 mb-4">  <!-- add bottom margin under the dropdowns -->
+      <!-- Senate Controls and Government Selection -->
+      <b-row class="mt-2 mb-2 align-items-center">
         <b-col>
-          <div class="center-row dropdowns">
+          <div class="govt-row dropdowns">
             <div class="control-group">
-              <label for="govSelect" class="mr-2">Government:</label>
-              <select
-                id="govSelect"
-                v-model="selectedGovernmentId"
-                class="dropdown-w form-control"
-                :disabled="!isAdmin"
-                @change="onGovernmentChange"
-              >
-                <option :value="null">Select a government</option>
-                <option v-for="g in displayGovernments" :key="g.id" :value="g.id">
-                  {{ g.name }}
-                </option>
-              </select>
-            </div>
-
-            <div class="job-controls">
-              <label for="jobSelect" class="mr-2">Job:</label>
-              <select
-                id="jobSelect"
-                v-model="selectedJobId"
-                class="dropdown-w form-control"
-              >
-                <option :value="null">Select a job</option>
-                <option v-for="j in jobs" :key="j.id" :value="j.id">
-                  {{ j.tier ? `${j.name} (Tier ${j.tier})` : j.name }}
-                </option>
-              </select>
-              <b-button
-                class="btn-paid"
-                variant="warning"
-                :disabled="isPaying"
-                @click="getPaid"
-                title="Request pay based on your current job"
-              >
-                {{ isPaying ? 'Getting Paid…' : 'Get Paid' }}
-              </b-button>
-            </div>
-
-            <div class="perk-controls">
-              <span class="perk-label">Perk:</span>
-              <button 
-                class="perk-btn" 
-                :class="{ active: selectedPerk === null }"
-                @click="selectedPerk = null"
-                type="button"
-              >
-                None
-              </button>
-              <button 
-                class="perk-btn" 
-                :class="{ active: selectedPerk === 'Manager' }"
-                @click="selectedPerk = 'Manager'"
-                type="button"
-                title="Manager (+10 mins)"
-              >
-                <img src="/manager.png" alt="M" class="perk-btn-icon" />
-              </button>
-              <button 
-                class="perk-btn" 
-                :class="{ active: selectedPerk === 'Senior' }"
-                @click="selectedPerk = 'Senior'"
-                type="button"
-                title="Senior (+20 mins)"
-              >
-                <img src="/senior.png" alt="S" class="perk-btn-icon" />
-              </button>
-              <button 
-                class="perk-btn" 
-                :class="{ active: selectedPerk === 'Executive' }"
-                @click="selectedPerk = 'Executive'"
-                type="button"
-                title="Executive (+30 mins)"
-              >
-                <img src="/executive.png" alt="E" class="perk-btn-icon" />
-              </button>
+              <span v-if="!isAdmin" class="govt-label">Government: <strong>{{ currentGovernmentName }}</strong></span>
+              <div v-else class="govt-dropdown-wrapper">
+                <label for="govSelect" class="mr-2">Government:</label>
+                <div class="govt-select-box">
+                  <select
+                    id="govSelect"
+                    v-model="selectedGovernmentId"
+                    class="dropdown-w form-control"
+                    @change="onGovernmentChange"
+                  >
+                    <option :value="null">Select a government</option>
+                    <option v-for="g in displayGovernments" :key="g.id" :value="g.id">
+                      {{ g.name }}
+                    </option>
+                  </select>
+                  <span class="govt-arrow">▼</span>
+                </div>
+              </div>
             </div>
           </div>
         </b-col>
       </b-row>
 
       <!-- Participants table -->
-      <b-row class="itemRowPlayers mt-4"> <!-- add top margin above the table -->
-        <b-col></b-col>
-        <b-col cols="4">
-          <table class="table table-sm table-bordered" style="width:100%">
+      <div style="display: flex; justify-content: center; width: 100%; margin-top: 30px; margin-bottom: 30px;">
+        <div style="width: 95%; max-width: 1400px;">
+        <table class="table table-sm table-bordered" style="width:100%">
             <thead>
               <tr>
-                <th>Username</th>
-                <th>Job Title</th>
-                <th v-if="showVoteColumn">Approval</th>
-                <th v-if="showVoteColumn">Vote</th>
+                <th class="username-header">Username</th>
+                <th class="job-title-header">
+                  <select
+                    id="jobSelect"
+                    v-model="selectedJobId"
+                    class="job-header-select"
+                  >
+                    <option :value="null">Select a job</option>
+                    <option v-for="j in jobs" :key="j.id" :value="j.id">
+                      {{ j.tier ? `${j.name} (Tier ${j.tier})` : j.name }}
+                    </option>
+                  </select>
+                  <span class="job-title-text">Job Title <span class="job-title-arrow">▼</span></span>
+                </th>
+                <th class="perk-title-header">
+                  <select
+                    id="perkSelect"
+                    v-model="selectedPerk"
+                    class="perk-header-select"
+                  >
+                    <option :value="null">None</option>
+                    <option value="Manager">Manager</option>
+                    <option value="Senior">Senior</option>
+                    <option value="Executive">Executive</option>
+                  </select>
+                  <span class="perk-title-text">Perk <span class="perk-title-arrow">▼</span></span>
+                </th>
+                <th class="approval-title-header">
+                  <select
+                    id="approvalHeaderSelect"
+                    v-model="selectedHeaderApproval"
+                    @change="onHeaderApprovalChange"
+                    class="approval-header-select"
+                  >
+                    <option :value="null">Select status</option>
+                    <option value="approve">Approve</option>
+                    <option value="disapprove">Disapprove</option>
+                    <option value="abstain">Abstain</option>
+                  </select>
+                  <span class="approval-title-text">Approval <span class="approval-title-arrow">▼</span></span>
+                </th>
+                <th class="vote-title-header">
+                  <select
+                    id="voteHeaderSelect"
+                    v-model="selectedHeaderVote"
+                    @change="onHeaderVoteChange"
+                    class="vote-header-select"
+                  >
+                    <option :value="null">Select vote</option>
+                    <option value="yes">Yes</option>
+                    <option value="no">No</option>
+                    <option value="abstain">Abstain</option>
+                  </select>
+                  <span class="vote-title-text">Vote <span class="vote-title-arrow">▼</span></span>
+                </th>
                 <th class="bleed-header">
                   <!-- wrap in a flex container for perfect centering -->
                   <div class="bleed-header-inner">
@@ -203,6 +197,8 @@
                 </td>
                 <td>
                   {{ p.job_name }}
+                </td>
+                <td class="perk-column">
                   <img
                     v-if="perkIconForParticipant(p)"
                     :src="perkIconForParticipant(p)"
@@ -210,12 +206,12 @@
                     :alt="p.perk"
                   />
                 </td>
-                <td v-if="showVoteColumn" class="approval-cell">
+                <td class="approval-cell">
                   <span v-if="p.approval_status && p.user_id === currentUserId" @click="clearApprovalStatus" class="approval-badge" :class="'approval-' + p.approval_status" style="cursor: pointer;">{{ p.approval_status }}</span>
                   <span v-else-if="p.approval_status" class="approval-badge" :class="'approval-' + p.approval_status">{{ p.approval_status }}</span>
                   <span v-else class="approval-badge approval-empty">—</span>
                 </td>
-                <td v-if="showVoteColumn" class="vote-cell">
+                <td class="vote-cell">
                   <span v-if="p.gov_vote && p.user_id === currentUserId" @click="clearGovVote" class="vote-badge" :class="'vote-' + p.gov_vote" style="cursor: pointer;">{{ p.gov_vote }}</span>
                   <span v-else-if="p.gov_vote" class="vote-badge" :class="'vote-' + p.gov_vote">{{ p.gov_vote }}</span>
                   <span v-else class="vote-badge vote-empty">—</span>
@@ -224,13 +220,12 @@
                 <td>{{ p.heat }}</td>
               </tr>
               <tr v-if="!activePlayers.length">
-                <td colspan="6" class="text-center">No participants yet</td>
+                <td colspan="7" class="text-center">No participants yet</td>
               </tr>
             </tbody>
           </table>
-        </b-col>
-        <b-col></b-col>
-      </b-row>
+        </div>
+      </div>
 
       <!-- Dropped Players table -->
       <b-row v-if="droppedPlayers.length > 0" class="itemRowPlayers mt-3">
@@ -403,7 +398,9 @@
           <p class="lead">To the highest bidder:</p>
           <h2 class="text-success mb-4">{{ dictatorWinner }}</h2>
           <p class="text-muted">The winner has been crowned Dictator!</p>
-          <b-button variant="primary" @click="dictatorBiddingWinnerModal?.hide()" class="w-100">OK</b-button>
+          <div class="mt-4 d-flex justify-content-end">
+            <b-button variant="primary" size="sm" @click="dictatorBiddingWinnerModal?.hide()">OK</b-button>
+          </div>
         </div>
       </b-modal>
 
@@ -673,8 +670,16 @@ const activePlayers = computed(() => {
     const isDead = String(p.clock).trim() === '00•00•00'
     return !isDead
   })
-  console.log('[activePlayers] Filtered:', active.length, 'active from', participants.value.length, 'total')
-  return active
+  
+  // Sort so current user is always at the top
+  const sorted = active.sort((a, b) => {
+    if (a.user_id === currentUserId.value) return -1
+    if (b.user_id === currentUserId.value) return 1
+    return 0
+  })
+  
+  console.log('[activePlayers] Filtered:', sorted.length, 'active from', participants.value.length, 'total')
+  return sorted
 })
 const droppedPlayers = computed(() => {
   const dropped = participants.value.filter(p => {
@@ -683,8 +688,16 @@ const droppedPlayers = computed(() => {
     const isDead = String(p.clock).trim() === '00•00•00'
     return isDead
   })
-  console.log('[droppedPlayers] Filtered:', dropped.length, 'dropped players')
-  return dropped
+  
+  // Sort so current user is always at the top
+  const sorted = dropped.sort((a, b) => {
+    if (a.user_id === currentUserId.value) return -1
+    if (b.user_id === currentUserId.value) return 1
+    return 0
+  })
+  
+  console.log('[droppedPlayers] Filtered:', sorted.length, 'dropped players')
+  return sorted
 })
 
 // FIX: add missing refs
@@ -692,6 +705,8 @@ const roomGovernment = ref(null)
 const selectedGovernmentId = ref(null)
 const selectedJobId = ref(null)
 const selectedPerk = ref(null)
+const selectedHeaderApproval = ref(null)
+const selectedHeaderVote = ref(null)
 
 // NEW: track room owner/creator
 const roomOwnerId = ref(null)
@@ -776,7 +791,7 @@ const approvalStatusModal = ref(null)
 const govVoteModal = ref(null)
 const isLeaving = ref(false)
 const isRemoving = ref(false)
-const showVoteColumn = ref(false)
+const showVoteColumn = ref(true)
 const selectedApprovalOption = ref(null)
 const selectedVoteOption = ref(null)
 
@@ -984,7 +999,7 @@ socket.on('room_state', (payload) => {
   participants.value = Array.isArray(room?.participants) ? room.participants.map(p => ({
     user_id: p.user_id,
     username: p.username ?? 'Unknown',
-    job_name: p.job_name ?? '-',
+    job_name: p.job_name ?? 'Unemployed',
     job_tier: p.job_tier ?? '-',
     clock: p.clock ?? '00•00•00',
     bleed: p.bleed ?? 0,
@@ -1004,10 +1019,11 @@ socket.on('room_state', (payload) => {
   const syncId = findGovernmentIdByName(roomGovernment.value?.type)
   if (syncId !== undefined) selectedGovernmentId.value = syncId
 
-  // Sync current user's perk
+  // Sync current user's perk and clock
   const currentUser = participants.value.find(p => p.user_id === currentUserId.value)
   if (currentUser) {
     selectedPerk.value = currentUser.perk
+    clock.value = currentUser.clock // Update the main clock display
   }
 
   console.debug('[room_state] owner:', room?.owner_id || room?.created_by, 'government:', room?.government)
@@ -1058,7 +1074,11 @@ socket.on('dictatorWinner', (data) => {
   biddingActive.value = false
   dictatorWinner.value = data.winner_name
   dictatorBiddingModal.value && dictatorBiddingModal.value.hide()
-  dictatorBiddingWinnerModal.value && dictatorBiddingWinnerModal.value.show()
+  
+  // Add a small delay to ensure room_state is processed before showing winner modal
+  setTimeout(() => {
+    dictatorBiddingWinnerModal.value && dictatorBiddingWinnerModal.value.show()
+  }, 100)
 })
 
 onMounted(async () => {
@@ -1420,6 +1440,11 @@ const isAdmin = computed(() => {
   // return currentUserId.value === roomOwnerId.value || currentUserId.value === 1
 })
 
+const currentGovernmentName = computed(() => {
+  const govt = displayGovernments.value?.find(g => g.id === selectedGovernmentId.value)
+  return govt?.name || 'Unknown'
+})
+
 const isCommunist = computed(() => {
   const govType = roomGovernment.value?.type
   return govType && String(govType).toLowerCase() === 'communism'
@@ -1479,6 +1504,30 @@ function clearGovVote() {
     participant.gov_vote = null
   }
   socket.emit('partakeGovVote', JSON.stringify({ choice: null }))
+}
+
+function onHeaderApprovalChange() {
+  if (selectedHeaderApproval.value) {
+    console.log('Setting approval status from header:', selectedHeaderApproval.value)
+    socket.emit('setApprovalStatus', JSON.stringify({ status: selectedHeaderApproval.value }))
+    const participant = participants.value.find(p => p.user_id === currentUserId.value)
+    if (participant) {
+      participant.approval_status = selectedHeaderApproval.value
+    }
+    selectedHeaderApproval.value = null
+  }
+}
+
+function onHeaderVoteChange() {
+  if (selectedHeaderVote.value) {
+    console.log('Setting vote from header:', selectedHeaderVote.value)
+    socket.emit('partakeGovVote', JSON.stringify({ choice: selectedHeaderVote.value }))
+    const participant = participants.value.find(p => p.user_id === currentUserId.value)
+    if (participant) {
+      participant.gov_vote = selectedHeaderVote.value
+    }
+    selectedHeaderVote.value = null
+  }
 }
 
 // ADD: Get Paid handler -> emits "balanceChange"
@@ -1607,6 +1656,16 @@ function placeDictatorBid() {
 
 function concludeDictatorBidding() {
   if (!isAdmin.value) return
+  
+  // Check if all participants have bid
+  const allBiddersCount = Object.values(biddingTally.value).filter(v => v === true).length
+  const totalParticipants = participants.value.length
+  
+  if (allBiddersCount !== totalParticipants) {
+    alert('All members must bid before concluding the bidding process')
+    return
+  }
+  
   console.log('[concludeDictatorBidding] Concluding bidding')
   socket.emit('concludeDictatorBidding', JSON.stringify({}))
 }
@@ -1968,8 +2027,15 @@ function shareTheWealth() {
 
 <style>
 #app {
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-  padding: 5px 20px 30px 20px;
+  background: #0a0e27;
+  padding: 0;
+}
+
+.bv-example-row {
+  width: 100% !important;
+  max-width: 100% !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
 }
 
 /* Remove nested box styling */
@@ -1991,38 +2057,45 @@ function shareTheWealth() {
 }
 
 .top-actions-group .butt {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-  border: none !important;
-  color: white !important;
+  background: #0f1535 !important;
+  border: 2px solid #00dd33 !important;
+  color: #00dd33 !important;
   font-weight: 600 !important;
   border-radius: 8px !important;
-  padding: 12px 20px !important;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3) !important;
+  padding: 8px 15px !important;
+  box-shadow: 0 0 10px rgba(0, 221, 51, 0.3) !important;
   transition: all 0.2s ease !important;
   height: auto !important;
 }
 
 .top-actions-group .butt:hover {
   transform: translateY(-2px) !important;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4) !important;
+  box-shadow: 0 0 20px rgba(0, 221, 51, 0.6) !important;
+  text-shadow: 0 0 8px rgba(0, 221, 51, 0.6) !important;
 }
 
 .top-actions-group .butt[variant="danger"] {
-  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%) !important;
-  box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3) !important;
+  background: #0f1535 !important;
+  border: 2px solid #ff4444 !important;
+  color: #ff4444 !important;
+  box-shadow: 0 0 10px rgba(255, 68, 68, 0.3) !important;
 }
 
 .top-actions-group .butt[variant="danger"]:hover {
-  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4) !important;
+  box-shadow: 0 0 20px rgba(255, 68, 68, 0.6) !important;
+  text-shadow: 0 0 8px rgba(255, 68, 68, 0.6) !important;
 }
 
 .top-actions-group .butt[variant="info"] {
-  background: linear-gradient(135deg, #17a2b8 0%, #138496 100%) !important;
-  box-shadow: 0 2px 8px rgba(23, 162, 184, 0.3) !important;
+  background: #0f1535 !important;
+  border: 2px solid #00ccff !important;
+  color: #00ccff !important;
+  box-shadow: 0 0 10px rgba(0, 204, 255, 0.3) !important;
 }
 
 .top-actions-group .butt[variant="info"]:hover {
-  box-shadow: 0 4px 12px rgba(23, 162, 184, 0.4) !important;
+  box-shadow: 0 0 20px rgba(0, 204, 255, 0.6) !important;
+  text-shadow: 0 0 8px rgba(0, 204, 255, 0.6) !important;
 }
 
 .dropped-table {
@@ -2031,7 +2104,8 @@ function shareTheWealth() {
 
 .dropped-row {
   text-decoration: line-through;
-  background-color: #f8f9fa !important;
+  background-color: rgba(0, 221, 51, 0.05) !important;
+  color: #888 !important;
 }
 
 .emptyButton{
@@ -2053,19 +2127,20 @@ function shareTheWealth() {
   height: 45px;
   text-align: center;
   margin-right: 0;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-  border: none !important;
-  color: white !important;
+  background: #0f1535 !important;
+  border: 2px solid #00dd33 !important;
+  color: #00dd33 !important;
   font-weight: 700 !important;
   border-radius: 8px !important;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3) !important;
+  box-shadow: 0 0 10px rgba(0, 221, 51, 0.3) !important;
   transition: all 0.2s ease !important;
   font-size: 1.05em !important;
 }
 
 .addremovebuttonClock:hover {
   transform: translateY(-2px) !important;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4) !important;
+  box-shadow: 0 0 20px rgba(0, 221, 51, 0.6) !important;
+  text-shadow: 0 0 8px rgba(0, 221, 51, 0.6) !important;
 }
 
 .addremovebuttonClock:active {
@@ -2075,7 +2150,7 @@ function shareTheWealth() {
 .itemRow{
   height: auto;
   text-align: center;
-  padding: 30px 10px;
+  padding: 15px 10px;
   margin-bottom: 3px;
   background: transparent;
   border-radius: 0;
@@ -2083,10 +2158,12 @@ function shareTheWealth() {
 }
 
 .itemRow h1 {
-  color: #333;
+  color: #00dd33;
   font-size: 2em;
   font-weight: 700;
   margin-bottom: 20px;
+  text-shadow: 0 0 10px rgba(0, 221, 51, 0.4);
+  font-family: 'Barlow Condensed';
 }
 
 /* Clock styling with arm background effect */
@@ -2094,13 +2171,13 @@ function shareTheWealth() {
   font-size: 4em;
   font-weight: bold;
   color: #00ff00;
-  font-family: 'Courier New', monospace;
+  font-family: 'Barlow Condensed', monospace;
   text-shadow: 0 0 10px rgba(0, 255, 0, 0.5),
                0 0 20px rgba(0, 255, 0, 0.3);
   background: radial-gradient(ellipse at center, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.9) 100%);
   border: 3px solid #000;
   border-radius: 15px;
-  padding: 30px 50px;
+  padding: 26px 44px;
   display: inline-block;
   letter-spacing: 8px;
   box-shadow: 0 0 30px rgba(0, 0, 0, 0.5), inset 0 0 30px rgba(0, 255, 0, 0.1);
@@ -2118,8 +2195,8 @@ function shareTheWealth() {
 
 .itemRowPlayers{
   height: auto;
-  padding-right: 20px;
-  padding-left: 20px;
+  padding-right: 0;
+  padding-left: 0;
   margin-top: 30px;
   margin-bottom: 30px;
   position: relative;
@@ -2129,51 +2206,85 @@ function shareTheWealth() {
 
 /* Fixed header row height */
 .table {
-  background: white;
+  background: #0f1535 !important;
+  border: 1px solid rgba(0, 221, 51, 0.3) !important;
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 0 20px rgba(0, 221, 51, 0.3), inset 0 0 15px rgba(0, 221, 51, 0.08) !important;
   margin-top: 20px;
+  table-layout: fixed;
+  width: 100%;
 }
 
 .table thead {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  background: #0a0e27 !important;
+  border-bottom: 2px solid rgba(0, 221, 51, 0.4) !important;
 }
 
 .table thead tr {
   height: 50px;
+  background: #0a0e27 !important;
+  overflow: hidden;
+  max-height: 50px;
 }
 
 .table thead th {
   vertical-align: middle;
   height: 50px;
-  border: none !important;
-  color: #000 !important;
+  border: 1px solid rgba(0, 221, 51, 0.2) !important;
+  color: #00dd33 !important;
   font-weight: 700 !important;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.3);
+  text-shadow: 0 0 10px rgba(0, 221, 51, 0.5);
   text-align: center !important;
-  font-family: 'Courier New', monospace !important;
+  font-family: 'Barlow Condensed' !important;
   font-size: 1.15em !important;
+  background: #0a0e27 !important;
+  padding: 4px 13px !important;
+  line-height: 20px;
+  overflow: hidden;
+  max-height: 50px;
+}
+
+.username-header {
+  box-shadow: 0 0 25px rgba(255, 204, 0, 0.6), inset 0 0 10px rgba(255, 204, 0, 0.2) !important;
+}
+
+.table tbody {
+  background: #0f1535 !important;
 }
 
 .table tbody td {
-  border-color: #e8e8e8 !important;
+  border-color: rgba(0, 221, 51, 0.15) !important;
   padding: 15px !important;
   vertical-align: middle;
-  color: #333 !important;
+  color: #00dd33 !important;
   font-weight: 500;
   text-align: center !important;
   font-size: 1.1em !important;
+  background: #0f1535 !important;
+  height: 60px !important;
+  min-height: 60px !important;
+  max-height: 60px !important;
+  overflow: hidden !important;
+}
+
+.table tbody td:first-child {
+  text-shadow: 0 0 10px rgba(0, 221, 51, 0.5), 0 0 20px rgba(255, 204, 0, 0.8), 0 0 30px rgba(255, 204, 0, 0.5);
 }
 
 .table tbody tr {
   transition: background-color 0.2s ease;
+  background: #0f1535 !important;
+  height: 60px !important;
+  min-height: 60px !important;
+  max-height: 60px !important;
+  overflow: hidden !important;
 }
 
 .table tbody tr:hover {
-  background-color: #f8f9fa !important;
+  background-color: rgba(0, 221, 51, 0.1) !important;
 }
 
 .intselect {
@@ -2191,13 +2302,31 @@ ul {
   gap: 12px; /* space between button groups */
   margin-top: 8px;
   margin-bottom: 16px;
+  margin-left: 15px;
 }
 
 .center-row {
   display: flex;
   justify-content: center;
   align-items: center;
+  width: 100%;
 }
+
+.govt-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+.center-row h3 {
+  color: #00dd33;
+  font-weight: 700;
+  text-shadow: 0 0 15px rgba(0, 221, 51, 0.5);
+  font-size: 1.5em;
+  margin: 0;
+}
+
 .dropdowns {
   flex-wrap: wrap;
   gap: 12px;
@@ -2219,20 +2348,108 @@ ul {
   gap: 8px;
 }
 
-.control-group { margin-right: 12px; }
-.job-controls { margin-right: 12px; }
+.control-group { }
+.job-controls { margin-right: 0px; }
+
+.govt-label {
+  color: #00dd33 !important;
+  font-weight: 700 !important;
+  text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 10px rgba(0, 221, 51, 0.5), 0 0 20px rgba(255, 0, 0, 0.8), 0 0 30px rgba(255, 0, 0, 0.5);
+  font-family: 'Barlow Condensed' !important;
+  font-size: 1.9em !important;
+  padding: 13px 18px !important;
+  display: inline-block !important;
+  letter-spacing: 1px !important;
+  text-transform: uppercase;
+}
+
+.govt-dropdown-wrapper {
+  margin-left: 85px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+}
+
+.govt-dropdown-wrapper label {
+  color: #00dd33 !important;
+  font-weight: 700 !important;
+  font-size: 1.8em !important;
+  margin: 0 !important;
+  text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 10px rgba(0, 221, 51, 0.5), 0 0 20px rgba(255, 0, 0, 0.8), 0 0 30px rgba(255, 0, 0, 0.5);
+  font-family: 'Barlow Condensed' !important;
+  letter-spacing: 1px !important;
+  text-transform: uppercase;
+}
+
+.govt-dropdown-wrapper select {
+  font-size: 1.5em !important;
+  font-weight: 700 !important;
+  padding: 0 !important;
+  color: #00dd33 !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  font-family: 'Barlow Condensed' !important;
+  cursor: pointer !important;
+  width: auto !important;
+  margin: 0 !important;
+}
+
+.govt-select-box {
+  display: inline-block;
+  position: relative;
+}
+
+.govt-select-box select {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  padding: 0 !important;
+  margin-left: 10px !important;
+  background: transparent !important;
+  border: none !important;
+  font-size: 1.8em !important;
+  font-weight: 700 !important;
+  color: #00dd33 !important;
+  font-family: 'Barlow Condensed' !important;
+  cursor: pointer !important;
+  width: auto !important;
+  height: auto !important;
+  line-height: 1.2 !important;
+  vertical-align: middle !important;
+  text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 10px rgba(0, 221, 51, 0.5), 0 0 20px rgba(255, 0, 0, 0.8), 0 0 30px rgba(255, 0, 0, 0.5);
+  text-transform: uppercase !important;
+}
+
+.govt-select-box .govt-arrow {
+  position: absolute;
+  right: 90px;
+  top: 11px;
+  pointer-events: none;
+  font-size: 1.1em;
+  color: #00dd33 !important;
+  margin: 0 !important;
+  line-height: 1.2;
+}
+
+.govt-dropdown-wrapper select option {
+  background-color: #001535 !important;
+  color: #00dd33 !important;
+  font-weight: 700 !important;
+}
 
 .perk-label {
-  font-weight: 500;
+  font-weight: 600;
   font-size: 14px;
   margin: 0;
   line-height: 38px;
+  color: #00dd33;
 }
 
 .perk-btn {
   padding: 8px 12px;
-  border: 2px solid #ddd;
-  background: white;
+  border: 2px solid rgba(0, 221, 51, 0.3);
+  background: #0f1535;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -2242,22 +2459,24 @@ ul {
   align-items: center;
   justify-content: center;
   gap: 4px;
-  color: #555;
+  color: #00dd33;
   height: 38px;
   min-width: 38px;
 }
 
 .perk-btn:hover {
-  border-color: #999;
-  background: #f8f9fa;
+  border-color: #00dd33;
+  background: rgba(0, 221, 51, 0.1);
   transform: translateY(-1px);
+  box-shadow: 0 0 10px rgba(0, 221, 51, 0.3);
 }
 
 .perk-btn.active {
-  border-color: #007bff;
-  background: #007bff;
-  color: white;
+  border-color: #00dd33;
+  background: rgba(0, 221, 51, 0.2);
+  color: #00dd33;
   font-weight: 600;
+  box-shadow: 0 0 15px rgba(0, 221, 51, 0.4);
 }
 
 .perk-btn-icon {
@@ -2285,19 +2504,20 @@ ul {
 }
 .market-btn { 
   min-width: 200px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-  border: none !important;
-  color: white !important;
+  background: #0f1535 !important;
+  border: 2px solid #00dd33 !important;
+  color: #00dd33 !important;
   font-weight: 600 !important;
   border-radius: 8px !important;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3) !important;
+  box-shadow: 0 0 10px rgba(0, 221, 51, 0.3) !important;
   transition: all 0.2s ease !important;
   padding: 12px 20px !important;
 }
 
 .market-btn:hover {
   transform: translateY(-2px) !important;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4) !important;
+  box-shadow: 0 0 20px rgba(0, 221, 51, 0.6) !important;
+  text-shadow: 0 0 8px rgba(0, 221, 51, 0.6) !important;
 }
 
 .senate-controls {
@@ -2312,21 +2532,55 @@ ul {
   padding: 0;
   box-shadow: none;
 }
+
+.senate-controls-inline {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
+}
 .senate-btn { 
-  min-width: 200px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-  border: none !important;
-  color: white !important;
+  min-width: auto;
+  background: #0f1535 !important;
+  border: 2px solid #00dd33 !important;
+  color: #00dd33 !important;
   font-weight: 600 !important;
   border-radius: 8px !important;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3) !important;
-  transition: all 0.2s ease !important;
-  padding: 12px 20px !important;
+  box-shadow: 0 0 15px rgba(0, 221, 51, 0.4) !important;
+  transition: all 0.3s ease !important;
+  padding: 10px 16px !important;
+  font-size: 0.95em !important;
 }
 
 .senate-btn:hover {
   transform: translateY(-2px) !important;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4) !important;
+  box-shadow: 0 0 25px rgba(0, 221, 51, 0.7) !important;
+  text-shadow: 0 0 10px rgba(0, 221, 51, 0.7) !important;
+}
+
+/* Special glow for the Show/Hide Senate Tabs button */
+.senate-controls .senate-btn:nth-child(3) {
+  box-shadow: 0 0 20px rgba(0, 221, 51, 0.5), 0 0 40px rgba(0, 221, 51, 0.3) !important;
+  animation: senateBtnGlow 2s ease-in-out infinite;
+}
+
+.senate-controls .senate-btn:nth-child(3):hover {
+  box-shadow: 0 0 30px rgba(0, 221, 51, 0.8), 0 0 60px rgba(0, 221, 51, 0.5) !important;
+  animation: none;
+}
+
+@keyframes senateBtnGlow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(0, 221, 51, 0.5), 0 0 40px rgba(0, 221, 51, 0.3) !important;
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(0, 221, 51, 0.7), 0 0 50px rgba(0, 221, 51, 0.4) !important;
+  }
 }
 
 /* Icons next to usernames (slightly larger) */
@@ -2358,6 +2612,8 @@ td > .gov-icon { transform: translateY(-1px); }
 .heat-header {
   text-align: center;
   vertical-align: middle;
+  overflow: visible !important;
+  max-height: none !important;
 }
 .bleed-header-inner,
 .heat-header-inner {
@@ -2369,7 +2625,9 @@ td > .gov-icon { transform: translateY(-1px); }
 
 .bleed-label,
 .heat-label {
-  font-weight: 700;
+  font-weight: 700 !important;
+  font-size: 1.15em !important;
+  font-family: 'Barlow Condensed' !important;
   line-height: 28px;             /* match button height for perfect baseline */
 }
 
@@ -2392,11 +2650,12 @@ td > .gov-icon { transform: translateY(-1px); }
 .heat-btn-minus { margin-right: 2px; }
 .heat-btn-plus  { margin-left: 2px; }
 
-/* center the values in the Bleed and Heat columns */
+/* center the values in the Perk, Approval, Vote, Bleed and Heat columns */
 .table td:nth-child(3) { text-align: center; }
 .table td:nth-child(4) { text-align: center; }
 .table td:nth-child(5) { text-align: center; }
 .table td:nth-child(6) { text-align: center; }
+.table td:nth-child(7) { text-align: center; }
 
 /* Fixed row height for consistent sizing */
 .table tbody tr {
@@ -2411,32 +2670,58 @@ td > .gov-icon { transform: translateY(-1px); }
 /* Fixed column widths to prevent resizing */
 .table th:nth-child(1),
 .table td:nth-child(1) {
-  width: 200px;
-  min-width: 200px;
+  width: 100px;
+  min-width: 100px;
+  max-width: 100px;
 }
 
 .table th:nth-child(2),
 .table td:nth-child(2) {
-  width: 250px;
-  min-width: 250px;
+  width: 130px;
+  min-width: 130px;
+  max-width: 130px;
 }
 
 .table th:nth-child(3),
 .table td:nth-child(3) {
-  width: 120px;
-  min-width: 120px;
+  width: 100px;
+  min-width: 100px;
+  max-width: 100px;
 }
 
 .table th:nth-child(4),
 .table td:nth-child(4) {
-  width: 120px;
-  min-width: 120px;
+  width: 100px;
+  min-width: 100px;
+  max-width: 100px;
+}
+
+.table th:nth-child(5),
+.table td:nth-child(5) {
+  width: 100px;
+  min-width: 100px;
+  max-width: 100px;
+}
+
+.table th:nth-child(6),
+.table td:nth-child(6) {
+  width: 110px;
+  min-width: 110px;
+  max-width: 110px;
+}
+
+.table th:nth-child(7),
+.table td:nth-child(7) {
+  width: 110px;
+  min-width: 110px;
+  max-width: 110px;
 }
 
 /* Approval and Vote badges */
 .approval-cell,
 .vote-cell {
   text-align: center;
+  padding: 5px 12px !important;
 }
 
 .approval-badge,
@@ -2447,57 +2732,285 @@ td > .gov-icon { transform: translateY(-1px); }
   font-size: 0.85em;
   font-weight: 600;
   min-width: 60px;
+  border: 1px solid rgba(0, 221, 51, 0.3);
+  background: transparent;
 }
 
 .approval-empty,
 .vote-empty {
-  color: #999;
-  background: #f0f0f0;
+  color: #666;
+  background: rgba(0, 221, 51, 0.05);
+  border-color: rgba(0, 221, 51, 0.2);
 }
 
 .approval-approve {
-  background: #d4edda;
-  color: #155724;
+  background: rgba(0, 221, 51, 0.2);
+  color: #00dd33;
+  border-color: rgba(0, 221, 51, 0.5);
 }
 
 .approval-disapprove {
-  background: #f8d7da;
-  color: #721c24;
+  background: rgba(255, 68, 68, 0.2);
+  color: #ff4444;
+  border-color: rgba(255, 68, 68, 0.5);
 }
 
 .approval-abstain {
-  background: #e2e3e5;
-  color: #383d41;
+  background: rgba(255, 200, 0, 0.2);
+  color: #ffcc00;
+  border-color: rgba(255, 200, 0, 0.5);
 }
 
 .vote-yes {
-  background: #d4edda;
-  color: #155724;
+  background: rgba(0, 221, 51, 0.2);
+  color: #00dd33;
+  border-color: rgba(0, 221, 51, 0.5);
 }
 
 .vote-no {
-  background: #f8d7da;
-  color: #721c24;
+  background: rgba(255, 68, 68, 0.2);
+  color: #ff4444;
+  border-color: rgba(255, 68, 68, 0.5);
 }
 
 .vote-abstain {
-  background: #e2e3e5;
-  color: #383d41;
+  background: rgba(255, 200, 0, 0.2);
+  color: #ffcc00;
+  border-color: rgba(255, 200, 0, 0.5);
 }
 
-.table th:nth-child(4),
-.table td:nth-child(4) {
-  width: 120px;
-  min-width: 120px;
+/* Job Title header with dropdown */
+.job-title-header {
+  position: relative;
+  padding: 0 !important;
+  cursor: pointer;
+  overflow: hidden;
+  max-height: 50px;
+}
+
+/* Hide the actual select element but keep it functional */
+.job-header-select {
+  position: absolute;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  margin: 0;
+  padding: 0;
+  border: none;
+  top: 0;
+  left: 0;
+  z-index: 10;
+}
+
+/* Show the pretty header text */
+.job-title-text {
+  display: block;
+  color: #00dd33 !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 10px rgba(0, 221, 51, 0.5);
+  font-family: 'Barlow Condensed' !important;
+  font-size: 1.15em !important;
+  padding: 15px !important;
+  text-align: center !important;
+  line-height: 20px;
+}
+
+.job-title-arrow {
+  margin-left: 4px;
+  font-size: 0.9em;
+}
+
+/* Perk header styling */
+.perk-title-header {
+  position: relative;
+  padding: 0 !important;
+  cursor: pointer;
+  overflow: hidden;
+  max-height: 50px;
+}
+
+/* Hide the actual perk select element but keep it functional */
+.perk-header-select {
+  position: absolute;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  margin: 0;
+  padding: 0;
+  border: none;
+  top: 0;
+  left: 0;
+  z-index: 10;
+}
+
+/* Show the pretty perk header text */
+.perk-title-text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #00dd33 !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 10px rgba(0, 221, 51, 0.5);
+  font-family: 'Barlow Condensed' !important;
+  font-size: 1.15em !important;
+  padding: 15px !important;
+  text-align: center !important;
+  line-height: 20px;
+  width: 100%;
+}
+
+.perk-title-arrow {
+  margin-left: 4px;
+  font-size: 0.9em;
+}
+
+/* Approval header styling */
+.approval-title-header {
+  position: relative;
+  padding: 0 !important;
+  cursor: pointer;
+  overflow: hidden;
+  max-height: 50px;
+}
+
+/* Hide the actual approval select element but keep it functional */
+.approval-header-select {
+  position: absolute;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  margin: 0;
+  padding: 0;
+  border: none;
+  top: 0;
+  left: 0;
+  z-index: 10;
+}
+
+/* Show the pretty approval header text */
+.approval-title-text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #00dd33 !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 10px rgba(0, 221, 51, 0.5);
+  font-family: 'Barlow Condensed' !important;
+  font-size: 1.15em !important;
+  padding: 5px 10px !important;
+  text-align: center !important;
+  line-height: 20px;
+  white-space: nowrap;
+  width: 100%;
+}
+
+.approval-title-arrow {
+  margin-left: 4px;
+  font-size: 0.9em;
+}
+
+/* Vote header styling */
+.vote-title-header {
+  position: relative;
+  padding: 0 !important;
+  cursor: pointer;
+  overflow: hidden;
+  max-height: 50px;
+}
+
+/* Hide the actual vote select element but keep it functional */
+.vote-header-select {
+  position: absolute;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  margin: 0;
+  padding: 0;
+  border: none;
+  top: 0;
+  left: 0;
+  z-index: 10;
+}
+
+/* Show the pretty vote header text */
+.vote-title-text {
+  display: inline;
+  color: #00dd33 !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 10px rgba(0, 221, 51, 0.5);
+  font-family: 'Barlow Condensed' !important;
+  font-size: 1.15em !important;
+  padding: 5px 10px !important;
+  text-align: center !important;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+.vote-title-arrow {
+  margin-left: 4px;
+  font-size: 0.9em;
+}
+
+/* Get Paid button styling */
+.btn-get-paid {
+  background: #0f1535 !important;
+  border: 2px solid #ffcc00 !important;
+  color: #ffcc00 !important;
+  font-weight: 600 !important;
+  border-radius: 8px !important;
+  padding: 8px 20px !important;
+  box-shadow: 0 0 15px rgba(255, 204, 0, 0.4) !important;
+  transition: all 0.2s ease !important;
+  font-size: 0.9em !important;
+  min-width: 150px;
+}
+
+.btn-get-paid:hover {
+  border-color: #ffff00 !important;
+  box-shadow: 0 0 20px rgba(255, 204, 0, 0.6) !important;
+  text-shadow: 0 0 8px rgba(255, 204, 0, 0.4) !important;
+  transform: translateY(-2px) !important;
+}
+
+.btn-get-paid:disabled {
+  opacity: 0.6 !important;
+  cursor: not-allowed !important;
+}
+
+/* Perk column styling */
+.perk-column {
+  padding: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  height: 60px !important;
+  max-height: 60px !important;
+  min-height: 60px !important;
+  overflow: hidden !important;
+  position: relative !important;
 }
 
 /* Perk icons inline with job titles */
 .perk-icon {
   height: 40px;
-  width: auto;
-  margin-right: 8px;
-  vertical-align: middle;
-  display: inline-block;
+  width: 40px;
+  object-fit: contain;
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  margin: 0 !important;
 }
 
 @media (min-width: 1200px) {
@@ -2525,7 +3038,8 @@ td > .gov-icon { transform: translateY(-1px); }
 
 .selected-members {
   padding: 15px;
-  background: #f8f9fa;
+  background: #0f1535;
+  border: 1px solid rgba(0, 221, 51, 0.2);
   border-radius: 8px;
 }
 
@@ -2565,9 +3079,11 @@ td > .gov-icon { transform: translateY(-1px); }
   justify-content: space-between;
   align-items: center;
   padding: 8px 12px;
-  background: #f8f9fa;
+  background: #0f1535;
+  border: 1px solid rgba(0, 221, 51, 0.1);
   border-radius: 4px;
   font-size: 0.9em;
+  color: #00dd33;
 }
 
 .participant-name {
@@ -2581,8 +3097,9 @@ td > .gov-icon { transform: translateY(-1px); }
 .bid-time-display {
   font-size: 2em;
   font-weight: bold;
-  color: #007bff;
-  font-family: 'Courier New', monospace;
+  color: #00dd33;
+  font-family: 'Barlow Condensed';
+  text-shadow: 0 0 10px rgba(0, 221, 51, 0.5);
 }
 
 .bid-time-controls {
@@ -2603,6 +3120,7 @@ td > .gov-icon { transform: translateY(-1px); }
   font-size: 0.9em;
   text-transform: uppercase;
   letter-spacing: 1px;
+  color: #00dd33;
 }
 
 .time-buttons {
@@ -2614,9 +3132,11 @@ td > .gov-icon { transform: translateY(-1px); }
 .time-value {
   font-size: 1.5em;
   font-weight: bold;
-  font-family: 'Courier New', monospace;
+  font-family: 'Barlow Condensed';
   min-width: 50px;
   text-align: center;
+  color: #00dd33;
+  text-shadow: 0 0 8px rgba(0, 221, 51, 0.3);
 }
 
 .time-buttons .btn {
@@ -2630,12 +3150,13 @@ td > .gov-icon { transform: translateY(-1px); }
 }
 
 .bid-display-section {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #0a0e27;
+  border: 2px solid rgba(0, 221, 51, 0.3);
   border-radius: 12px;
   padding: 30px 20px;
   text-align: center;
-  color: white;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+  color: #00dd33;
+  box-shadow: 0 0 20px rgba(0, 221, 51, 0.2), inset 0 0 20px rgba(0, 221, 51, 0.05);
 }
 
 .bid-instruction {
@@ -2648,13 +3169,15 @@ td > .gov-icon { transform: translateY(-1px); }
 .bid-time-big {
   font-size: 4em;
   font-weight: bold;
-  font-family: 'Courier New', monospace;
+  font-family: 'Barlow Condensed';
   letter-spacing: 8px;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  text-shadow: 0 0 20px rgba(0, 221, 51, 0.5), 0 0 40px rgba(0, 221, 51, 0.3);
+  color: #00dd33;
 }
 
 .bid-buttons-section {
-  background: #f8f9fa;
+  background: #0f1535;
+  border: 1px solid rgba(0, 221, 51, 0.2);
   border-radius: 12px;
   padding: 20px;
 }
@@ -2671,11 +3194,16 @@ td > .gov-icon { transform: translateY(-1px); }
   font-weight: 600;
   border-width: 2px;
   transition: all 0.2s ease;
+  background: #0f1535;
+  border-color: #00dd33;
+  color: #00dd33;
+  box-shadow: 0 0 10px rgba(0, 221, 51, 0.2);
 }
 
 .bid-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 0 20px rgba(0, 221, 51, 0.4);
+  text-shadow: 0 0 8px rgba(0, 221, 51, 0.6);
 }
 
 .bid-btn:active {
@@ -2686,28 +3214,33 @@ td > .gov-icon { transform: translateY(-1px); }
   padding: 16px;
   font-size: 1.1em;
   letter-spacing: 1px;
-  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+  box-shadow: 0 0 15px rgba(0, 221, 51, 0.3);
   transition: all 0.3s ease;
+  background: #0f1535;
+  border: 2px solid #00dd33;
+  color: #00dd33;
 }
 
 .place-bid-btn:hover {
-  box-shadow: 0 6px 20px rgba(0, 123, 255, 0.5);
+  box-shadow: 0 0 30px rgba(0, 221, 51, 0.6);
   transform: translateY(-2px);
+  text-shadow: 0 0 8px rgba(0, 221, 51, 0.6);
 }
 
 .bidding-status-section {
-  background: #f0f4ff;
+  background: #0f1535;
   border-radius: 12px;
   padding: 20px;
-  border-left: 4px solid #667eea;
+  border-left: 4px solid #00dd33;
 }
 
 .bidding-status-section h6 {
-  color: #495057;
+  color: #00dd33;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 1px;
   font-size: 0.85em;
+  text-shadow: 0 0 8px rgba(0, 221, 51, 0.3);
 }
 
 .admin-section {

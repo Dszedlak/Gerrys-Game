@@ -130,20 +130,20 @@ defineExpose({ open, winner, spinWheel, wheelModal })
 
 <style scoped>
 .wheel-container { padding: 20px; min-height: 400px; }
-.no-participants { text-align: center; padding: 60px 20px; font-size: 1.2em; color: #999; }
+.no-participants { text-align: center; padding: 60px 20px; font-size: 1.2em; color: #00ff41; }
 .wheel-content { display: flex; flex-direction: column; align-items: center; }
 .wheel-wrapper { position: relative; width: 500px; height: 500px; margin: 0 auto; }
-.wheel-pointer { position: absolute; top: -20px; left: 50%; transform: translateX(-50%); font-size: 40px; color: #e74c3c; z-index: 10; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
-.wheel-svg { width: 100%; height: 100%; border-radius: 50%; box-shadow: 0 8px 16px rgba(0,0,0,0.3); transition: none; }
+.wheel-pointer { position: absolute; top: -20px; left: 50%; transform: translateX(-50%); font-size: 40px; color: #00ff41; z-index: 10; text-shadow: 0 0 10px rgba(0, 255, 65, 0.5); }
+.wheel-svg { width: 100%; height: 100%; border-radius: 50%; box-shadow: 0 0 20px rgba(0, 255, 65, 0.3), inset 0 0 15px rgba(0, 255, 65, 0.05); transition: none; border: 2px solid rgba(0, 255, 65, 0.3); }
 .wheel-svg.spinning { transition: transform 5s cubic-bezier(0.25, 0.1, 0.25, 1); }
 .wheel-text { font-size: 16px; font-weight: bold; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); pointer-events: none; }
 .spin-controls { text-align: center; }
-.spin-button { min-width: 200px; font-size: 1.5em; font-weight: bold; padding: 12px 40px; border-radius: 50px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); transition: all 0.3s ease; }
-.spin-button:hover:not(:disabled) { transform: scale(1.05); box-shadow: 0 6px 12px rgba(0,0,0,0.3); }
+.spin-button { min-width: 200px; font-size: 1.5em; font-weight: bold; padding: 12px 40px; border-radius: 50px; box-shadow: 0 0 15px rgba(0, 255, 65, 0.3); transition: all 0.3s ease; background: #0f1535 !important; border: 2px solid #00ff41 !important; color: #00ff41 !important; }
+.spin-button:hover:not(:disabled) { transform: scale(1.05); box-shadow: 0 0 30px rgba(0, 255, 65, 0.6); text-shadow: 0 0 8px rgba(0, 255, 65, 0.6); }
 .spin-button:disabled { opacity: 0.6; cursor: not-allowed; }
 .winner-result { text-align: center; animation: fadeIn 0.5s ease-in; }
-.winner-result h3 { font-size: 2em; color: #2ecc71; margin: 0; }
-.winner-name { color: #f39c12; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.2); }
+.winner-result h3 { font-size: 2em; color: #00ff41; margin: 0; text-shadow: 0 0 15px rgba(0, 255, 65, 0.5); }
+.winner-name { color: #ffcc00; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.2); }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 @media (max-width: 768px) {
   .wheel-wrapper { width: 350px; height: 350px; }

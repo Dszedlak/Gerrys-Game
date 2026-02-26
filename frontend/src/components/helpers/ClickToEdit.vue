@@ -70,12 +70,25 @@
 <style>
 .my-checkbox {
     font-size: 2em;
-    color: rgb(64, 224, 64);
+    color: #00ff41;
+    text-shadow: 0 0 8px rgba(0, 255, 65, 0.5);
 }
 
 .input-checkbox {
     font-size: 1em;
     text-align: center;
-    color: rgb(64, 224, 64);
+    color: #00ff41;
+    background: #0a0e27;
+    border: 2px solid rgba(0, 255, 65, 0.3);
+    border-radius: 6px;
+    padding: 8px 12px;
+    transition: all 0.3s ease;
+    text-shadow: 0 0 8px rgba(0, 255, 65, 0.3);
+}
+
+.input-checkbox:focus {
+    outline: none;
+    border-color: #00ff41;
+    box-shadow: 0 0 15px rgba(0, 255, 65, 0.3), inset 0 0 10px rgba(0, 255, 65, 0.05);
 }
 </style>

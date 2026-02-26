@@ -297,7 +297,7 @@ export default {
 
 <style>
 #app {
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  background: #0a0e27;
   min-height: 100vh;
   padding: 5px 20px 30px 20px;
 }
@@ -314,7 +314,7 @@ export default {
 }
 
 .leaveButtons {
-  padding-top: 50px;
+  padding-top: 44px;
 }
 
 /* Create Room Button - Prominent Styling */
@@ -325,21 +325,22 @@ export default {
 }
 
 .create-room-btn-container button {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-  border: none !important;
+  background: #0f1535 !important;
+  border: 2px solid #00dd33 !important;
   border-radius: 10px !important;
   padding: 14px 32px !important;
   font-weight: 700 !important;
   font-size: 1.1em !important;
   transition: all 0.3s ease !important;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4) !important;
-  color: white !important;
+  box-shadow: 0 0 20px rgba(0, 255, 65, 0.3) !important;
+  color: #00dd33 !important;
   letter-spacing: 0.5px;
 }
 
 .create-room-btn-container button:hover {
   transform: translateY(-3px) !important;
-  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6) !important;
+  box-shadow: 0 0 40px rgba(0, 255, 65, 0.6) !important;
+  text-shadow: 0 0 10px rgba(0, 255, 65, 0.6) !important;
 }
 
 .create-room-btn-container button:active {
@@ -349,17 +350,18 @@ export default {
 /* Empty state messages */
 .no-auth-message,
 .no-rooms-message {
-  background: white;
+  background: #0f1535;
   border-radius: 12px;
-  padding: 60px 40px;
+  padding: 52px 35px;
   text-align: center;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 0 20px rgba(0, 255, 65, 0.2), inset 0 0 15px rgba(0, 255, 65, 0.05);
   margin-top: 40px;
+  border: 1px solid rgba(0, 255, 65, 0.2);
 }
 
 .no-auth-message p,
 .no-rooms-message p {
-  color: #999;
+  color: #00dd33;
   font-size: 1.1em;
   margin: 0;
 }
@@ -374,27 +376,27 @@ export default {
 
 /* Room Card Styling - Full Width Row */
 .room-card {
-  background: rgba(255, 255, 255, 0.95);
+  background: #0f1535;
   border-radius: 10px;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 0 15px rgba(0, 255, 65, 0.2), inset 0 0 15px rgba(0, 255, 65, 0.05);
   transition: all 0.3s ease;
   display: flex;
   flex-direction: row;
   height: auto;
-  border: 1px solid rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(0, 255, 65, 0.3);
   align-items: center;
 }
 
 .room-card:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
-  background: white;
+  box-shadow: 0 0 25px rgba(0, 255, 65, 0.4), inset 0 0 15px rgba(0, 255, 65, 0.08);
+  background: #0f1535;
 }
 
 .room-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: #0a0e27;
+  color: #00dd33;
   padding: 12px 20px;
   display: flex;
   align-items: center;
@@ -402,6 +404,7 @@ export default {
   min-height: 70px;
   min-width: 180px;
   flex-shrink: 0;
+  border-right: 2px solid rgba(0, 255, 65, 0.2);
 }
 
 .room-name {
@@ -410,6 +413,8 @@ export default {
   font-weight: 700;
   text-align: center;
   word-break: break-word;
+  color: #00dd33;
+  text-shadow: 0 0 8px rgba(0, 255, 65, 0.3);
 }
 
 .room-actions {
@@ -429,30 +434,33 @@ export default {
   border-radius: 8px;
   padding: 10px 20px !important;
   transition: all 0.2s ease;
-  border: none !important;
   font-size: 0.95em;
 }
 
 .room-btn-preview {
-  background: #667eea !important;
-  color: white !important;
+  background: #0f1535 !important;
+  border: 2px solid #00ccff !important;
+  color: #00ccff !important;
+  box-shadow: 0 0 10px rgba(0, 204, 255, 0.3) !important;
 }
 
 .room-btn-preview:hover {
-  background: #764ba2 !important;
+  box-shadow: 0 0 20px rgba(0, 204, 255, 0.6) !important;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4) !important;
+  text-shadow: 0 0 8px rgba(0, 204, 255, 0.6) !important;
 }
 
 .room-btn-join {
-  background: #28a745 !important;
-  color: white !important;
+  background: #0f1535 !important;
+  border: 2px solid #00dd33 !important;
+  color: #00dd33 !important;
+  box-shadow: 0 0 10px rgba(0, 255, 65, 0.3) !important;
 }
 
 .room-btn-join:hover {
-  background: #20c997 !important;
+  box-shadow: 0 0 20px rgba(0, 255, 65, 0.6) !important;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4) !important;
+  text-shadow: 0 0 8px rgba(0, 255, 65, 0.6) !important;
 }
 
 /* Responsive Grid */

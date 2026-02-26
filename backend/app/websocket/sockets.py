@@ -642,6 +642,9 @@ def conclude_dictator_bidding(data=None):
         "winner_name": winner_name
     }, to=room_identifier)
     
+    # Refresh room to get updated participant data
+    db.session.refresh(room)
+    
     # Broadcast room state update
     room_state = serialize_room(room)
     socketio.emit("room_state", room_state, to=room_identifier)

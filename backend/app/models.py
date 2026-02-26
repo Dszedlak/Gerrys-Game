@@ -56,12 +56,12 @@ class RoomParticipants(db.Model):
     roomId = db.Column(db.Integer, db.ForeignKey("room.id"), primary_key=True)
     userId = db.Column(db.Integer, db.ForeignKey("user.id"), primary_key=True)
     clock = db.Column(db.DateTime, default=datetime.min + timedelta(days=1))
-    job_id = db.Column(db.Integer, db.ForeignKey("job.id"))
+    job_id = db.Column(db.Integer, db.ForeignKey("job.id"), default=0)  # Default to Unemployed (id=0)
     job = db.relationship("Job")
     bleed = db.Column(db.Integer, default=0)
     heat = db.Column(db.Integer, default=0)
     perk = db.Column(db.String(32), default=None)  # "Manager", "Senior", or "Executive"
-    approval_status = db.Column(db.String(32), default=None)  # "approve", "disapprove", "abstain", or None
+    approval_status = db.Column(db.String(32), default="approve")  # "approve", "disapprove", "abstain", or None
     gov_vote = db.Column(db.String(32), default=None)  # "yes", "no", "abstain", or None
     user = db.relationship("User")
 
@@ -128,7 +128,7 @@ def serialize_room(room):
     return {
         "id": room.id,
         "name": room.name,
-        # Use room.id as owner if that's your convention (no created_by/owner_id columns)
+        # room.id is the user_id of the room creator
         "owner_id": room.id,
         "government": serialize_government(room.government),
         "participants": [

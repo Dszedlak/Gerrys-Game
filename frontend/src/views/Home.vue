@@ -58,19 +58,19 @@ export default {
 <style scoped>
 /* Container styling */
 div {
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  background: #0a0e27;
   min-height: 100vh;
   padding: 40px 20px;
   margin: -8px -8px 0 -8px;
 }
 
 h2 {
-  color: #333;
+  color: #00ff41;
   font-weight: 700;
   text-align: center;
   margin-bottom: 30px;
   font-size: 2em;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  text-shadow: 0 0 15px rgba(0, 255, 65, 0.5);
 }
 
 /* Style the leaderboard table */
@@ -78,16 +78,17 @@ h2 {
   width: 100%;
   border-collapse: collapse;
   margin-top: 20px;
-  background: white;
+  background: #0f1535;
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-  border: none;
+  box-shadow: 0 0 20px rgba(0, 255, 65, 0.2), inset 0 0 15px rgba(0, 255, 65, 0.05);
+  border: 1px solid rgba(0, 255, 65, 0.2);
 }
 
 .leaderboard-table thead {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: #0a0e27;
+  color: #00ff41;
+  border-bottom: 2px solid rgba(0, 255, 65, 0.3);
 }
 
 .leaderboard-table th {
@@ -96,12 +97,15 @@ h2 {
   text-transform: uppercase;
   letter-spacing: 0.5px;
   border: none;
+  color: #00ff41;
+  text-shadow: 0 0 8px rgba(0, 255, 65, 0.3);
 }
 
 .leaderboard-table td {
   padding: 15px;
   text-align: center;
-  border: 1px solid #e8e8e8;
+  border: 1px solid rgba(0, 255, 65, 0.1);
+  color: #00ff41;
 }
 
 .leaderboard-table tbody tr {
@@ -109,7 +113,7 @@ h2 {
 }
 
 .leaderboard-table tbody tr:hover {
-  background-color: #f8f9fa;
+  background-color: rgba(0, 255, 65, 0.05);
 }
 
 .leaderboard-table tbody tr:last-child td {
@@ -135,8 +139,8 @@ h2 {
   height: 50px;
   border-radius: 50%;
   object-fit: cover;
-  border: 3px solid #667eea;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  border: 3px solid #00ff41;
+  box-shadow: 0 0 15px rgba(0, 255, 65, 0.4);
   transition: transform 0.2s ease;
 }
 

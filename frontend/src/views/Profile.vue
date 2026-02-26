@@ -17,7 +17,7 @@ export default {
 
 <style scoped>
 .profile-container {
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  background: #0a0e27;
   min-height: 100vh;
   padding: 40px 20px;
   margin: -8px -8px 0 -8px;
@@ -27,35 +27,33 @@ export default {
 }
 
 .profile-card {
-  background: white;
+  background: #0f1535;
   border-radius: 12px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 0 20px rgba(0, 255, 65, 0.2), inset 0 0 15px rgba(0, 255, 65, 0.05);
   padding: 40px;
   max-width: 600px;
   width: 100%;
+  border: 1px solid rgba(0, 255, 65, 0.2);
 }
 
 h1 {
-  color: #333;
+  color: #00ff41;
   font-weight: 700;
   margin-bottom: 30px;
   text-align: center;
   font-size: 2.5em;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  text-shadow: 0 0 15px rgba(0, 255, 65, 0.5);
 }
 
 .profile-content {
   padding: 20px;
-  background: #f8f9fa;
+  background: rgba(0, 255, 65, 0.05);
   border-radius: 8px;
-  border-left: 4px solid #667eea;
+  border-left: 4px solid #00ff41;
 }
 
 .placeholder-text {
-  color: #999;
+  color: rgba(0, 255, 65, 0.6);
   text-align: center;
   font-style: italic;
   margin: 0;

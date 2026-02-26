@@ -49,7 +49,7 @@ class RoomListResource(Resource):
         db.session.add(gov)
         db.session.commit()
 
-        participant = RoomParticipants(roomId=room.id, userId=user, clock=(datetime.min + timedelta(days=1, hours=2)))
+        participant = RoomParticipants(roomId=room.id, userId=user, clock=(datetime.min + timedelta(days=1)))
         db.session.add(participant)
         db.session.commit()
 
@@ -106,7 +106,7 @@ class JoinRoomResource(Resource):
             participant = RoomParticipants(
                 roomId=room_id,
                 userId=user_id,
-                clock=(datetime.min + timedelta(days=1, hours=2)),
+                clock=(datetime.min + timedelta(days=1)),
             )
             db.session.add(participant)
             db.session.commit()
