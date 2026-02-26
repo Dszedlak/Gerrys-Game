@@ -1,6 +1,6 @@
 import json
 import os
-from flask import Flask
+from flask import Flask, send_from_directory
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from flask_socketio import SocketIO
@@ -38,8 +38,13 @@ def initDatabase(app):
             db.session.commit()
 
 def createApp(configName):
+    # Get path to frontend dist directory (one level up from backend)
+    frontend_dist = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'frontend', 'dist')
+    
     #Init Flask app
-    app = Flask(__name__)
+    app = Flask(__name__, 
+                static_folder=frontend_dist,
+                static_url_path='')
     app.config.from_object(config.APP_CONFIG[configName])
     #Init database
     db.init_app(app)
@@ -56,5 +61,19 @@ def createApp(configName):
     from .auth import auth as authBlueprint
     app.register_blueprint(apiBlueprint, url_prefix="/api")
     app.register_blueprint(authBlueprint, url_prefix="/api/auth")
+    
+    # Serve index.html for all non-API routes (Vue Router fallback)
+    @app.route('/', defaults={'path': ''})
+    @app.route('/<path:path>')
+    def serve_spa(path):
+        """Serve Vue.js SPA - return index.html for all non-API routes"""
+        # If path is for static assets, serve them directly
+        if path and os.path.exists(os.path.join(frontend_dist, path)):
+            return send_from_directory(frontend_dist, path)
+        # For all other routes (including root), serve index.html (Vue Router will handle routing)
+        if os.path.exists(os.path.join(frontend_dist, 'index.html')):
+            return send_from_directory(frontend_dist, 'index.html')
+        # Fallback if dist doesn't exist
+        return "Frontend not built. Run 'npm run build' in the frontend directory.", 500
 
     return app

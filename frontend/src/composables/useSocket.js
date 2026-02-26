@@ -1,11 +1,11 @@
 import { ref, onUnmounted } from 'vue'
 import { io } from 'socket.io-client'
 import JwtService from '@/services/JwtService'
-import { IP_ADDRESS } from "@/common/config"
+import { SOCKET_URL } from "@/common/config"
 
 export function useSocket() {
   const token = JwtService.getToken()
-  const socket = io(`http://${IP_ADDRESS}:5000`, {
+  const socket = io(SOCKET_URL, {
     // Force polling so Authorization header is sent by the browser
     transports: ['polling'],
     transportOptions: {
