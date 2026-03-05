@@ -1,0 +1,143 @@
+/* CRITICAL: Global color scheme override - Change all greens to Twitch purple */
+/* THIS FILE MUST BE IMPORTED AFTER BOOTSTRAP IN main.js */
+
+/* ===== CSS VARIABLES ===== */
+:root {
+  --primary-color: #EAB308 !important;
+  --bs-success: #EAB308 !important;
+  --bs-success-rgb: 145, 70, 255 !important;
+  --bs-primary: #EAB308 !important;
+  --bs-primary-rgb: 145, 70, 255 !important;
+  --bs-link-color: #EAB308 !important;
+  --bs-link-color-rgb: 145, 70, 255 !important;
+}
+
+html, body {
+  --bs-success: #EAB308 !important;
+  --bs-primary: #EAB308 !important;
+}
+
+/* ===== NAVBAR ===== */
+.navbar  .nav-link,
+.navbar-nav .nav-link,
+.nav-link {
+  color: #EAB308 !important;
+}
+
+.navbar .nav-link:hover,
+.navbar-nav .nav-link:hover {
+  color: #EAB308 !important;
+}
+
+.navbar a,
+.navbar a:hover,
+.navbar-brand,
+.navbar-brand a,
+.navbar-brand a:hover {
+  color: #EAB308 !important;
+}
+
+/* ===== LINKS ===== */
+a {
+  color: #EAB308 !important;
+}
+
+a:hover, a:focus, a:visited {
+  color: #EAB308 !important;
+}
+
+.text-light {
+  color: #EAB308 !important;
+}
+
+/* ===== TABLES ===== */
+.table thead th,
+.table thead td {
+  color: #EAB308 !important;
+  background-color: #1A1F2E !important;
+}
+
+.table-success,
+.table-success > td,
+.table-success > th {
+  background-color: rgba(145, 70, 255, 0.1) !important;
+  color: #EAB308 !important;
+}
+
+/* ===== BUTTONS & BADGES ===== */
+.btn-success,
+.btn-success:hover,
+.btn-success:focus,
+.btn-success:active {
+  background-color: #EAB308 !important;
+  border-color: #EAB308 !important;
+  color: white !important;
+}
+
+.badge-success,
+.badge,
+.bg-success {
+  background-color: #EAB308 !important;
+  color: white !important;
+}
+
+/* ===== FORMS ===== */
+.form-control,
+.form-select,
+select {
+  background-color: #0f1535 !important;
+  border: 2px solid rgba(145, 70, 255, 0.3) !important;
+  color: #EAB308 !important;
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: #EAB308 !important;
+  color: #EAB308 !important;
+}
+
+.form-label,
+label {
+  color: #EAB308 !important;
+}
+
+/* ===== DROPDOWNS ===== */
+.dropdown-item {
+  color: #EAB308 !important;
+}
+
+.dropdown-item:hover,
+.dropdown-item:focus {
+  background-color: rgba(145, 70, 255, 0.1) !important;
+  color: #EAB308 !important;
+}
+
+/* ===== TEXT COLORS ===== */
+.text-success {
+  color: #EAB308 !important;
+}
+
+.text-muted {
+  color: #888888 !important;
+}
+
+/* ===== UTILITY ===== */
+[class*="success"] {
+  color: #EAB308 !important;
+}
+
+[class*="green"] {
+  color: #EAB308 !important;
+}
+
+
+
+
+
+
+
+
+
+
+
+

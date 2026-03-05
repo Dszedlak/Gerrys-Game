@@ -53,6 +53,19 @@ def on_join(payload=None):
     emit("room_state", serialize_room(room), to=room_identifier)
     emit("setUserId", {"data": get_jwt_identity()})
     emit("updateClock", {"data": getClock(userData)})
+    
+    # If dictator bidding is active for this room, send bidding state to reconnecting user
+    if bidding_active.get(room.id, False):
+        tally = {}
+        bid_amounts = {}
+        for participant in RoomParticipants.query.filter_by(roomId=room.id):
+            if room.id in dictator_bids and participant.userId in dictator_bids[room.id]:
+                tally[participant.userId] = True
+                bid_amounts[participant.userId] = dictator_bids[room.id][participant.userId]
+            else:
+                tally[participant.userId] = False
+        emit("startDictatorBidding", {"reconnect": True, "tally": tally, "bid_amounts": bid_amounts})
+    
     print("user joined room:", room_identifier)
 
 
@@ -156,10 +169,10 @@ def update_government(data):
             members_to_add.append(("advisor", int(adv)))
     elif gov_type == "Communism":
         politburo = action.get("politburo") or []
-        if len(politburo) != 3:
-            db.session.rollback(); emit("error", {"message": "Need 3 politburo members"}); return
+        if len(politburo) != 2:
+            db.session.rollback(); emit("error", {"message": "Need 2 politburo members"}); return
         ids = [int(x) for x in politburo]
-        if len(set(ids)) != 3 or not all(_is_room_member(room.id, uid) for uid in ids):
+        if len(set(ids)) != 2 or not all(_is_room_member(room.id, uid) for uid in ids):
             db.session.rollback(); emit("error", {"message": "Invalid politburo members"}); return
         for pid in ids:
             members_to_add.append(("politburo", pid))
@@ -170,6 +183,90 @@ def update_government(data):
     db.session.commit()
     print(serialize_room(room))
     emit("room_state", serialize_room(room), to=str(room.id))
+
+
+@socketio.on("startPolitburoSpin")
+@jwt_required()
+def start_politburo_spin(data=None):
+    """Broadcasts the politburo wheel spin to all players in the room"""
+    print("[startPolitburoSpin] Received request")
+    user_id = get_jwt_identity()
+    
+    # Parse data to get rotation
+    rotation = None
+    if data:
+        try:
+            parsed_data = json.loads(data) if isinstance(data, str) else data
+            rotation = parsed_data.get('rotation')
+        except:
+            pass
+    
+    userData = RoomParticipants.query.filter_by(userId=user_id).first()
+    if not userData:
+        emit("error", {"message": "Not in a room"})
+        return
+    
+    room = Room.query.get(userData.roomId)
+    if not room:
+        emit("error", {"message": "Room not found"})
+        return
+    
+    # Broadcast to all players in the room with the rotation data
+    room_identifier = str(room.id)
+    socketio.emit("startPolitburoSpin", {"rotation": rotation}, to=room_identifier)
+    print(f"[startPolitburoSpin] Broadcast spin event to room {room.id} with rotation {rotation}")
+
+
+@socketio.on("updatePolitburoMembers")
+@jwt_required()
+def update_politburo_members(data=None):
+    """Broadcasts politburo member updates to all players in the room"""
+    print("[updatePolitburoMembers] Received request")
+    user_id = get_jwt_identity()
+    
+    # Parse data
+    members = []
+    if data:
+        try:
+            parsed_data = json.loads(data) if isinstance(data, str) else data
+            members = parsed_data.get('members', [])
+        except:
+            pass
+    
+    userData = RoomParticipants.query.filter_by(userId=user_id).first()
+    if not userData:
+        emit("error", {"message": "Not in a room"})
+        return
+    
+    room = Room.query.get(userData.roomId)
+    if not room:
+        emit("error", {"message": "Room not found"})
+        return
+    
+    # Broadcast to all players in the room
+    room_identifier = str(room.id)
+    socketio.emit("politburoMembersUpdate", {"members": members}, to=room_identifier)
+    print(f"[updatePolitburoMembers] Broadcast members {members} to room {room.id}")
+
+
+@socketio.on("closePolitburoModal")
+@jwt_required()
+def close_politburo_modal(data=None):
+    """Broadcasts to all players to close the politburo selection modal"""
+    print("[closePolitburoModal] Received request")
+    user_id = get_jwt_identity()
+    
+    userData = RoomParticipants.query.filter_by(userId=user_id).first()
+    if not userData:
+        return
+    
+    room = Room.query.get(userData.roomId)
+    if not room:
+        return
+    
+    room_identifier = str(room.id)
+    socketio.emit("closePolitburoModal", {}, to=room_identifier)
+    print(f"[closePolitburoModal] Broadcast to room {room.id}")
 
 
 @socketio.on("balanceChange")
@@ -192,17 +289,42 @@ def balanceChange(data=None):
     elif userData.perk == "Executive":
         perk_bonus = 30
     
-    # Check if government is Communism
+    # Get room and government info
     room = Room.query.get(userData.roomId)
-    communist_penalty = 0
-    if room and room.government and room.government.type == "Communism":
-        communist_penalty = 10
-        print(f"[balanceChange] Communist government detected, applying -10 minute penalty")
+    government_bonus = 0
+    
+    if room and room.government:
+        gov_type = room.government.type
+        user_id = userData.userId
+        
+        # Check if user is in government
+        gov_member = GovernmentMember.query.filter_by(
+            government_id=room.government.id,
+            user_id=user_id
+        ).first()
+        
+        if gov_type == "Communism":
+            if gov_member and gov_member.role == "politburo":
+                # Politburo members get +10 mins
+                government_bonus = 10
+                print(f"[balanceChange] Communism: User is politburo member, bonus: +10")
+            else:
+                # Non-politburo members get -20 mins
+                government_bonus = -20
+                print(f"[balanceChange] Communism: User is NOT politburo member, penalty: -20")
+        
+        elif gov_type == "Dictatorship":
+            if gov_member and gov_member.role == "dictator":
+                # Dictator gets +10 mins
+                government_bonus = 10
+                print(f"[balanceChange] Dictatorship: User is dictator, bonus: +10")
+            else:
+                print(f"[balanceChange] Dictatorship: User is not dictator, no special bonus")
     
     bleed_penalty = userData.bleed * 10
-    net_income = job_income + perk_bonus - bleed_penalty - communist_penalty
+    net_income = job_income + perk_bonus + government_bonus - bleed_penalty
     
-    print(f"[balanceChange] Bleed: {userData.bleed}, penalty: {bleed_penalty}, perk: {userData.perk}, perk_bonus: {perk_bonus}, communist_penalty: {communist_penalty}, net: {net_income}")
+    print(f"[balanceChange] Bleed: {userData.bleed}, penalty: {bleed_penalty}, perk: {userData.perk}, perk_bonus: {perk_bonus}, government_bonus: {government_bonus}, net: {net_income}")
     
     # Calculate new clock value, but don't let it go below datetime.min (00•00•00)
     try:
@@ -231,6 +353,53 @@ def balanceChange(data=None):
             "user_id": userData.userId,
             "clock": formatted_clock
         }, room=room_identifier)
+
+
+@socketio.on("getOutOfJail")
+@jwt_required()
+def get_out_of_jail(data=None):
+    """Handle player paying jail fee - deducts 8 hours (or 12 during dictatorship)"""
+    userData = getUserData()
+    
+    if not userData or not userData.roomId:
+        emit("error", {"message": "User not found in a room"})
+        return
+    
+    # Get room and government to determine jail fee
+    room = Room.query.get(userData.roomId)
+    
+    # Default jail fee is 8 hours (480 minutes) for Democracy/Communism/Anarchy/Republic
+    # Dictatorship has 12 hours (720 minutes)
+    jail_fee = 480  # 8 hours in minutes
+    
+    if room and room.government and room.government.type == "Dictatorship":
+        jail_fee = 720  # 12 hours in minutes for Dictatorship
+        print(f"[getOutOfJail] Dictatorship government - jail fee is 12 hours")
+    else:
+        print(f"[getOutOfJail] Non-dictatorship government - jail fee is 8 hours")
+    
+    # Check if player has enough time
+    current_clock_minutes = (userData.clock - datetime.min).total_seconds() / 60
+    if current_clock_minutes < jail_fee:
+        emit("error", {"message": f"Not enough time to pay jail fee. Need {jail_fee} minutes, have {int(current_clock_minutes)}"})
+        return
+    
+    # Deduct jail fee
+    time_delta = timedelta(minutes=jail_fee)
+    userData.clock -= time_delta
+    
+    db.session.commit()
+    
+    print(f"[getOutOfJail] User {userData.userId} paid {jail_fee} minutes for jail")
+    
+    # Emit to the user
+    emit("updateClock", {"data": timeFormat(userData.clock)})
+    
+    # Broadcast room state update
+    room = Room.query.filter_by(id=userData.roomId).first()
+    if room:
+        room_identifier = str(room.id)
+        socketio.emit("room_state", serialize_room(room), room=room_identifier)
 
 
 @socketio.on("updateJob")
@@ -334,15 +503,34 @@ def balance_books(data=None):
         emit("error", {"message": "Room not found"})
         return
     
-    # Get all participants
-    participants = RoomParticipants.query.filter_by(roomId=room.id).all()
+    # Get all participants in the room
+    all_participants = RoomParticipants.query.filter_by(roomId=room.id).all()
+    
+    # Filter out dead players (clock at 00•00•00 or very close to it)
+    # Dead players have clock at datetime.min which is day=1, hour=0, min=0, sec=0
+    # We consider a player "dead" if their clock is less than 1 minute (00•00•00)
+    def is_alive(p):
+        clock_delta = p.clock - datetime.min
+        total_seconds = clock_delta.total_seconds()
+        # If total seconds is 0 or negative (somehow), player is dead
+        # If clock is exactly 00•00•00 (datetime.min), total_seconds = 0
+        is_dead = total_seconds <= 0
+        if is_dead:
+            username = p.user.username if hasattr(p, 'user') and p.user else f"User_{p.userId}"
+            print(f"[balanceBooks] Excluding DEAD player: {username} (clock: {timeFormat(p.clock)})")
+        return not is_dead
+    
+    participants = [p for p in all_participants if is_alive(p)]
+    
+    print(f"[balanceBooks] Total participants: {len(all_participants)}, Alive (included): {len(participants)}")
+    
     if len(participants) < 2:
-        emit("error", {"message": "Need at least 2 players to balance books"})
+        emit("error", {"message": "Need at least 2 active players to balance books"})
         return
     
-    # Calculate total minutes up to 12 hours per person
+    # Calculate mean average of all revealed times and excess for each player
     TWELVE_HOURS_MINUTES = 12 * 60
-    total_shareable_minutes = 0
+    total_minutes_sum = 0
     participant_data = []
     
     for p in participants:
@@ -350,29 +538,28 @@ def balance_books(data=None):
         clock_delta = p.clock - datetime.min
         total_minutes = int(clock_delta.total_seconds() / 60)
         
-        shareable = min(total_minutes, TWELVE_HOURS_MINUTES)
+        # Calculate excess (time over 12 hours)
         excess = max(0, total_minutes - TWELVE_HOURS_MINUTES)
         
-        total_shareable_minutes += shareable
+        total_minutes_sum += total_minutes
         participant_data.append({
             'participant': p,
             'total_minutes': total_minutes,
-            'shareable': shareable,
             'excess': excess
         })
     
-    # Calculate equal share (round to nearest 10 minutes)
-    equal_share = total_shareable_minutes // len(participants)
-    equal_share = round(equal_share / 10) * 10
+    # Calculate mean average of all revealed times
+    mean_average = total_minutes_sum // len(participants)
+    mean_average = round(mean_average / 10) * 10  # Round to nearest 10 minutes
     
-    # Redistribute wealth
+    # Redistribute wealth: each player gets mean average + their excess
     for data in participant_data:
         p = data['participant']
-        new_total = equal_share + data['excess']
+        new_total = mean_average + data['excess']
         p.clock = datetime.min + timedelta(minutes=new_total)
     
     db.session.commit()
-    print(f"[balanceBooks] Redistributed {total_shareable_minutes} minutes equally among {len(participants)} players")
+    print(f"[balanceBooks] Redistributed based on mean average ({mean_average} minutes) plus individual excess for {len(participants)} players")
     
     # Print each user's final clock value
     print("[balanceBooks] Final clock values:")
@@ -380,7 +567,7 @@ def balance_books(data=None):
         p = data['participant']
         username = p.user.username if hasattr(p, 'user') and p.user else f"User_{p.userId}"
         clock_formatted = timeFormat(p.clock)
-        print(f"  - {username} (ID: {p.userId}): {clock_formatted}")
+        print(f"  - {username} (ID: {p.userId}): {clock_formatted} (was {data['total_minutes']} mins, excess: {data['excess']} mins)")
     
     # Create a dict of all users' updated clocks
     all_clocks = {}
@@ -411,7 +598,7 @@ def set_approval_status(data=None):
     
     try:
         payload = json.loads(data) if isinstance(data, str) else data
-        approval_status = payload.get("status")  # 'approve', 'disapprove', 'abstain', or None to clear
+        approval_status = payload.get("status")  # 'approve', 'reject', 'abstain', or None to clear
     except Exception as e:
         print(f"[setApprovalStatus] Parse error: {e}")
         emit("error", {"message": "Invalid payload"})
@@ -428,12 +615,12 @@ def set_approval_status(data=None):
         return
     
     # Allow setting approval status even without government
-    # Store in a custom field or use existing field
+    # Store in the approval_status field
     if approval_status is None:
         # Clear approval status
-        userData.perk = None
+        userData.approval_status = None
     else:
-        userData.perk = f"approval:{approval_status}"
+        userData.approval_status = approval_status
     db.session.commit()
     
     print(f"[setApprovalStatus] User {user_id} set approval to {approval_status}")
@@ -447,10 +634,58 @@ def set_approval_status(data=None):
     }, to=room_identifier)
 
 
+@socketio.on("startVoting")
+@jwt_required()
+def start_voting(data=None):
+    """Admin initiates a voting session - votes are secret until concluded"""
+    print("[startVoting] Received request")
+    user_id = get_jwt_identity()
+    
+    try:
+        payload = json.loads(data) if isinstance(data, str) else data
+        question = payload.get("question", "Cast your vote on the current matter")
+    except Exception as e:
+        print(f"[startVoting] Parse error: {e}")
+        question = "Cast your vote on the current matter"
+    
+    userData = RoomParticipants.query.filter_by(userId=user_id).first()
+    if not userData:
+        emit("error", {"message": "Not in a room"})
+        return
+    
+    room = Room.query.get(userData.roomId)
+    if not room:
+        emit("error", {"message": "Room not found"})
+        return
+    
+    # Initialize voting for this room
+    voting_ballots[room.id] = {}
+    voting_active[room.id] = True
+    voting_question[room.id] = question
+    
+    # Clear any existing votes in DB
+    for participant in RoomParticipants.query.filter_by(roomId=room.id):
+        participant.gov_vote = None
+    db.session.commit()
+    
+    # Build initial tally
+    tally = {}
+    for participant in RoomParticipants.query.filter_by(roomId=room.id):
+        tally[participant.userId] = False
+    
+    # Broadcast to all players to open voting modal
+    room_identifier = str(room.id)
+    socketio.emit("startVoting", {
+        "question": question,
+        "tally": tally
+    }, to=room_identifier)
+    print(f"[startVoting] Voting started for room {room.id} with question: {question}")
+
+
 @socketio.on("partakeGovVote")
 @jwt_required()
 def partake_gov_vote(data=None):
-    """Player participates in government vote"""
+    """Player participates in government vote - vote is kept secret until voting is concluded"""
     print("[partakeGovVote] Received request")
     user_id = get_jwt_identity()
     
@@ -472,19 +707,119 @@ def partake_gov_vote(data=None):
         emit("error", {"message": "Room not found"})
         return
     
-    # Update the participant's vote in the database
-    userData.gov_vote = vote_choice
+    room_identifier = str(room.id)
+    
+    # Check if this is a secret voting session
+    if voting_active.get(room.id):
+        # Store vote secretly (only in memory, not DB yet)
+        if room.id not in voting_ballots:
+            voting_ballots[room.id] = {}
+        
+        voting_ballots[room.id][user_id] = vote_choice
+        
+        # Build tally (who has voted, not what they voted)
+        tally = {}
+        for participant in RoomParticipants.query.filter_by(roomId=room.id):
+            tally[participant.userId] = participant.userId in voting_ballots[room.id]
+        
+        # Broadcast tally update WITHOUT revealing votes
+        socketio.emit("voteTallyUpdate", {
+            "tally": tally,
+            "user_id": user_id  # Just to indicate who just voted
+        }, to=room_identifier)
+        
+        print(f"[partakeGovVote] User {user_id} cast secret vote in room {room.id}")
+    else:
+        # Legacy behavior: Update the participant's vote in the database and broadcast
+        userData.gov_vote = vote_choice
+        db.session.commit()
+        
+        print(f"[partakeGovVote] User {user_id} voted {vote_choice}")
+        
+        # Broadcast vote to room (old behavior)
+        socketio.emit("voteRecorded", {
+            "user_id": user_id,
+            "username": db.session.query(User.username).filter_by(id=user_id).scalar(),
+            "vote": vote_choice
+        }, to=room_identifier)
+
+
+@socketio.on("concludeVoting")
+@jwt_required()
+def conclude_voting(data=None):
+    """Admin concludes voting and reveals all votes"""
+    print("[concludeVoting] Received request")
+    user_id = get_jwt_identity()
+    
+    userData = RoomParticipants.query.filter_by(userId=user_id).first()
+    if not userData:
+        emit("error", {"message": "Not in a room"})
+        return
+    
+    room = Room.query.get(userData.roomId)
+    if not room:
+        emit("error", {"message": "Room not found"})
+        return
+    
+    # Check if user is admin (room creator)
+    if room.id != user_id:
+        emit("error", {"message": "Only admin can conclude voting"})
+        return
+    
+    # Get all the secret votes
+    ballots = voting_ballots.get(room.id, {})
+    
+    # Build results with usernames
+    results = {}
+    for voter_id, vote in ballots.items():
+        username = db.session.query(User.username).filter_by(id=voter_id).scalar()
+        results[voter_id] = {
+            "vote": vote,
+            "username": username
+        }
+        
+        # Also update the database
+        participant = RoomParticipants.query.filter_by(userId=voter_id, roomId=room.id).first()
+        if participant:
+            participant.gov_vote = vote
+    
     db.session.commit()
     
-    print(f"[partakeGovVote] User {user_id} voted {vote_choice}")
+    # Calculate vote counts
+    yes_count = sum(1 for v in ballots.values() if v == 'yes')
+    no_count = sum(1 for v in ballots.values() if v == 'no')
+    abstain_count = sum(1 for v in ballots.values() if v == 'abstain')
     
-    # Broadcast vote to room
+    # Determine outcome
+    if yes_count > no_count:
+        outcome = "PASSED"
+    elif no_count > yes_count:
+        outcome = "REJECTED"
+    else:
+        outcome = "TIE"
+    
+    # Clear voting state
+    if room.id in voting_ballots:
+        del voting_ballots[room.id]
+    if room.id in voting_active:
+        del voting_active[room.id]
+    if room.id in voting_question:
+        del voting_question[room.id]
+    
+    # Broadcast results to all players
     room_identifier = str(room.id)
-    socketio.emit("voteRecorded", {
-        "user_id": user_id,
-        "username": db.session.query(User.username).filter_by(id=user_id).scalar(),
-        "vote": vote_choice
+    socketio.emit("votingConcluded", {
+        "results": results,
+        "counts": {
+            "yes": yes_count,
+            "no": no_count,
+            "abstain": abstain_count,
+            "total": len(ballots)
+        },
+        "outcome": outcome
     }, to=room_identifier)
+    
+    print(f"[concludeVoting] Voting concluded in room {room.id}: {outcome} (Y:{yes_count} N:{no_count} A:{abstain_count})")
 
 def timeFormat(time: datetime):
     days = ""
@@ -502,6 +837,13 @@ def timeFormat(time: datetime):
 
 # Dictator bidding state storage (in-memory, per room)
 dictator_bids = {}  # { room_id: { user_id: bid_amount, ... } }
+bidding_active = {}  # { room_id: True/False }
+
+# Voting state storage (in-memory, per room)
+# Votes are kept secret until admin concludes voting
+voting_ballots = {}  # { room_id: { user_id: vote_choice, ... } }
+voting_active = {}  # { room_id: True/False }
+voting_question = {}  # { room_id: question_text }
 
 @socketio.on("startDictatorBidding")
 @jwt_required()
@@ -522,6 +864,7 @@ def start_dictator_bidding(data=None):
     
     # Initialize bidding for this room
     dictator_bids[room.id] = {}
+    bidding_active[room.id] = True
     
     # Broadcast to all players to open bidding modal
     room_identifier = str(room.id)
@@ -563,14 +906,19 @@ def place_dictator_bid(data=None):
     
     dictator_bids[room.id][user_id] = bid_amount
     
-    # Build tally for broadcast
+    # Build tally with bid amounts for broadcast
     tally = {}
+    bid_amounts = {}
     for participant in RoomParticipants.query.filter_by(roomId=room.id):
-        tally[participant.userId] = participant.userId in dictator_bids[room.id]
+        if participant.userId in dictator_bids[room.id]:
+            tally[participant.userId] = True
+            bid_amounts[participant.userId] = dictator_bids[room.id][participant.userId]
+        else:
+            tally[participant.userId] = False
     
-    # Broadcast tally update
+    # Broadcast tally update with bid amounts
     room_identifier = str(room.id)
-    socketio.emit("biddingTallyUpdate", {"tally": tally}, to=room_identifier)
+    socketio.emit("biddingTallyUpdate", {"tally": tally, "bid_amounts": bid_amounts}, to=room_identifier)
     print(f"[placeDictatorBid] User {user_id} bid {bid_amount} in room {room.id}")
 
 @socketio.on("concludeDictatorBidding")
@@ -590,9 +938,8 @@ def conclude_dictator_bidding(data=None):
         emit("error", {"message": "Room not found"})
         return
     
-    # Check if user is admin (first participant in room by roomId, sorted by userId)
-    first_participant = RoomParticipants.query.filter_by(roomId=room.id).order_by(RoomParticipants.userId.asc()).first()
-    if not first_participant or first_participant.userId != user_id:
+    # Check if user is admin (room creator: room.id == user_id)
+    if room.id != user_id:
         emit("error", {"message": "Only admin can conclude bidding"})
         return
     
@@ -605,6 +952,17 @@ def conclude_dictator_bidding(data=None):
     winner_id = max(room_bids.keys(), key=lambda k: room_bids[k])
     winner_bid_minutes = room_bids[winner_id]
     winner_name = db.session.query(User.username).filter_by(id=winner_id).scalar()
+    
+    # Build leaderboard sorted by bid amount (highest first)
+    leaderboard = []
+    for user_id_bid, bid_amount in sorted(room_bids.items(), key=lambda x: x[1], reverse=True):
+        username = db.session.query(User.username).filter_by(id=user_id_bid).scalar()
+        leaderboard.append({
+            "user_id": user_id_bid,
+            "username": username,
+            "bid_amount": bid_amount,
+            "is_winner": user_id_bid == winner_id
+        })
     
     # Update winner's clock (subtract the bid amount in minutes)
     winner_participant = RoomParticipants.query.filter_by(userId=winner_id, roomId=room.id).first()
@@ -634,12 +992,15 @@ def conclude_dictator_bidding(data=None):
     # Clear bidding data
     if room.id in dictator_bids:
         del dictator_bids[room.id]
+    if room.id in bidding_active:
+        del bidding_active[room.id]
     
     # Broadcast winner to all players
     room_identifier = str(room.id)
     socketio.emit("dictatorWinner", {
         "winner_id": winner_id,
-        "winner_name": winner_name
+        "winner_name": winner_name,
+        "leaderboard": leaderboard
     }, to=room_identifier)
     
     # Refresh room to get updated participant data

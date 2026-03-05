@@ -1,130 +1,174 @@
 <template>
-  <div id="app">
-    <BContainer class="bv-example-row">
-      <div v-if="username" class="create-room-btn-container">
-        <BButton @click="showCreateRoomModal">+ Create Room</BButton>
+  <div class="room-list-page">
+    <div class="room-list-container">
+      <!-- Header -->
+      <div class="room-list-header">
+        <h1 class="room-list-title">Active Games</h1>
+        <BButton v-if="username" class="create-room-btn" @click="showCreateRoomModal">
+          <span class="btn-icon">+</span> Create Room
+        </BButton>
       </div>
       
-      <div v-if="!username" class="no-auth-message">
+      <div v-if="!username" class="empty-state">
+        <div class="empty-state-icon">🔒</div>
         <p>Please log in to see available rooms.</p>
       </div>
       
-      <div v-else-if="rooms.length === 0" class="no-rooms-message">
+      <div v-else-if="rooms.length === 0" class="empty-state">
+        <div class="empty-state-icon">🎮</div>
         <p>No rooms available. Create one to get started!</p>
       </div>
       
-      <div v-else class="rooms-list">
+      <!-- Room Cards Grid -->
+      <div v-else class="rooms-grid">
         <div v-for="(room, index) in rooms" :key="index" class="room-card">
-          <div class="room-header">
-            <h3 class="room-name">{{ room.name }}</h3>
+          <div class="room-card-header">
+            <h3 class="room-card-title">{{ room.name }}</h3>
+            <span class="room-card-owner">by {{ room.owner_name || 'Unknown' }}</span>
           </div>
-          <div class="room-actions">
-            <BButton 
-              variant="primary" 
-              @click.prevent="showJoinRoomModal(room.name, room.id)"
-              class="room-btn-preview"
-            >
-              View Details
+          <div class="room-card-body">
+            <div class="room-card-stats">
+              <div class="stat">
+                <span class="stat-icon">👥</span>
+                <span class="stat-value">{{ room.participant_count || 0 }}</span>
+                <span class="stat-label">Players</span>
+              </div>
+              <div class="stat">
+                <span class="stat-icon">⏱️</span>
+                <span class="stat-value">{{ formatDuration(room.startedAt) }}</span>
+                <span class="stat-label">Open</span>
+              </div>
+            </div>
+          </div>
+          <div class="room-card-actions">
+            <BButton class="btn-details" @click.prevent="showDetailsModal(room)">
+              Details
             </BButton>
-            <BButton 
-              variant="success" 
-              @click.prevent="quickJoin(room)"
-              class="room-btn-join"
-            >
-              Join Game
+            <BButton class="btn-join" @click.prevent="quickJoin(room)">
+              Join
             </BButton>
           </div>
         </div>
       </div>
-    </BContainer>
+    </div>
 
     <!-- Create Room Modal -->
     <BModal
-      id="modal-prevent-closing"
       ref="createRoomModal"
-      title="Create Room"
-      @ok="handleOkCreate"
-      ok-title="Create Room"
-      cancel-title="Cancel"
-      :ok-disabled="creatingRoom"
+      :hide-header="true"
+      :hide-footer="true"
+      :hide-header-close="true"
+      centered
+      content-class="custom-modal-content"
+      body-class="custom-modal-body"
     >
-      <form
-        id="create-room-form"
-        ref="form"
-        @submit.stop.prevent="createRoom"
-      >
-        <BFormGroup
-          label="Room name"
-          label-for="name-input"
-          invalid-feedback="Room Name"
-          description="Enter a name for this room"
-        >
-          <small v-if="localError" class="text-danger">{{ localError }}</small>
-          <BFormInput
-            id="name-input"
-            v-model="newRoom.name"
-            required
-          ></BFormInput>
-        </BFormGroup>
-      </form>
-    </BModal>
-
-    <!-- Join Room Modal -->
-    <BModal
-      id="JoinRoomModal"
-      ref="joinRoomModal"
-      title="Join Room:"
-      @ok="onConfirmJoin"
-      ok-title="Yes"
-      cancel-title="No"
-      :ok-disabled="joiningRoom"
-    >
-      Are you sure you want to join room: {{ roomname }}
-      <div class="mt-2">
-        <small v-if="localError" class="text-danger">{{ localError }}</small>
+      <div class="modal-custom-content">
+        <div class="modal-custom-header">
+          <h2>Create New Room</h2>
+          <button class="modal-close-btn" @click="$refs.createRoomModal.hide()">×</button>
+        </div>
+        <form @submit.stop.prevent="createRoom" class="modal-form">
+          <div class="form-group">
+            <label for="room-name-input">Room Name</label>
+            <input
+              id="room-name-input"
+              v-model="newRoom.name"
+              type="text"
+              placeholder="Enter room name..."
+              class="form-input"
+              required
+            />
+            <small v-if="localError" class="form-error">{{ localError }}</small>
+          </div>
+        </form>
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" @click="$refs.createRoomModal.hide()">Cancel</button>
+          <button type="button" class="btn-create" :disabled="creatingRoom" @click="createRoom">
+            {{ creatingRoom ? 'Creating...' : 'Create Room' }}
+          </button>
+        </div>
       </div>
     </BModal>
 
-    <!-- Leave Room Modal -->
-    <BModal id="LeaveRoomModal" ref="leaveRoomModal" title="Leave Room:">
-      Are you sure you want to Leave room: {{ roomname }}
-      <template #modal-footer="{ cancel }">
-        <BButton size="sm" variant="success" @click="leaveRoom">
-          Yes
-        </BButton>
-        <BButton size="sm" variant="danger" @click="cancel()">
-          No
-        </BButton>
-      </template>
+    <!-- Room Details Modal -->
+    <BModal
+      ref="detailsModal"
+      :hide-header="true"
+      :hide-footer="true"
+      :hide-header-close="true"
+      centered
+      size="lg"
+      content-class="custom-modal-content"
+      body-class="custom-modal-body"
+    >
+      <div class="modal-custom-content" v-if="selectedRoom">
+        <div class="modal-custom-header">
+          <h2>{{ selectedRoom.name }}</h2>
+          <button class="modal-close-btn" @click="$refs.detailsModal.hide()">×</button>
+        </div>
+        <div class="details-content">
+          <div class="details-info">
+            <div class="info-row">
+              <span class="info-label">Created by:</span>
+              <span class="info-value">{{ selectedRoom.owner_name || 'Unknown' }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Open for:</span>
+              <span class="info-value">{{ formatDuration(selectedRoom.startedAt) }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Government:</span>
+              <span class="info-value">{{ selectedRoom.governmentType || 'Democracy' }}</span>
+            </div>
+          </div>
+          <div class="details-members">
+            <h4>Players ({{ selectedRoom.participants?.length || 0 }})</h4>
+            <div class="members-list">
+              <div 
+                v-for="participant in selectedRoom.participants" 
+                :key="participant.user_id" 
+                class="member-item"
+              >
+                <span class="member-icon">🎮</span>
+                <span class="member-name">{{ participant.username }}</span>
+                <span v-if="participant.user_id === selectedRoom.owner_id" class="member-badge">Host</span>
+              </div>
+              <div v-if="!selectedRoom.participants?.length" class="no-members">
+                No players yet
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" @click="$refs.detailsModal.hide()">Close</button>
+          <button type="button" class="btn-join-large" @click="joinSelectedRoom" :disabled="joiningRoom">
+            {{ joiningRoom ? 'Joining...' : 'Join Game' }}
+          </button>
+        </div>
+      </div>
     </BModal>
   </div>
 </template>
 
 <script>
-import {
-  BContainer, BRow, BCol, BButton, BModal, BFormGroup, BFormInput,
-  BTableSimple, BThead, BTbody, BTr, BTh, BTd
-} from 'bootstrap-vue-next'
+import { BButton, BModal } from 'bootstrap-vue-next'
 import RoomListService from "@/services/RoomListService";
 
 export default {
   name: 'RoomList',
   components: {
-    BContainer, BRow, BCol, BButton, BModal, BFormGroup, BFormInput,
-    BTableSimple, BThead, BTbody, BTr, BTh, BTd
+    BButton, BModal
   },
   data() {
     return {
       rooms: [],
-      selected: null,
+      selectedRoom: null,
       newRoom: {
         name: "",
       },
-      roomname: '',
-      roomId: '',
       localError: '',
-      creatingRoom: false
-  , joiningRoom: false
+      creatingRoom: false,
+      joiningRoom: false
     }
   },
   methods: {
@@ -133,62 +177,46 @@ export default {
       this.newRoom.name = '';
       this.$refs.createRoomModal.show();
     },
-    async handleOkCreate(bvModalEvt) {
-      // Prevent modal from closing automatically
-      bvModalEvt.preventDefault()
-      console.log('[CreateRoom] OK button clicked')
-      await this.createRoom()
-      // If successful (no error), the createRoom method will hide modal and navigate
-      // If error, modal stays open to show error message
-    },
-    handleCreateRoom() {
-      // Trigger form validation and submission
-      console.log('[CreateRoom] Button clicked, calling createRoom()')
-      this.createRoom()
+    showDetailsModal(room) {
+      this.selectedRoom = room;
+      this.localError = '';
+      this.$refs.detailsModal.show();
     },
     async quickJoin(room) {
       try {
-        this.roomname = room.name
-        this.roomId = room.id
-        console.log('[QuickJoin] Direct join for room:', room.name, 'id:', room.id)
         this.joiningRoom = true
         const payload = { roomId: Number(room.id) }
         this.$store.commit('auth/setRoomId', { id: payload.roomId })
         const resp = await RoomListService.joinRoom(payload)
-        console.log('[QuickJoin] Response status:', resp?.status)
         if (resp && resp.status >= 200 && resp.status < 300) {
           this.$router.push({ name: 'Room' })
         } else {
-          this.localError = 'Failed to join room. Please try again.'
+          this.localError = 'Failed to join room.'
         }
       } catch (e) {
-        console.error('[QuickJoin] Error:', e)
         this.localError = e?.response?.data?.errors || e?.response?.data?.message || 'Failed to join room.'
       } finally {
         this.joiningRoom = false
       }
     },
-    showJoinRoomModal(roomname, roomId) {
-      this.roomname = roomname;
-      this.roomId = roomId;
-  this.localError = '';
-  this.joiningRoom = false;
-  console.log('[JoinRoom] Open modal for room:', roomname, 'id:', roomId)
-      this.$refs.joinRoomModal.show();
-    },
-    async onConfirmJoin(bvModalEvt) {
-      // Keep the modal open while processing
-      bvModalEvt.preventDefault()
-      await this.joinRoom()
-      // If we reached here without error, hide the modal (route push already navigates)
-      if (!this.localError) {
-        this.$refs.joinRoomModal.hide()
+    async joinSelectedRoom() {
+      if (!this.selectedRoom) return
+      try {
+        this.joiningRoom = true
+        const payload = { roomId: Number(this.selectedRoom.id) }
+        this.$store.commit('auth/setRoomId', { id: payload.roomId })
+        const resp = await RoomListService.joinRoom(payload)
+        if (resp && resp.status >= 200 && resp.status < 300) {
+          this.$refs.detailsModal.hide()
+          this.$router.push({ name: 'Room' })
+        } else {
+          this.localError = 'Failed to join room.'
+        }
+      } catch (e) {
+        this.localError = e?.response?.data?.errors || e?.response?.data?.message || 'Failed to join room.'
+      } finally {
+        this.joiningRoom = false
       }
-    },
-    showLeaveRoomModal(roomname, roomId) {
-      this.roomname = roomname;
-      this.roomId = roomId;
-      this.$refs.leaveRoomModal.show();
     },
     retrieveRooms() {
       RoomListService.getRooms()
@@ -200,93 +228,44 @@ export default {
         })
     },
     async createRoom() {
-      console.log('[CreateRoom] Method called, room name:', this.newRoom.name)
       this.localError = '';
       if (!this.newRoom.name) {
         this.localError = "Room name is required.";
-        console.log('[CreateRoom] Validation failed: no room name')
         return;
       }
-      console.log('[CreateRoom] Validation passed, creating room...')
       this.creatingRoom = true;
       try {
         const response = await RoomListService.createRoom({ name: this.newRoom.name });
-        console.log('[CreateRoom] Success:', response)
         this.$refs.createRoomModal.hide();
         this.$router.push({ name: 'Room' });
       } catch (e) {
-        console.error('[CreateRoom] Error:', e)
-        // Try to show backend error if available
         if (e.response && e.response.data && e.response.data.message) {
           this.localError = e.response.data.message;
         } else {
-          this.localError = "Room already exists for this user. Please quit the previous room to create a new one.";
+          this.localError = "Room already exists. Please quit the previous room first.";
         }
-        console.log(this.localError);
       } finally {
         this.creatingRoom = false;
       }
     },
-    async joinRoom() {
-      const data = { roomId: Number(this.roomId) }
-      this.localError = ''
-      this.joiningRoom = true
-      const prevRoomId = this.$store.state.auth.roomId
-      // Commit via mutation so reactivity is preserved
-      try {
-        console.log('[JoinRoom] Attempting join with payload:', data)
-        this.$store.commit('auth/setRoomId', { id: data.roomId })
-        const response = await RoomListService.joinRoom(data)
-        console.log('[JoinRoom] Response status:', response?.status)
-        // Optional: validate success shape if backend returns { success: true }
-        if (response && response.status >= 200 && response.status < 300) {
-          this.$refs.joinRoomModal.hide()
-          this.$router.push({ name: 'Room' })
-        } else {
-          this.localError = 'Failed to join room. Please try again.'
-        }
-      } catch (e) {
-        console.error('[JoinRoom] Join failed:', e)
-        if (e.response && e.response.data) {
-          this.localError = e.response.data.errors || e.response.data.message || 'Failed to join room. Please try again.'
-        } else {
-          this.localError = 'Network error while joining room.'
-        }
-        console.log(this.localError)
-        // Revert optimistic update
-        if (prevRoomId) {
-          this.$store.commit('auth/setRoomId', { id: prevRoomId })
-        } else {
-          this.$store.commit('auth/leaveRoomId')
-        }
-      } finally {
-        this.joiningRoom = false
-      }
-    },
-    leaveRoom() {
-      var data = {
-        roomId: this.roomId
-      }
-      this.$store.commit('auth/leaveRoomId')
-      RoomListService.leaveRoom(data)
-        .then(response => {
-          this.$refs.leaveRoomModal.hide();
-          this.$router.push({ name: 'Rooms' })
-        })
-        .catch(e => {
-          console.log(e);
-        });
+    formatDuration(startedAt) {
+      if (!startedAt) return '—'
+      const start = new Date(startedAt)
+      const now = new Date()
+      const diffMs = now - start
+      const diffMins = Math.floor(diffMs / 60000)
+      const diffHours = Math.floor(diffMins / 60)
+      const diffDays = Math.floor(diffHours / 24)
+      
+      if (diffDays > 0) return `${diffDays}d`
+      if (diffHours > 0) return `${diffHours}h`
+      if (diffMins > 0) return `${diffMins}m`
+      return 'Just now'
     }
   },
   computed: {
     username() {
       return this.$store.state.auth.username
-    },
-    currentRoomId() {
-      return this.$store.state.auth.roomId
-    },
-    errors() {
-      return this.$store.state.auth.errors
     }
   },
   mounted() {
@@ -295,178 +274,456 @@ export default {
 }
 </script>
 
-<style>
-#app {
-  background: #0a0e27;
+<style scoped>
+.room-list-page {
+  background: #0B0F19;
   min-height: 100vh;
-  padding: 5px 20px 30px 20px;
+  padding: 30px 20px;
+  color: #F1F5F9;
 }
 
-.bv-example-row {
-  max-width: 1200px;
+.room-list-container {
+  max-width: 900px;
   margin: 0 auto;
 }
 
-.itemRow {
-  height: auto;
-  text-align: center;
-  margin-bottom: 30px;
-}
-
-.leaveButtons {
-  padding-top: 44px;
-}
-
-/* Create Room Button - Prominent Styling */
-.create-room-btn-container {
-  margin-bottom: 20px;
+/* Header */
+.room-list-header {
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #22D3EE33;
 }
 
-.create-room-btn-container button {
-  background: #0f1535 !important;
-  border: 2px solid #00dd33 !important;
-  border-radius: 10px !important;
-  padding: 14px 32px !important;
+.room-list-title {
+  font-size: 2em;
+  font-weight: 700;
+  color: #EAB308;
+  margin: 0;
+}
+
+.create-room-btn {
+  background: linear-gradient(135deg, #1A1F2E 0%, #0B0F19 100%) !important;
+  border: 2px solid #EAB308 !important;
+  border-radius: 12px !important;
+  padding: 12px 24px !important;
   font-weight: 700 !important;
-  font-size: 1.1em !important;
+  font-size: 1em !important;
+  color: #EAB308 !important;
   transition: all 0.3s ease !important;
-  box-shadow: 0 0 20px rgba(0, 255, 65, 0.3) !important;
-  color: #00dd33 !important;
-  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.create-room-btn-container button:hover {
-  transform: translateY(-3px) !important;
-  box-shadow: 0 0 40px rgba(0, 255, 65, 0.6) !important;
-  text-shadow: 0 0 10px rgba(0, 255, 65, 0.6) !important;
+.create-room-btn:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 20px rgba(234, 179, 8, 0.3) !important;
 }
 
-.create-room-btn-container button:active {
-  transform: translateY(-1px) !important;
+.btn-icon {
+  font-size: 1.3em;
+  font-weight: 300;
 }
 
-/* Empty state messages */
-.no-auth-message,
-.no-rooms-message {
-  background: #0f1535;
-  border-radius: 12px;
-  padding: 52px 35px;
+/* Empty State */
+.empty-state {
+  background: #1A1F2E;
+  border-radius: 16px;
+  padding: 60px 40px;
   text-align: center;
-  box-shadow: 0 0 20px rgba(0, 255, 65, 0.2), inset 0 0 15px rgba(0, 255, 65, 0.05);
-  margin-top: 40px;
-  border: 1px solid rgba(0, 255, 65, 0.2);
+  border: 1px solid #22D3EE44;
 }
 
-.no-auth-message p,
-.no-rooms-message p {
-  color: #00dd33;
+.empty-state-icon {
+  font-size: 3em;
+  margin-bottom: 16px;
+}
+
+.empty-state p {
+  color: #94A3B8;
   font-size: 1.1em;
   margin: 0;
 }
 
-/* Rooms List Layout - Full Width Rows */
-.rooms-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-top: 20px;
+/* Room Cards Grid */
+.rooms-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
 }
 
-/* Room Card Styling - Full Width Row */
 .room-card {
-  background: #0f1535;
-  border-radius: 10px;
+  background: #1A1F2E;
+  border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 0 15px rgba(0, 255, 65, 0.2), inset 0 0 15px rgba(0, 255, 65, 0.05);
+  border: 1px solid #22D3EE44;
   transition: all 0.3s ease;
   display: flex;
-  flex-direction: row;
-  height: auto;
-  border: 1px solid rgba(0, 255, 65, 0.3);
-  align-items: center;
+  flex-direction: column;
 }
 
 .room-card:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 0 25px rgba(0, 255, 65, 0.4), inset 0 0 15px rgba(0, 255, 65, 0.08);
-  background: #0f1535;
+  transform: translateY(-4px);
+  border-color: #EAB308;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
 }
 
-.room-header {
-  background: #0a0e27;
-  color: #00dd33;
-  padding: 12px 20px;
+.room-card-header {
+  background: linear-gradient(135deg, #0B0F19 0%, #1A1F2E 100%);
+  padding: 20px;
+  border-bottom: 1px solid #22D3EE33;
+}
+
+.room-card-title {
+  font-size: 1.2em;
+  font-weight: 700;
+  color: #EAB308;
+  margin: 0 0 4px 0;
+}
+
+.room-card-owner {
+  font-size: 0.85em;
+  color: #64748B;
+}
+
+.room-card-body {
+  padding: 16px 20px;
+  flex-grow: 1;
+}
+
+.room-card-stats {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 70px;
-  min-width: 180px;
-  flex-shrink: 0;
-  border-right: 2px solid rgba(0, 255, 65, 0.2);
+  gap: 24px;
 }
 
-.room-name {
-  margin: 0;
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.stat-icon {
+  font-size: 1.2em;
+}
+
+.stat-value {
   font-size: 1.1em;
   font-weight: 700;
-  text-align: center;
-  word-break: break-word;
-  color: #00dd33;
-  text-shadow: 0 0 8px rgba(0, 255, 65, 0.3);
+  color: #22D3EE;
 }
 
-.room-actions {
-  padding: 12px 20px;
+.stat-label {
+  font-size: 0.75em;
+  color: #64748B;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.room-card-actions {
   display: flex;
   gap: 10px;
-  flex-direction: row;
-  flex-grow: 1;
-  justify-content: flex-end;
+  padding: 16px 20px;
+  border-top: 1px solid #22D3EE22;
+}
+
+.btn-details,
+.btn-join {
+  flex: 1;
+  padding: 10px 16px !important;
+  font-weight: 600 !important;
+  font-size: 0.9em !important;
+  border-radius: 8px !important;
+  transition: all 0.2s ease !important;
+}
+
+.btn-details {
+  background: transparent !important;
+  border: 1px solid #64748B !important;
+  color: #94A3B8 !important;
+}
+
+.btn-details:hover {
+  border-color: #22D3EE !important;
+  color: #22D3EE !important;
+}
+
+.btn-join {
+  background: linear-gradient(135deg, #EAB308 0%, #CA8A04 100%) !important;
+  border: none !important;
+  color: #0B0F19 !important;
+}
+
+.btn-join:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 15px rgba(234, 179, 8, 0.4) !important;
+}
+
+/* Modal inner content styling */
+
+.modal-custom-content {
+  background: #1A1F2E;
+  border-radius: 16px;
+  border: 1px solid #22D3EE44;
+  overflow: hidden;
+}
+
+.modal-custom-header {
+  display: flex;
+  justify-content: space-between;
   align-items: center;
+  padding: 20px 24px;
+  background: #0B0F19;
+  border-bottom: 1px solid #22D3EE33;
 }
 
-.room-btn-preview,
-.room-btn-join {
-  flex: 0 0 auto;
+.modal-custom-header h2 {
+  font-size: 1.4em;
+  font-weight: 700;
+  color: #EAB308;
+  margin: 0;
+}
+
+.modal-close-btn {
+  background: none;
+  border: none;
+  color: #64748B;
+  font-size: 1.8em;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+  transition: color 0.2s;
+}
+
+.modal-close-btn:hover {
+  color: #F1F5F9;
+}
+
+/* Form Styling */
+.modal-form {
+  padding: 24px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 0.9em;
   font-weight: 600;
+  color: #94A3B8;
+  margin-bottom: 8px;
+}
+
+.form-input {
+  width: 100%;
+  padding: 14px 16px;
+  background: #0B0F19;
+  border: 1px solid #22D3EE44;
+  border-radius: 10px;
+  color: #F1F5F9;
+  font-size: 1em;
+  transition: border-color 0.2s;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #EAB308;
+}
+
+.form-input::placeholder {
+  color: #475569;
+}
+
+.form-error {
+  display: block;
+  margin-top: 8px;
+  color: #EF4444;
+  font-size: 0.85em;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  padding: 20px 24px;
+}
+
+.btn-cancel {
+  background: transparent;
+  border: 1px solid #64748B;
+  color: #94A3B8;
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-cancel:hover {
+  border-color: #F1F5F9;
+  color: #F1F5F9;
+}
+
+.btn-create,
+.btn-join-large {
+  background: linear-gradient(135deg, #EAB308 0%, #CA8A04 100%);
+  border: none;
+  color: #0B0F19;
+  padding: 12px 28px;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-create:hover,
+.btn-join-large:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(234, 179, 8, 0.4);
+}
+
+.btn-create:disabled,
+.btn-join-large:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Details Modal Content */
+.details-content {
+  padding: 24px;
+}
+
+.details-info {
+  margin-bottom: 24px;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid #22D3EE11;
+}
+
+.info-row:last-child {
+  border-bottom: none;
+}
+
+.info-label {
+  color: #64748B;
+  font-size: 0.9em;
+}
+
+.info-value {
+  color: #F1F5F9;
+  font-weight: 600;
+}
+
+.details-members h4 {
+  font-size: 1em;
+  font-weight: 700;
+  color: #22D3EE;
+  margin: 0 0 12px 0;
+}
+
+.members-list {
+  background: #0B0F19;
+  border-radius: 10px;
+  padding: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.member-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
   border-radius: 8px;
-  padding: 10px 20px !important;
-  transition: all 0.2s ease;
-  font-size: 0.95em;
+  transition: background 0.2s;
 }
 
-.room-btn-preview {
-  background: #0f1535 !important;
-  border: 2px solid #00ccff !important;
-  color: #00ccff !important;
-  box-shadow: 0 0 10px rgba(0, 204, 255, 0.3) !important;
+.member-item:hover {
+  background: #1A1F2E;
 }
 
-.room-btn-preview:hover {
-  box-shadow: 0 0 20px rgba(0, 204, 255, 0.6) !important;
-  transform: translateY(-2px);
-  text-shadow: 0 0 8px rgba(0, 204, 255, 0.6) !important;
+.member-icon {
+  font-size: 1.1em;
 }
 
-.room-btn-join {
-  background: #0f1535 !important;
-  border: 2px solid #00dd33 !important;
-  color: #00dd33 !important;
-  box-shadow: 0 0 10px rgba(0, 255, 65, 0.3) !important;
+.member-name {
+  flex-grow: 1;
+  color: #F1F5F9;
 }
 
-.room-btn-join:hover {
-  box-shadow: 0 0 20px rgba(0, 255, 65, 0.6) !important;
-  transform: translateY(-2px);
-  text-shadow: 0 0 8px rgba(0, 255, 65, 0.6) !important;
+.member-badge {
+  background: #EAB308;
+  color: #0B0F19;
+  font-size: 0.7em;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
 }
 
-/* Responsive Grid */
-@media (max-width: 768px) {
+.no-members {
+  text-align: center;
+  color: #64748B;
+  padding: 20px;
+  font-style: italic;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .room-list-header {
+    flex-direction: column;
+    gap: 16px;
+    text-align: center;
+  }
+  
   .rooms-grid {
     grid-template-columns: 1fr;
   }
+  
+  .modal-actions {
+    flex-direction: column;
+  }
+  
+  .btn-cancel,
+  .btn-create,
+  .btn-join-large {
+    width: 100%;
+  }
 }
 </style>
+
+<!-- Global modal styles (unscoped because modals are teleported to body) -->
+<style>
+.custom-modal-content {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.custom-modal-content .modal-header,
+.custom-modal-content .modal-footer {
+  display: none !important;
+}
+
+.custom-modal-body {
+  padding: 0 !important;
+  background: transparent !important;
+}
+</style>
+
+
+
+
+
+
+

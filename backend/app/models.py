@@ -12,6 +12,7 @@ class User(db.Model):
     username = db.Column(db.String(60), index=True, unique=True)
     score = db.Column(db.Integer, default=0)
     passwordHash = db.Column(db.String(128))
+    profilePic = db.Column(db.String(255), default="https://ui-avatars.com/api/?name=User")
     rooms = db.relationship(
         "Room", secondary="room_participants", lazy="subquery", viewonly=True
     )
@@ -43,7 +44,7 @@ class Room(db.Model):
     __tablename__ = "room"
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(60), nullable=False)
-    participants = db.relationship("RoomParticipants", lazy="subquery")
+    participants = db.relationship("RoomParticipants", lazy="subquery", order_by="RoomParticipants.userId")
     startedAt = db.Column(db.DateTime, default=datetime.utcnow)
     endedAt = db.Column(db.DateTime, default=datetime.utcnow)
     government = db.relationship(
@@ -61,8 +62,9 @@ class RoomParticipants(db.Model):
     bleed = db.Column(db.Integer, default=0)
     heat = db.Column(db.Integer, default=0)
     perk = db.Column(db.String(32), default=None)  # "Manager", "Senior", or "Executive"
-    approval_status = db.Column(db.String(32), default="approve")  # "approve", "disapprove", "abstain", or None
+    approval_status = db.Column(db.String(32), default="approve")  # "approve", "reject", "abstain", or None
     gov_vote = db.Column(db.String(32), default=None)  # "yes", "no", "abstain", or None
+    is_in_jail = db.Column(db.Boolean, default=False)  # True if player is in jail
     user = db.relationship("User")
 
 class Job(db.Model):
@@ -140,7 +142,10 @@ def serialize_room(room):
                 "bleed": rp.bleed,
                 "heat": rp.heat,
                 "perk": rp.perk,
+                "approval_status": rp.approval_status,
+                "gov_vote": rp.gov_vote,
                 "clock": timeFormat(rp.clock) if rp.clock else "00•00•00",
+                "is_in_jail": rp.is_in_jail,
             }
             for rp in room.participants
         ],

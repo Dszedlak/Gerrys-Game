@@ -25,6 +25,10 @@ class RoomListService {
   getRoomHistory(roomId) {
     return ApiService.get(`rooms/history?roomId=${roomId}`);
   }
+
+  setWinner(data) {
+    return ApiService.post("rooms/winner", data);
+  }
 };
 
 export default new RoomListService();

@@ -1,5 +1,6 @@
 <template>
-  <b-modal id="wheelSpinnerModal" ref="wheelModal" title="Spin the Wheel" size="xl" hide-footer @shown="onModalShown" @hidden="onModalHidden">
+  <!-- Modal mode (default) -->
+  <b-modal v-if="!inline" id="wheelSpinnerModal" ref="wheelModal" title="Spin the Wheel" size="xl" @shown="onModalShown" @hidden="onModalHidden">
     <div class="wheel-container">
       <div v-if="!participants || participants.length === 0" class="no-participants">
         <p>No participants available to spin!</p>
@@ -9,8 +10,8 @@
           <div class="wheel-pointer">▼</div>
           <svg ref="wheelSvg" class="wheel-svg" :class="{ spinning: isSpinning }" :style="{ transform: `rotate(${currentRotation}deg)` }" viewBox="0 0 500 500" @transitionend="onSpinEnd">
             <g v-for="(item, index) in wheelItems" :key="index">
-              <path :d="getSlicePath(index)" :fill="item.color" :stroke="'#fff'" :stroke-width="2" />
-              <text :x="getTextX(index)" :y="getTextY(index)" :transform="getTextTransform(index)" text-anchor="middle" class="wheel-text" :fill="'#ffffff'">{{ item.text }}</text>
+              <path :d="getSlicePath(index)" :fill="item.color" :stroke="'#ffffff'" :stroke-width="2" style="opacity: 1;" />
+              <text :x="getTextX(index)" :y="getTextY(index)" :transform="getTextTransform(index)" text-anchor="middle" class="wheel-text" fill="#000000" style="font-size: 14px; font-weight: bold; pointer-events: none;">{{ item.text }}</text>
             </g>
           </svg>
         </div>
@@ -25,7 +26,43 @@
         </div>
       </div>
     </div>
+    <template #footer></template>
   </b-modal>
+
+  <!-- Inline mode (no modal wrapper) -->
+  <div v-else class="wheel-container-inline">
+    <div v-if="!participants || participants.length === 0" class="no-participants">
+      <p>No participants available to spin!</p>
+    </div>
+    <div v-else class="wheel-content">
+      <div class="wheel-wrapper-inline">
+        <div class="wheel-pointer">▼</div>
+        <svg ref="wheelSvg" class="wheel-svg" :class="{ spinning: isSpinning }" :style="{ transform: `rotate(${currentRotation}deg)` }" viewBox="0 0 500 500" @transitionend="onSpinEnd">
+          <g v-for="(item, index) in wheelItems" :key="index">
+            <path :d="getSlicePath(index)" :fill="item.color" :stroke="'#ffffff'" :stroke-width="2" style="opacity: 1;" />
+            <text :x="getTextX(index)" :y="getTextY(index)" :transform="getTextTransform(index)" text-anchor="middle" class="wheel-text-inline" fill="#000000">{{ item.text }}</text>
+          </g>
+        </svg>
+      </div>
+      
+      <!-- Show spin button for admin when not spinning and no winner yet -->
+      <div v-if="isAdmin && !winner && showSpinButton" class="spin-controls-inline mt-3">
+        <b-button variant="warning" size="lg" :disabled="isSpinning" @click="handleSpinClick" class="spin-button-inline">
+          {{ isSpinning ? 'Spinning...' : '🎲 Spin The Wheel' }}
+        </b-button>
+      </div>
+      
+      <!-- Winner result with admin actions -->
+      <div v-if="winner" class="winner-result-inline mt-3">
+        <div class="winner-banner-inline">
+          🎉 Winner: <span class="winner-name">{{ winner.text || winner }}</span>
+        </div>
+        <div v-if="showCustomActions && isAdmin" class="custom-actions-inline mt-2">
+          <slot name="winner-actions" :winner="winner"></slot>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
@@ -33,8 +70,18 @@ import { ref, computed } from 'vue'
 
 const props = defineProps({
   participants: { type: Array, required: true, default: () => [] },
-  showCustomActions: { type: Boolean, default: false }
+  showCustomActions: { type: Boolean, default: false },
+  inline: { type: Boolean, default: false },
+  isAdmin: { type: Boolean, default: false },
+  showSpinButton: { type: Boolean, default: true }
 })
+
+const emit = defineEmits(['spin-request'])
+
+function handleSpinClick() {
+  // Emit event for parent to handle broadcasting, then spin
+  emit('spin-request')
+}
 
 const wheelModal = ref(null)
 const wheelSvg = ref(null)
@@ -103,52 +150,125 @@ function onModalHidden() {
   isSpinning.value = false
 }
 
-function spinWheel() {
+// Generate spin data (rotation and winner) without executing - for synced spins
+function generateSpinData() {
+  if (wheelItems.value.length === 0) return null
+  
+  const numSlices = wheelItems.value.length
+  const sliceSize = 360 / numSlices
+  const spins = 5 + Math.random() * 3
+  const extraRotation = Math.random() * sliceSize
+  const totalRotation = spins * 360 + extraRotation
+  
+  // Calculate winner from rotation
+  const normalizedRotation = totalRotation % 360
+  const pointerSliceAngle = (360 - normalizedRotation) % 360
+  let winnerIndex = Math.floor(pointerSliceAngle / sliceSize)
+  if (winnerIndex >= numSlices) winnerIndex = 0
+  if (winnerIndex < 0) winnerIndex = numSlices - 1
+  
+  return {
+    rotation: totalRotation,
+    winnerIndex,
+    winner: wheelItems.value[winnerIndex]
+  }
+}
+
+// Spin to a specific rotation (used for synchronized spins)
+function spinToRotation(targetRotation, spinDuration = 5000) {
   if (isSpinning.value || wheelItems.value.length === 0) return
   isSpinning.value = true
   winner.value = null
-  const winnerIndex = Math.floor(Math.random() * wheelItems.value.length)
-  const spins = 5 + Math.random() * 3
-  const baseRotation = spins * 360
-  const winnerSliceMiddle = winnerIndex * sliceAngle.value + sliceAngle.value / 2
-  const targetRotation = baseRotation + (360 - winnerSliceMiddle)
+  
+  const numSlices = wheelItems.value.length
+  const sliceSize = 360 / numSlices
+  
   currentRotation.value = targetRotation
+  
   setTimeout(() => {
-    // Store both the text (for display) and value (for lookup)
+    const normalizedRotation = targetRotation % 360
+    const pointerSliceAngle = (360 - normalizedRotation) % 360
+    let winnerIndex = Math.floor(pointerSliceAngle / sliceSize)
+    if (winnerIndex >= numSlices) winnerIndex = 0
+    if (winnerIndex < 0) winnerIndex = numSlices - 1
+    
     winner.value = {
       text: wheelItems.value[winnerIndex].text,
       value: wheelItems.value[winnerIndex].value
     }
     isSpinning.value = false
-  }, 5000)
+  }, spinDuration)
+}
+
+function spinWheel() {
+  // Local spin - generates and executes immediately
+  const spinData = generateSpinData()
+  if (!spinData) return
+  spinToRotation(spinData.rotation)
+}
+
+function clearWinner() {
+  winner.value = null
+  currentRotation.value = 0
+  isSpinning.value = false
 }
 
 function onSpinEnd() {}
 
-defineExpose({ open, winner, spinWheel, wheelModal })
+defineExpose({ open, winner, spinWheel, spinToRotation, generateSpinData, clearWinner, wheelModal })
 </script>
 
 <style scoped>
 .wheel-container { padding: 20px; min-height: 400px; }
-.no-participants { text-align: center; padding: 60px 20px; font-size: 1.2em; color: #00ff41; }
+.wheel-container-inline { padding: 10px; text-align: center; }
+.no-participants { text-align: center; padding: 40px 20px; font-size: 1.1em; color: #EAB308; }
 .wheel-content { display: flex; flex-direction: column; align-items: center; }
 .wheel-wrapper { position: relative; width: 500px; height: 500px; margin: 0 auto; }
-.wheel-pointer { position: absolute; top: -20px; left: 50%; transform: translateX(-50%); font-size: 40px; color: #00ff41; z-index: 10; text-shadow: 0 0 10px rgba(0, 255, 65, 0.5); }
-.wheel-svg { width: 100%; height: 100%; border-radius: 50%; box-shadow: 0 0 20px rgba(0, 255, 65, 0.3), inset 0 0 15px rgba(0, 255, 65, 0.05); transition: none; border: 2px solid rgba(0, 255, 65, 0.3); }
+.wheel-wrapper-inline { position: relative; width: 300px; height: 300px; margin: 0 auto; }
+.wheel-text-inline { font-size: 16px; font-weight: bold; pointer-events: none; }
+.wheel-pointer { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); font-size: 32px; color: #EAB308; z-index: 10; }
+.wheel-svg { width: 100%; height: 100%; border-radius: 50%;; transition: none; border: 2px solid rgba(145, 70, 255, 0.3); }
 .wheel-svg.spinning { transition: transform 5s cubic-bezier(0.25, 0.1, 0.25, 1); }
-.wheel-text { font-size: 16px; font-weight: bold; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); pointer-events: none; }
+.wheel-text { font-size: 16px; font-weight: bold;; pointer-events: none; }
 .spin-controls { text-align: center; }
-.spin-button { min-width: 200px; font-size: 1.5em; font-weight: bold; padding: 12px 40px; border-radius: 50px; box-shadow: 0 0 15px rgba(0, 255, 65, 0.3); transition: all 0.3s ease; background: #0f1535 !important; border: 2px solid #00ff41 !important; color: #00ff41 !important; }
-.spin-button:hover:not(:disabled) { transform: scale(1.05); box-shadow: 0 0 30px rgba(0, 255, 65, 0.6); text-shadow: 0 0 8px rgba(0, 255, 65, 0.6); }
+.spin-controls-inline { text-align: center; }
+.spin-button { min-width: 200px; font-size: 1.5em; font-weight: bold; padding: 12px 40px; border-radius: 50px; transition: all 0.3s ease; background: #1A1F2E !important; border: 2px solid #EAB308 !important; color: #EAB308 !important; }
+.spin-button-inline { min-width: 180px; font-size: 1.1em; font-weight: bold; padding: 10px 24px; border-radius: 50px; transition: all 0.3s ease; }
+.spin-button:hover:not(:disabled) { transform: scale(1.05);;; }
 .spin-button:disabled { opacity: 0.6; cursor: not-allowed; }
 .winner-result { text-align: center; animation: fadeIn 0.5s ease-in; }
-.winner-result h3 { font-size: 2em; color: #00ff41; margin: 0; text-shadow: 0 0 15px rgba(0, 255, 65, 0.5); }
-.winner-name { color: #ffcc00; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.2); }
+.winner-result h3 { font-size: 2em; color: #EAB308; margin: 0;; }
+.winner-result-inline { text-align: center; animation: fadeIn 0.5s ease-in; }
+.winner-banner-inline { font-size: 1.1em; color: #EAB308; font-weight: bold; padding: 6px 12px; background: #1e293b; border-radius: 6px; display: inline-block; }
+.custom-actions-inline { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 8px; }
+.winner-name { color: #ffcc00; font-weight: bold;; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 @media (max-width: 768px) {
   .wheel-wrapper { width: 350px; height: 350px; }
+  .wheel-wrapper-inline { width: 260px; height: 260px; }
   .wheel-text { font-size: 12px; }
+  .wheel-text-inline { font-size: 12px; }
   .spin-button { font-size: 1.2em; padding: 10px 30px; }
   .winner-result h3 { font-size: 1.5em; }
 }
 </style>
+
+<style>
+/* Hide default modal footer for wheel spinner modal */
+#wheelSpinnerModal .modal-footer {
+  display: none !important;
+}
+</style>
+
+
+
+
+
+
+
+
+
+
+
+
+

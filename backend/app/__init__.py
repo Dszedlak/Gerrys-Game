@@ -22,7 +22,9 @@ def initDatabase(app):
             db.create_all()
 
             db.session.add(models.User(username="admin", password="szedlak123"))
-
+            db.session.add(models.User(username="test", password="test"))
+            db.session.add(models.User(username="david", password="test"))
+            
             # --- Load and insert jobs ---
             from .data_collections.loader import load_jobs  # removed load_governments here
             jobs_data = load_jobs()
@@ -36,15 +38,38 @@ def initDatabase(app):
                     ))
 
             db.session.commit()
+    else:
+        # Migrate existing database schema if needed
+        with app.app_context():
+            from . import models
+            from sqlalchemy import inspect
+            
+            inspector = inspect(db.engine)
+            
+            # Check if room_participants table exists
+            if 'room_participants' in inspector.get_table_names():
+                columns = [col['name'] for col in inspector.get_columns('room_participants')]
+                
+                # Add missing is_in_jail column if it doesn't exist
+                if 'is_in_jail' not in columns:
+                    with db.engine.connect() as conn:
+                        conn.execute(db.text('ALTER TABLE room_participants ADD COLUMN is_in_jail BOOLEAN DEFAULT 0'))
+                        conn.commit()
+                    print("Added is_in_jail column to room_participants table")
+
 
 def createApp(configName):
     # Get path to frontend dist directory (one level up from backend)
-    frontend_dist = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'frontend', 'dist')
+    # __file__ = /backend/app/__init__.py
+    # dirname(__file__) = /backend/app
+    # dirname(dirname(__file__)) = /backend
+    # dirname(dirname(dirname(__file__))) = /workspace
+    backend_dir = os.path.dirname(os.path.dirname(__file__))
+    workspace_dir = os.path.dirname(backend_dir)
+    frontend_dist = os.path.join(workspace_dir, 'frontend', 'dist')
     
-    #Init Flask app
-    app = Flask(__name__, 
-                static_folder=frontend_dist,
-                static_url_path='')
+    #Init Flask app (don't use static_url_path - handle all static files via routes)
+    app = Flask(__name__)
     app.config.from_object(config.APP_CONFIG[configName])
     #Init database
     db.init_app(app)
@@ -61,6 +86,12 @@ def createApp(configName):
     from .auth import auth as authBlueprint
     app.register_blueprint(apiBlueprint, url_prefix="/api")
     app.register_blueprint(authBlueprint, url_prefix="/api/auth")
+    
+    # Serve uploaded avatar files
+    @app.route('/api/uploads/avatars/<filename>')
+    def serve_avatar(filename):
+        """Serve uploaded avatar images"""
+        return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
     
     # Serve index.html for all non-API routes (Vue Router fallback)
     @app.route('/', defaults={'path': ''})

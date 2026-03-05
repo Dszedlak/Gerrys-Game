@@ -1,0 +1,179 @@
+/* Global color scheme override - Change all greens to Twitch purple */
+
+/* Main page background - creamy beige */
+html, body {
+  background-color: #0B0F19 !important;
+  background: #0B0F19 !important;
+}
+
+/* CSS Variables */
+:root {
+  --primary-color: #F1F5F9;
+  --secondary-color: #1a0e2e;
+  --dark-bg: #0B0F19;
+  --card-bg: #0f1535;
+}
+
+/* Bootstrap color variable overrides */
+:root {
+  --bs-body-color: #EAB308;
+  --bs-body-color-rgb: 145, 70, 255;
+  --bs-link-color: #EAB308;
+  --bs-link-color-rgb: 145, 70, 255;
+  --bs-link-hover-color: #EAB308;
+  --bs-link-hover-color-rgb: 145, 70, 255;
+  --bs-success: #EAB308;
+  --bs-success-rgb: 145, 70, 255;
+  --bs-info: #00ccff;
+  --bs-info-rgb: 0, 204, 255;
+  --bs-primary: #EAB308;
+  --bs-primary-rgb: 145, 70, 255;
+}
+
+/* ALL text that appears green needs to be purple */
+* {
+  --text-green: #EAB308 !important;
+  --color-green: #EAB308 !important;
+}
+
+/* Force all nav links to purple */
+.nav-link,
+.navbar-nav .nav-link,
+.navbar .nav-link,
+a.nav-link,
+a.nav-link:visited {
+  color: #F1F5F9 !important;
+}
+
+.nav-link:hover,
+.nav-link:active,
+.nav-link:focus,
+.navbar-nav .nav-link:hover,
+.navbar .nav-link:hover {
+  color: #F1F5F9 !important;
+  text-decoration: none;
+}
+
+/* Router links in navbar */
+.navbar a,
+.navbar a[class*="link"],
+.navbar .router-link-active,
+.navbar .router-link-exact-active {
+  color: #F1F5F9 !important;
+}
+
+.navbar a:hover {
+  color: #F1F5F9 !important;
+}
+
+/* Navbar brand */
+.navbar-brand,
+.navbar-brand a,
+.navbar-brand a:hover {
+  color: #F1F5F9 !important;
+}
+
+/* ALL links everywhere */
+a {
+  color: #F1F5F9 !important;
+}
+
+a:hover,
+a:active,
+a:visited,
+a:focus {
+  color: #F1F5F9 !important;
+}
+
+/* Text light override */
+.text-light {
+  color: #F1F5F9 !important;
+}
+
+/* Success colors */
+.text-success,
+.bg-success,
+.btn-success,
+.badge-success,
+.alert-success {
+  background-color: #EAB308 !important;
+  color: white !important;
+  border-color: #EAB308 !important;
+}
+
+/* Table headers - ensure they're purple */
+.table th,
+.table thead th {
+  color: #F1F5F9 !important;
+  background-color: #1A1F2E !important;
+  border-color: rgba(241, 245, 249, 0.3) !important;
+}
+
+/* Dropdown items */
+.dropdown-item,
+.dropdown-item:hover,
+.dropdown-item:focus,
+.dropdown-item.active {
+  color: #EAB308 !important;
+  background-color: transparent !important;
+}
+
+.dropdown-item:hover,
+.dropdown-item:focus {
+  background-color: rgba(145, 70, 255, 0.1) !important;
+}
+
+/* Forms */
+.form-control,
+.form-select,
+select {
+  background-color: #0f1535 !important;
+  border: 2px solid rgba(241, 245, 249, 0.3) !important;
+  color: #F1F5F9 !important;
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: #F1F5F9 !important;
+  color: #F1F5F9 !important;
+}
+
+.form-label,
+label {
+  color: #F1F5F9 !important;
+}
+
+/* Badge colors */
+.badge {
+  background-color: #EAB308 !important;
+  color: white !important;
+}
+
+/* Remove any green underlines or indicators */
+[class*="success"],
+[class*="green"] {
+  color: #EAB308 !important;
+  background-color: rgba(145, 70, 255, 0.1) !important;
+  border-color: #EAB308 !important;
+}
+
+/* Fix any inline styles that might have been added */
+[style*="color: rgb(0, 255"] {
+  color: #EAB308 !important;
+}
+
+[style*="color: #00"] {
+  color: #EAB308 !important;
+}
+
+
+
+
+
+
+
+
+
+
+
+

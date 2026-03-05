@@ -1,32 +1,47 @@
 <template>
-  <div class="form-container">
-    <BForm @submit.prevent="onSubmit">
-      <BFormGroup label="Username" label-for="username-input">
-        <BFormInput
-          id="username-input"
+  <div class="login-form">
+    <form @submit.prevent="onSubmit">
+      <div class="form-group">
+        <label class="form-label">
+          <span class="label-icon">👤</span>
+          Username
+        </label>
+        <input
           v-model="username"
+          type="text"
           required
-          placeholder="Enter username"
+          maxlength="30"
+          placeholder="Enter your username"
           class="form-input"
+          autocomplete="username"
         />
-      </BFormGroup>
-      <BFormGroup label="Password" label-for="password-input">
-        <BFormInput
-          id="password-input"
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label">
+          <span class="label-icon">🔒</span>
+          Password
+        </label>
+        <input
           v-model="password"
           type="password"
           required
-          placeholder="Enter password"
+          placeholder="Enter your password"
           class="form-input"
+          autocomplete="current-password"
         />
-      </BFormGroup>
-      <div class="mb-3">
-        <small v-if="error" class="text-danger error-message">{{ error }}</small>
       </div>
-      <BButton type="submit" variant="primary" :disabled="loading" class="submit-btn">
-        {{ loading ? 'Logging in...' : 'Login' }}
-      </BButton>
-    </BForm>
+      
+      <div v-if="error" class="error-message">
+        <span class="error-icon">⚠️</span>
+        {{ error }}
+      </div>
+      
+      <button type="submit" :disabled="loading" class="submit-btn">
+        <span v-if="loading" class="loading-spinner"></span>
+        {{ loading ? 'Signing in...' : 'Sign In' }}
+      </button>
+    </form>
   </div>
 </template>
 
@@ -34,10 +49,8 @@
 import { ref } from 'vue'
 import { useStore } from 'vuex'
 import { useRouter } from 'vue-router'
-import { BForm, BFormGroup, BFormInput, BButton } from 'bootstrap-vue-next'
 
 export default {
-  components: { BForm, BFormGroup, BFormInput, BButton },
   setup() {
     const store = useStore()
     const router = useRouter()
@@ -65,62 +78,113 @@ export default {
   }
 }
 </script>
+
 <style scoped>
-.form-container {
-  background: #0f1535;
-  border-radius: 12px;
-  padding: 30px;
-  box-shadow: 0 0 20px rgba(0, 255, 65, 0.2), inset 0 0 15px rgba(0, 255, 65, 0.05);
-  border: 1px solid rgba(0, 255, 65, 0.2);
+.login-form {
+  width: 100%;
+}
+
+.form-group {
+  margin-bottom: 24px;
+}
+
+.form-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #94A3B8;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.label-icon {
+  font-size: 1rem;
 }
 
 .form-input {
-  border-radius: 8px;
-  border: 2px solid rgba(0, 255, 65, 0.3);
-  padding: 10px 12px;
+  width: 100%;
+  padding: 14px 18px;
+  background: #0B0F19;
+  border: 2px solid #334155;
+  border-radius: 12px;
+  color: #F1F5F9;
+  font-size: 1rem;
   transition: all 0.3s ease;
-  background: #0a0e27;
-  color: #00ff41;
 }
 
 .form-input::placeholder {
-  color: rgba(0, 255, 65, 0.5);
+  color: #475569;
+}
+
+.form-input:hover {
+  border-color: #475569;
 }
 
 .form-input:focus {
-  border-color: #00ff41;
-  box-shadow: 0 0 15px rgba(0, 255, 65, 0.3), inset 0 0 10px rgba(0, 255, 65, 0.05);
-  background: #0a0e27;
-  color: #00ff41;
+  outline: none;
+  border-color: #EAB308;
+  box-shadow: 0 0 0 4px rgba(234, 179, 8, 0.1);
+}
+
+.error-message {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: #EF444422;
+  border: 1px solid #EF444444;
+  border-radius: 10px;
+  color: #EF4444;
+  font-size: 0.9rem;
+  margin-bottom: 20px;
+}
+
+.error-icon {
+  font-size: 1rem;
 }
 
 .submit-btn {
   width: 100%;
-  background: #0f1535;
-  border: 2px solid #00ff41;
-  border-radius: 8px;
-  padding: 12px 24px;
-  font-weight: 600;
+  padding: 16px 24px;
+  background: linear-gradient(135deg, #EAB308 0%, #CA8A04 100%);
+  border: none;
+  border-radius: 12px;
+  color: #0B0F19;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 0 15px rgba(0, 255, 65, 0.3);
-  margin-top: 10px;
-  color: #00ff41;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
 }
 
 .submit-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 0 30px rgba(0, 255, 65, 0.6);
-  text-shadow: 0 0 8px rgba(0, 255, 65, 0.6);
+  box-shadow: 0 8px 20px rgba(234, 179, 8, 0.3);
 }
 
 .submit-btn:active:not(:disabled) {
   transform: translateY(0);
 }
 
-.error-message {
-  display: block;
-  margin-bottom: 10px;
-  font-weight: 500;
-  color: #ff4444;
+.submit-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 3px solid rgba(11, 15, 25, 0.3);
+  border-top-color: #0B0F19;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 </style>

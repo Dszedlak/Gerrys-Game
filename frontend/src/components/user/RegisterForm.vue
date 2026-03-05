@@ -1,64 +1,73 @@
 <template>
-  <div class="form-container">
-    <BForm @submit.prevent="onSubmit">
-      <BFormGroup
-        label="Username:"
-        description="Enter your desired username"
-        label-class="font-weight-bold pt-0">
-        <BFormInput
+  <div class="register-form">
+    <form @submit.prevent="onSubmit">
+      <div class="form-group">
+        <label class="form-label">
+          <span class="label-icon">👤</span>
+          Username
+        </label>
+        <input
           v-model="username"
-          placeholder="username"
+          type="text"
           required
+          maxlength="30"
+          placeholder="Choose a username"
           class="form-input"
+          autocomplete="username"
         />
-      </BFormGroup>
-      <BFormGroup
-        label="Password:"
-        description="Enter your desired password"
-        label-class="font-weight-bold pt-0">
-        <BFormInput
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label">
+          <span class="label-icon">🔒</span>
+          Password
+        </label>
+        <input
           v-model="password"
           type="password"
-          placeholder="password"
           required
+          placeholder="Create a password"
           class="form-input"
+          autocomplete="new-password"
         />
-      </BFormGroup>
-      <BFormGroup
-        label="Confirm password:"
-        description="Enter the same password again"
-        label-class="font-weight-bold pt-0">
-        <BFormInput
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label">
+          <span class="label-icon">🔐</span>
+          Confirm Password
+        </label>
+        <input
           v-model="confirmPassword"
           type="password"
-          placeholder="password"
           required
+          placeholder="Confirm your password"
           class="form-input"
+          autocomplete="new-password"
         />
-      </BFormGroup>
-      <div class="form-group">
-        <small v-if="errors" class="text-danger error-message">{{ errors }}</small>
       </div>
-      <BButton type="submit" variant="success" class="submit-btn">Register</BButton>
-    </BForm>
+      
+      <div v-if="errors" class="error-message">
+        <span class="error-icon">⚠️</span>
+        {{ errors }}
+      </div>
+      
+      <button type="submit" :disabled="loading" class="submit-btn">
+        <span v-if="loading" class="loading-spinner"></span>
+        {{ loading ? 'Creating account...' : 'Create Account' }}
+      </button>
+    </form>
   </div>
 </template>
 
 <script>
-import { BForm, BFormGroup, BFormInput, BButton } from 'bootstrap-vue-next'
-
 export default {
-  components: {
-    BForm,
-    BFormGroup,
-    BFormInput,
-    BButton
-  },
   data () {
     return {
       username: "",
       password: "",
-      confirmPassword: ""
+      confirmPassword: "",
+      loading: false
     }
   },
   methods: {
@@ -69,6 +78,7 @@ export default {
         confirmPassword: this.confirmPassword 
       };
       console.log('[Register] Submitting registration for:', this.username)
+      this.loading = true
       try {
         await this.$store.dispatch('auth/register', credentials)
         console.log('[Register] Registration successful, now logging in...')
@@ -109,62 +119,113 @@ export default {
   }
 }
 </script>
+
 <style scoped>
-.form-container {
-  background: #0f1535;
-  border-radius: 12px;
-  padding: 30px;
-  box-shadow: 0 0 20px rgba(0, 255, 65, 0.2), inset 0 0 15px rgba(0, 255, 65, 0.05);
-  border: 1px solid rgba(0, 255, 65, 0.2);
+.register-form {
+  width: 100%;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #94A3B8;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.label-icon {
+  font-size: 1rem;
 }
 
 .form-input {
-  border-radius: 8px;
-  border: 2px solid rgba(0, 255, 65, 0.3);
-  padding: 10px 12px;
+  width: 100%;
+  padding: 14px 18px;
+  background: #0B0F19;
+  border: 2px solid #334155;
+  border-radius: 12px;
+  color: #F1F5F9;
+  font-size: 1rem;
   transition: all 0.3s ease;
-  background: #0a0e27;
-  color: #00ff41;
 }
 
 .form-input::placeholder {
-  color: rgba(0, 255, 65, 0.5);
+  color: #475569;
+}
+
+.form-input:hover {
+  border-color: #475569;
 }
 
 .form-input:focus {
-  border-color: #00ff41;
-  box-shadow: 0 0 15px rgba(0, 255, 65, 0.3), inset 0 0 10px rgba(0, 255, 65, 0.05);
-  background: #0a0e27;
-  color: #00ff41;
+  outline: none;
+  border-color: #22D3EE;
+  box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.1);
+}
+
+.error-message {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: #EF444422;
+  border: 1px solid #EF444444;
+  border-radius: 10px;
+  color: #EF4444;
+  font-size: 0.9rem;
+  margin-bottom: 20px;
+}
+
+.error-icon {
+  font-size: 1rem;
 }
 
 .submit-btn {
   width: 100%;
-  background: #0f1535;
-  border: 2px solid #00ff41;
-  border-radius: 8px;
-  padding: 12px 24px;
-  font-weight: 600;
+  padding: 16px 24px;
+  background: linear-gradient(135deg, #22D3EE 0%, #0891B2 100%);
+  border: none;
+  border-radius: 12px;
+  color: #0B0F19;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 0 15px rgba(0, 255, 65, 0.3);
-  margin-top: 10px;
-  color: #00ff41;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
 }
 
 .submit-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 0 30px rgba(0, 255, 65, 0.6);
-  text-shadow: 0 0 8px rgba(0, 255, 65, 0.6);
+  box-shadow: 0 8px 20px rgba(34, 211, 238, 0.3);
 }
 
 .submit-btn:active:not(:disabled) {
   transform: translateY(0);
 }
 
-.error-message {
-  display: block;
-  margin-bottom: 10px;
-  font-weight: 500;
-  color: #ff4444;
+.submit-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 3px solid rgba(11, 15, 25, 0.3);
+  border-top-color: #0B0F19;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 </style>

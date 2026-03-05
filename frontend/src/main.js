@@ -6,6 +6,7 @@ import ApiService from "@/services/ApiService"
 import 'bootstrap/dist/css/bootstrap.min.css'
 import 'bootstrap-vue-next/dist/bootstrap-vue-next.css'
 import '@fontsource/barlow-condensed'
+import '@/styles/overrides.css'
 
 import { BNavbar, BNavbarBrand, BNavbarNav, BNavItem, BCollapse, BModal, BButton, BContainer, BRow, modalManagerPlugin } from 'bootstrap-vue-next'
 

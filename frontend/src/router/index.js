@@ -4,6 +4,7 @@ import Rooms from '@/views/RoomList.vue'
 import Profile from '@/views/Profile.vue'
 import Login from '@/views/Login.vue'
 import Room from '@/views/Room.vue'
+import Help from '@/views/Help.vue'
 
 const routes = [
   { path: '/rooms', name: 'Rooms', component: Rooms },
@@ -11,6 +12,7 @@ const routes = [
   { path: '/login', name: 'Login', component: Login },
   { path: '/room', name: 'Room', component: Room },
   { path: '/home', name: 'Home', component: Home },
+  { path: '/help', name: 'Help', component: Help },
   { path: '/', redirect: '/home' } // <-- Add this line
 ]
 

@@ -137,6 +137,7 @@ const mutations = {
   },
   setUsername(state, username) {
     state.username = username;
+    localStorage.setItem('username', username);
   },
   logout(state) {
     state.token = '';

@@ -3,6 +3,12 @@ from flask_restful import fields, reqparse
 LEADERBOARD_FIELDS = {
     "username": fields.String,
     "score": fields.Integer,
+    "profilePic": fields.String,
+}
+
+PARTICIPANT_FIELDS = {
+    "user_id": fields.Integer(attribute="userId"),
+    "username": fields.String(attribute=lambda x: x.user.username if x.user else None),
 }
 
 ROOMS_FIELDS = {
@@ -13,7 +19,14 @@ ROOMS_FIELDS = {
     "governmentType": fields.String(
         attribute=lambda x: x.government.type if hasattr(x, 'government') and x.government else None
     ),
-    # Optionally, add a nested government field for members, etc.
+    "owner_id": fields.Integer(attribute="id"),
+    "owner_name": fields.String(
+        attribute=lambda x: next((p.user.username for p in x.participants if p.userId == x.id and p.user), None)
+    ),
+    "participant_count": fields.Integer(
+        attribute=lambda x: len(x.participants) if x.participants else 0
+    ),
+    "participants": fields.List(fields.Nested(PARTICIPANT_FIELDS)),
 }
 
 JOIN_ROOM_FIELDS = {"roomId": fields.Integer}

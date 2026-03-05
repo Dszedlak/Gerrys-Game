@@ -6,6 +6,48 @@
     "type": "Unemployed"
   },
   {
+    "id": 13,
+    "tier": 1,
+    "name": "Data Analyst",
+    "type": "Finance"
+  },
+  {
+    "id": 14,
+    "tier": 2,
+    "name": "Accountant",
+    "type": "Finance"
+  },
+  {
+    "id": 15,
+    "tier": 3,
+    "name": "CFO",
+    "type": "Finance"
+  },
+  {
+    "id": 22,
+    "tier": 3,
+    "name": "Chancellor",
+    "type": "Finance"
+  },
+  {
+    "id": 17,
+    "tier": 3,
+    "name": "Time Keeper",
+    "type": "Finance"
+  },
+  {
+    "id": 18,
+    "tier": 3,
+    "name": "Real Estate Officer",
+    "type": "Finance"
+  },
+  {
+    "id": 20,
+    "tier": 3,
+    "name": "Tax Officer",
+    "type": "Finance"
+  },
+  {
     "id": 1,
     "tier": 1,
     "name": "Phone Scammer",
@@ -73,48 +115,5 @@
     "tier": 3,
     "name": "Judge",
     "type": "Public Service"
-  },
-  {
-    "id": 13,
-    "tier": 1,
-    "name": "Data Analyst",
-    "type": "Finance"
-  },
-  {
-    "id": 14,
-    "tier": 2,
-    "name": "Accountant",
-    "type": "Finance"
-  },
-  {
-    "id": 15,
-    "tier": 3,
-    "name": "CFO",
-    "type": "Finance"
-  },
-  {
-    "id": 17,
-    "tier": 3,
-    "name": "Time Keeper",
-    "type": "Finance"
-  },
-  {
-    "id": 18,
-    "tier": 3,
-    "name": "Real Estate Officer",
-    "type": "Finance"
-  },
-  {
-    "id": 20,
-    "tier": 3,
-    "name": "Tax Officer",
-    "type": "Finance"
-  },
-  {
-    "id": 21,
-    "tier": 3,
-    "name": "Manager",
-    "type": "Finance",
-    "note": "+1 against War and win all draws against War"
   }
 ]

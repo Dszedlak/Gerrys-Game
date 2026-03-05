@@ -6,6 +6,7 @@
              @blur="save($event);"
              @keyup.enter="save($event);"
              @keyup.esc="esc($event);"
+             @input="onInput"
              v-focus=""/>
           <span v-else @click="edit = true;">
             {{valueLocal}}
@@ -34,6 +35,15 @@
       }
     },
     methods: {
+        onInput(event) {
+          // If this is the clock field, restrict to numbers only
+          if (this.action === 'updateClock') {
+            event.target.value = event.target.value.replace(/[^0-9•]/g, '')
+            this.valueLocal = event.target.value
+          } else {
+            this.valueLocal = event.target.value
+          }
+        },
         save(event){
           if(event.target.value){             
               this.valueLocal = event.target.value;
@@ -70,25 +80,35 @@
 <style>
 .my-checkbox {
     font-size: 2em;
-    color: #00ff41;
-    text-shadow: 0 0 8px rgba(0, 255, 65, 0.5);
+    color: #EAB308;;
 }
 
 .input-checkbox {
     font-size: 1em;
     text-align: center;
-    color: #00ff41;
-    background: #0a0e27;
-    border: 2px solid rgba(0, 255, 65, 0.3);
+    color: #EAB308;
+    background: #1A1F2E;
+    border: 2px solid rgba(145, 70, 255, 0.3);
     border-radius: 6px;
     padding: 8px 12px;
-    transition: all 0.3s ease;
-    text-shadow: 0 0 8px rgba(0, 255, 65, 0.3);
+    transition: all 0.3s ease;;
 }
 
 .input-checkbox:focus {
     outline: none;
-    border-color: #00ff41;
-    box-shadow: 0 0 15px rgba(0, 255, 65, 0.3), inset 0 0 10px rgba(0, 255, 65, 0.05);
+    border-color: #EAB308;;
 }
 </style>
+
+
+
+
+
+
+
+
+
+
+
+
+

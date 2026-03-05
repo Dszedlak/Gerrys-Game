@@ -248,3 +248,54 @@ class RoomHistoryResource(Resource):
         
         print(f"[RoomHistory] Returning data for {len(user_data)} users")
         return {"history": list(user_data.values())}, 200
+
+
+class SetWinnerResource(Resource):
+    @jwt_required()
+    def post(self):
+        """Set the winner of a room and add points to their score"""
+        from flask import request
+        from app.models import User
+        
+        user_id = get_jwt_identity()
+        data = request.get_json() or {}
+        
+        room_id = data.get('roomId')
+        winner_id = data.get('winnerId')
+        
+        print(f"[SetWinner] user={user_id}, room={room_id}, winner={winner_id}")
+        
+        if not room_id or not winner_id:
+            return {"errors": "roomId and winnerId are required"}, 400
+        
+        # Verify the caller is the room owner (room.id == creator user_id)
+        room = Room.query.get(room_id)
+        if not room:
+            return {"errors": "Room not found"}, 404
+        
+        # Room id IS the owner's user id in this system
+        if room.id != user_id:
+            return {"errors": "Only the room owner can set a winner"}, 403
+        
+        # Verify winner was a participant in the room
+        participant = RoomParticipants.query.filter_by(roomId=room_id, userId=winner_id).first()
+        if not participant:
+            return {"errors": "Winner must be a participant in the room"}, 400
+        
+        # Get the winner user and update their score
+        winner = User.query.get(winner_id)
+        if not winner:
+            return {"errors": "Winner user not found"}, 404
+        
+        # Award 1 point for winning
+        winner.score = (winner.score or 0) + 1
+        db.session.commit()
+        
+        print(f"[SetWinner] {winner.username} awarded 1 point, new score: {winner.score}")
+        
+        return {
+            "success": True,
+            "winnerId": winner_id,
+            "winnerUsername": winner.username,
+            "newScore": winner.score
+        }, 200

@@ -22,9 +22,9 @@ const ApiService = {
   console.debug('[ApiService] GET', axios.defaults.baseURL + '/' + resource)
   return axios.get(resource);
   },
-  post(resource, data) {
+  post(resource, data, config) {
   console.debug('[ApiService] POST', axios.defaults.baseURL + '/' + resource, data)
-  return axios.post(resource, data);
+  return axios.post(resource, data, config);
   },
   put(resource, data) {
   console.debug('[ApiService] PUT', axios.defaults.baseURL + '/' + resource, data)

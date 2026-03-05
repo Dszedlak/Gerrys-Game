@@ -1,284 +1,81 @@
 <template>
   <div id="app">
     <b-container class="bv-example-row">
-      <b-row class="itemRow">
-        <b-col>
-          <div class="top-actions">
-            <b-button-group class="top-actions-group">
-              <b-button class="butt" @click="openLeaveModal">Leave Room?</b-button>
-              <b-button v-if="isAdmin" class="butt" variant="danger" @click="openRemoveModal">End Game?</b-button>
-              <b-button v-if="isAdmin" class="butt" variant="info" @click="openWheelSpinner">Spin Wheel</b-button>
-            </b-button-group>
-          </div>
-        </b-col>
-      </b-row>
-      <b-row class="itemRow">
-        <b-col>
-          <!-- FIX: correct component tag -->
-          <ClickToEdit id="clock" :value="clock" action="updateClock" />
-        </b-col>
-      </b-row>
-      <b-row class="justify-content-center">
-        <b-col cols="12">
-          <div class="clock-controls">
-            <b-button-group class="mx-1">
-              <b-button class="addremovebuttonClock" @click="uClock(-60)">-1h</b-button>
-              <b-button class="addremovebuttonClock" @click="uClock(-30)">-30</b-button>
-              <b-button class="addremovebuttonClock" @click="uClock(-20)">-20</b-button>
-              <b-button class="addremovebuttonClock" @click="uClock(-10)">-10</b-button>
-            </b-button-group>
-            <b-button-group class="mx-1">
-              <b-button class="addremovebuttonClock" @click="uClock(10)">+10</b-button>
-              <b-button class="addremovebuttonClock" @click="uClock(20)">+20</b-button>
-              <b-button class="addremovebuttonClock" @click="uClock(30)">+30</b-button>
-              <b-button class="addremovebuttonClock" @click="uClock(60)">+1h</b-button>
-            </b-button-group>
-          </div>
-        </b-col>
-      </b-row>
+      <!-- Header with action buttons -->
+      <RoomHeader 
+        :isAdmin="isAdmin"
+        @leave-room="openLeaveModal"
+        @open-admin-controls="openAdminControlsModal"
+      />
 
-      <!-- Get Paid Button Section -->
-      <b-row class="mt-3 mb-3">
-        <b-col>
-          <div class="center-row">
-            <b-button
-              class="btn-get-paid"
-              variant="warning"
-              :disabled="isPaying"
-              @click="getPaid"
-              title="Request pay based on your current job"
-            >
-              {{ isPaying ? 'Getting Paid…' : 'Get Paid' }}
-            </b-button>
-          </div>
-        </b-col>
-      </b-row>
+      <!-- Clock display, collectables, and action buttons -->
+      <RoomClock 
+        :clock="clock"
+        :maxCollectables="maxCollectables"
+        :isLoadingPay="isPaying"
+        :isLoadingJail="isPayingJail"
+        @adjust-clock="uClock"
+        @get-paid="getPaid"
+        @get-out-of-jail="getOutOfJail"
+      />
 
-      <!-- Senate Controls and Government Selection -->
-      <b-row class="mt-2 mb-2 align-items-center">
+      <!-- Government Display -->
+      <b-row class="room-government__row">
         <b-col>
-          <div class="govt-row dropdowns">
-            <div class="control-group">
-              <span v-if="!isAdmin" class="govt-label">Government: <strong>{{ currentGovernmentName }}</strong></span>
-              <div v-else class="govt-dropdown-wrapper">
-                <label for="govSelect" class="mr-2">Government:</label>
-                <div class="govt-select-box">
-                  <select
-                    id="govSelect"
-                    v-model="selectedGovernmentId"
-                    class="dropdown-w form-control"
-                    @change="onGovernmentChange"
-                  >
-                    <option :value="null">Select a government</option>
-                    <option v-for="g in displayGovernments" :key="g.id" :value="g.id">
-                      {{ g.name }}
-                    </option>
-                  </select>
-                  <span class="govt-arrow">▼</span>
-                </div>
-              </div>
+          <div class="room-government__container">
+            <div class="room-government__control-group">
+              <span class="room-government__label">
+                Government: {{ currentGovernmentName }}
+              </span>
             </div>
           </div>
         </b-col>
       </b-row>
 
-      <!-- Participants table -->
-      <div style="display: flex; justify-content: center; width: 100%; margin-top: 30px; margin-bottom: 30px;">
-        <div style="width: 95%; max-width: 1400px;">
-        <table class="table table-sm table-bordered" style="width:100%">
-            <thead>
-              <tr>
-                <th class="username-header">Username</th>
-                <th class="job-title-header">
-                  <select
-                    id="jobSelect"
-                    v-model="selectedJobId"
-                    class="job-header-select"
-                  >
-                    <option :value="null">Select a job</option>
-                    <option v-for="j in jobs" :key="j.id" :value="j.id">
-                      {{ j.tier ? `${j.name} (Tier ${j.tier})` : j.name }}
-                    </option>
-                  </select>
-                  <span class="job-title-text">Job Title <span class="job-title-arrow">▼</span></span>
-                </th>
-                <th class="perk-title-header">
-                  <select
-                    id="perkSelect"
-                    v-model="selectedPerk"
-                    class="perk-header-select"
-                  >
-                    <option :value="null">None</option>
-                    <option value="Manager">Manager</option>
-                    <option value="Senior">Senior</option>
-                    <option value="Executive">Executive</option>
-                  </select>
-                  <span class="perk-title-text">Perk <span class="perk-title-arrow">▼</span></span>
-                </th>
-                <th class="approval-title-header">
-                  <select
-                    id="approvalHeaderSelect"
-                    v-model="selectedHeaderApproval"
-                    @change="onHeaderApprovalChange"
-                    class="approval-header-select"
-                  >
-                    <option :value="null">Select status</option>
-                    <option value="approve">Approve</option>
-                    <option value="disapprove">Disapprove</option>
-                    <option value="abstain">Abstain</option>
-                  </select>
-                  <span class="approval-title-text">Approval <span class="approval-title-arrow">▼</span></span>
-                </th>
-                <th class="vote-title-header">
-                  <select
-                    id="voteHeaderSelect"
-                    v-model="selectedHeaderVote"
-                    @change="onHeaderVoteChange"
-                    class="vote-header-select"
-                  >
-                    <option :value="null">Select vote</option>
-                    <option value="yes">Yes</option>
-                    <option value="no">No</option>
-                    <option value="abstain">Abstain</option>
-                  </select>
-                  <span class="vote-title-text">Vote <span class="vote-title-arrow">▼</span></span>
-                </th>
-                <th class="bleed-header">
-                  <!-- wrap in a flex container for perfect centering -->
-                  <div class="bleed-header-inner">
-                    <b-button
-                      size="sm"
-                      class="bleed-btn bleed-btn-minus"
-                      variant="danger"
-                      @click="changeBleed(-1)"
-                      aria-label="Decrease bleed"
-                    >-</b-button>
-                    <span class="mx-1 bleed-label">Bleed</span>
-                    <b-button
-                      size="sm"
-                      class="bleed-btn bleed-btn-plus"
-                      variant="success"
-                      @click="changeBleed(1)"
-                      aria-label="Increase bleed"
-                    >+</b-button>
-                  </div>
-                </th>
-                <th class="heat-header">
-                  <div class="heat-header-inner">
-                    <b-button
-                      size="sm"
-                      class="heat-btn heat-btn-minus"
-                      variant="danger"
-                      @click="changeHeat(-1)"
-                      aria-label="Decrease heat"
-                    >-</b-button>
-                    <span class="mx-1 heat-label">Heat</span>
-                    <b-button
-                      size="sm"
-                      class="heat-btn heat-btn-plus"
-                      variant="success"
-                      @click="changeHeat(1)"
-                      aria-label="Increase heat"
-                    >+</b-button>
-                  </div>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="p in activePlayers" :key="p.user_id || p.userId || p.id">
-                <td>
-                  {{ p.username }}
-                  <img
-                    v-if="iconForParticipant(p)"
-                    :src="iconForParticipant(p)"
-                    class="gov-icon"
-                    alt=""
-                  />
-                </td>
-                <td>
-                  {{ p.job_name }}
-                </td>
-                <td class="perk-column">
-                  <img
-                    v-if="perkIconForParticipant(p)"
-                    :src="perkIconForParticipant(p)"
-                    class="perk-icon"
-                    :alt="p.perk"
-                  />
-                </td>
-                <td class="approval-cell">
-                  <span v-if="p.approval_status && p.user_id === currentUserId" @click="clearApprovalStatus" class="approval-badge" :class="'approval-' + p.approval_status" style="cursor: pointer;">{{ p.approval_status }}</span>
-                  <span v-else-if="p.approval_status" class="approval-badge" :class="'approval-' + p.approval_status">{{ p.approval_status }}</span>
-                  <span v-else class="approval-badge approval-empty">—</span>
-                </td>
-                <td class="vote-cell">
-                  <span v-if="p.gov_vote && p.user_id === currentUserId" @click="clearGovVote" class="vote-badge" :class="'vote-' + p.gov_vote" style="cursor: pointer;">{{ p.gov_vote }}</span>
-                  <span v-else-if="p.gov_vote" class="vote-badge" :class="'vote-' + p.gov_vote">{{ p.gov_vote }}</span>
-                  <span v-else class="vote-badge vote-empty">—</span>
-                </td>
-                <td>{{ p.bleed }}</td>
-                <td>{{ p.heat }}</td>
-              </tr>
-              <tr v-if="!activePlayers.length">
-                <td colspan="7" class="text-center">No participants yet</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+      <!-- Max Collectables Label -->
+      <div class="room__max-collectables">
+        Max collectables: {{ maxCollectables }}
       </div>
 
+      <!-- Participants table -->
+      <RoomParticipantsTable
+        :activePlayers="activePlayers"
+        :jobs="jobs"
+        :selectedJobId="selectedJobId"
+        :selectedPerk="selectedPerk"
+        :selectedHeaderApproval="selectedHeaderApproval"
+        :currentUserId="currentUserId"
+        :governmentIcon="iconForParticipant"
+        :perkIcon="perkIconForParticipant"
+        @update:selectedJobId="(id) => selectedJobId = id"
+        @update:selectedPerk="(perk) => selectedPerk = perk"
+        @update:selectedHeaderApproval="(status) => selectedHeaderApproval = status"
+        @header-approval-changed="onHeaderApprovalChange"
+        @bleed-changed="changeBleed"
+        @heat-changed="changeHeat"
+        @clear-approval="clearApprovalStatus"
+        @clear-vote="clearGovVote"
+      />
+
       <!-- Dropped Players table -->
-      <b-row v-if="droppedPlayers.length > 0" class="itemRowPlayers mt-3">
-        <b-col></b-col>
-        <b-col cols="4">
-          <h5 class="text-muted">Dropped Players</h5>
-          <table class="table table-sm table-bordered dropped-table" style="width:100%">
-            <thead>
-              <tr>
-                <th>Username</th>
-                <th>Job Title</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="p in droppedPlayers" :key="p.user_id || p.userId || p.id" class="dropped-row">
-                <td>
-                  {{ p.username }}
-                  <img
-                    v-if="iconForParticipant(p)"
-                    :src="iconForParticipant(p)"
-                    class="gov-icon"
-                    alt=""
-                  />
-                </td>
-                <td>
-                  {{ p.job_name }}
-                  <img
-                    v-if="perkIconForParticipant(p)"
-                    :src="perkIconForParticipant(p)"
-                    class="perk-icon"
-                    :alt="p.perk"
-                  />
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </b-col>
-        <b-col></b-col>
-      </b-row>
+      <RoomDroppedPlayers
+        :droppedPlayers="droppedPlayers"
+        :governmentIcon="iconForParticipant"
+        :perkIcon="perkIconForParticipant"
+      />
 
       <!-- Leave Room modal -->
       <b-modal
         id="LeaveRoomModal"
         ref="leaveRoomModal"
         title="Leave Room:"
-        hide-footer
       >
         Are you sure you want to Leave room: {{ roomname }}
         <template #footer>
           <b-button size="sm" variant="secondary" :disabled="isLeaving" @click="leaveRoomModal?.hide()">
             No
           </b-button>
-          <b-button size="sm" variant="success" :disabled="isLeaving" @click="confirmLeave">
+          <b-button size="sm" variant="danger" :disabled="isLeaving" @click="confirmLeave">
             {{ isLeaving ? 'Leaving…' : 'Yes' }}
           </b-button>
         </template>
@@ -298,29 +95,173 @@
           <select v-model="selectedApprovalOption" id="approvalSelect" class="form-select">
             <option :value="null">-- Select --</option>
             <option value="approve">Approve</option>
-            <option value="disapprove">Disapprove</option>
-            <option value="abstain">Abstain</option>
+            <option value="reject">Reject</option>
           </select>
         </div>
       </b-modal>
 
-      <!-- Government Vote Modal -->
+      <!-- Government Vote Modal - Secret Voting until Admin Concludes -->
       <b-modal
         id="govVoteModal"
-        ref="govVoteModal"
-        title="Cast Your Vote"
-        @ok="confirmGovVote"
-        ok-title="Submit"
-        cancel-title="Cancel"
+        ref="voteModal"
+        title="🗳️ Vote in Progress"
+        :hide-header-close="!isAdmin"
+        no-close-on-backdrop
+        no-close-on-esc
+        size="lg"
+        centered
       >
-        <div class="mb-3">
-          <label for="voteSelect" class="form-label">Choose your vote:</label>
-          <select v-model="selectedVoteOption" id="voteSelect" class="form-select">
-            <option :value="null">-- Select --</option>
-            <option value="yes">Yes</option>
-            <option value="no">No</option>
-            <option value="abstain">Abstain</option>
-          </select>
+        <div class="vote-container">
+          <!-- Question/Topic being voted on -->
+          <div class="vote-question-box">
+            <span class="vote-question-icon">📋</span>
+            <p class="vote-question-text">{{ voteQuestion }}</p>
+          </div>
+          
+          <!-- Vote Buttons - only show if user hasn't voted yet -->
+          <div v-if="!currentUserVote" class="vote-section">
+            <h5 class="vote-section-title">Cast Your Vote</h5>
+            <div class="vote-buttons-row">
+              <b-button
+                size="lg"
+                class="vote-button vote-yes"
+                :style="{ backgroundColor: '#22c55e', borderColor: '#16a34a', color: '#ffffff' }"
+                @click="submitVote('yes')"
+              >
+                <span class="vote-icon">✓</span>
+                <strong style="color: #ffffff;">YES</strong>
+              </b-button>
+              <b-button
+                size="lg"
+                class="vote-button vote-abstain"
+                :style="{ backgroundColor: '#f59e0b', borderColor: '#d97706', color: '#ffffff' }"
+                @click="submitVote('abstain')"
+              >
+                <span class="vote-icon">−</span>
+                <strong style="color: #ffffff;">ABSTAIN</strong>
+              </b-button>
+              <b-button
+                size="lg"
+                class="vote-button vote-no"
+                :style="{ backgroundColor: '#ef4444', borderColor: '#dc2626', color: '#ffffff' }"
+                @click="submitVote('no')"
+              >
+                <span class="vote-icon">✗</span>
+                <strong style="color: #ffffff;">NO</strong>
+              </b-button>
+            </div>
+          </div>
+          
+          <!-- Confirmation message after voting -->
+          <div v-else class="vote-submitted-box">
+            <span class="vote-submitted-icon">✅</span>
+            <p class="vote-submitted-text">Your vote has been recorded.</p>
+            <p class="vote-submitted-hint">Votes will be revealed when the admin concludes voting.</p>
+          </div>
+          
+          <!-- Participant Voting Status -->
+          <div class="vote-participants-section">
+            <h5 class="vote-section-title">
+              Voting Progress 
+              <span class="vote-count-badge">
+                {{ Object.values(voteTally).filter(v => v).length }} / {{ Object.keys(voteTally).length }}
+              </span>
+            </h5>
+            <div class="vote-participants-grid">
+              <div 
+                v-for="participant in participants" 
+                :key="participant.user_id"
+                class="vote-participant-card"
+                :class="{ 'has-voted': voteTally[participant.user_id] }"
+              >
+                <span class="participant-status-icon">
+                  {{ voteTally[participant.user_id] ? '🗳️' : '⏳' }}
+                </span>
+                <span class="participant-name">{{ participant.username }}</span>
+                <span class="participant-vote-status">
+                  {{ voteTally[participant.user_id] ? 'Voted' : 'Waiting...' }}
+                </span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Admin Conclude Button -->
+          <div v-if="isAdmin" class="vote-admin-section">
+            <hr class="vote-divider" />
+            <b-button 
+              variant="primary" 
+              size="lg"
+              class="conclude-vote-btn"
+              @click="concludeVote"
+            >
+              <span class="conclude-icon">🔓</span>
+              Reveal Votes & Conclude
+            </b-button>
+            <p class="admin-hint">All votes will be revealed to everyone.</p>
+          </div>
+        </div>
+        <template #footer></template>
+      </b-modal>
+      
+      <!-- Vote Results Modal -->
+      <b-modal
+        id="voteResultsModal"
+        ref="voteResultsModal"
+        title="📊 Vote Results"
+        size="lg"
+        centered
+        ok-only
+        ok-title="Close"
+      >
+        <div v-if="resultsSummary" class="vote-results-container">
+          <!-- Outcome Banner -->
+          <div 
+            class="vote-outcome-banner"
+            :class="{
+              'outcome-passed': resultsSummary.outcome === 'PASSED',
+              'outcome-rejected': resultsSummary.outcome === 'REJECTED',
+              'outcome-tie': resultsSummary.outcome === 'TIE'
+            }"
+          >
+            <span class="outcome-icon">
+              {{ resultsSummary.outcome === 'PASSED' ? '✅' : resultsSummary.outcome === 'REJECTED' ? '❌' : '⚖️' }}
+            </span>
+            <span class="outcome-text">{{ resultsSummary.outcome }}</span>
+          </div>
+          
+          <!-- Vote Counts -->
+          <div class="vote-counts-row">
+            <div class="vote-count-box yes">
+              <span class="count-number">{{ resultsSummary.yes }}</span>
+              <span class="count-label">Yes</span>
+            </div>
+            <div class="vote-count-box abstain">
+              <span class="count-number">{{ resultsSummary.abstain }}</span>
+              <span class="count-label">Abstain</span>
+            </div>
+            <div class="vote-count-box no">
+              <span class="count-number">{{ resultsSummary.no }}</span>
+              <span class="count-label">No</span>
+            </div>
+          </div>
+          
+          <!-- Individual Votes -->
+          <div class="individual-votes-section">
+            <h5 class="votes-title">Individual Votes</h5>
+            <div class="individual-votes-grid">
+              <div 
+                v-for="vote in resultsSummary.votes" 
+                :key="vote.userId"
+                class="individual-vote-card"
+                :class="'vote-' + vote.vote"
+              >
+                <span class="voter-name">{{ vote.username }}</span>
+                <span class="voter-choice">
+                  {{ vote.vote === 'yes' ? '✓ YES' : vote.vote === 'no' ? '✗ NO' : '− ABSTAIN' }}
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
       </b-modal>
 
@@ -328,61 +269,66 @@
       <b-modal
         id="dictatorBiddingModal"
         ref="dictatorBiddingModal"
-        title="Dictator Auction - Place Your Bid"
-        hide-footer
+        title="Dictator Auction"
+        hide-header-close
         no-close-on-backdrop
         no-close-on-esc
-        size="lg"
+        size="md"
+        centered
       >
-        <div class="dictator-bid-container">
-          <!-- Time Display -->
-          <div class="bid-display-section mb-4">
-            <p class="bid-instruction">Bid for the right to be the Dictator!</p>
-            <div class="bid-time-big">
-              {{ String(Math.floor(bidTimeMinutes / 60)).padStart(2, '0') }}:{{ String(bidTimeMinutes % 60).padStart(2, '0') }}
+        <div class="dictator-bid-container-compact">
+          <!-- Top row: Your time + Bid amount side by side -->
+          <div class="bid-top-row">
+            <div class="your-time-compact">
+              <span class="time-label">Your Time:</span>
+              <span class="time-value">{{ clock }}</span>
+            </div>
+            <div class="bid-amount-compact">
+              <span class="bid-label">Your Bid:</span>
+              <span class="bid-value">{{ String(Math.floor(bidTimeMinutes / 60)).padStart(2, '0') }}:{{ String(bidTimeMinutes % 60).padStart(2, '0') }}</span>
             </div>
           </div>
 
-          <!-- Time Control Buttons -->
-          <div class="bid-buttons-section mb-4">
-            <div class="bid-button-row mb-2">
-              <b-button size="lg" variant="outline-danger" @click="bidTimeMinutes = Math.max(0, bidTimeMinutes - 60)" class="bid-btn">-1h</b-button>
-              <b-button size="lg" variant="outline-danger" @click="bidTimeMinutes = Math.max(0, bidTimeMinutes - 30)" class="bid-btn">-30</b-button>
-              <b-button size="lg" variant="outline-danger" @click="bidTimeMinutes = Math.max(0, bidTimeMinutes - 20)" class="bid-btn">-20</b-button>
-              <b-button size="lg" variant="outline-danger" @click="bidTimeMinutes = Math.max(0, bidTimeMinutes - 10)" class="bid-btn">-10</b-button>
-            </div>
-            <div class="bid-button-row">
-              <b-button size="lg" variant="outline-success" @click="bidTimeMinutes = bidTimeMinutes + 10" class="bid-btn">+10</b-button>
-              <b-button size="lg" variant="outline-success" @click="bidTimeMinutes = bidTimeMinutes + 20" class="bid-btn">+20</b-button>
-              <b-button size="lg" variant="outline-success" @click="bidTimeMinutes = bidTimeMinutes + 30" class="bid-btn">+30</b-button>
-              <b-button size="lg" variant="outline-success" @click="bidTimeMinutes = bidTimeMinutes + 60" class="bid-btn">+1h</b-button>
-            </div>
+          <!-- Time Control Buttons - Compact grid -->
+          <div class="bid-buttons-compact">
+            <b-button size="sm" variant="secondary" @click="bidTimeMinutes = Math.max(0, bidTimeMinutes - 60)">-1h</b-button>
+            <b-button size="sm" variant="secondary" @click="bidTimeMinutes = Math.max(0, bidTimeMinutes - 30)">-30</b-button>
+            <b-button size="sm" variant="secondary" @click="bidTimeMinutes = Math.max(0, bidTimeMinutes - 10)">-10</b-button>
+            <b-button size="sm" variant="secondary" @click="bidTimeMinutes = bidTimeMinutes + 10">+10</b-button>
+            <b-button size="sm" variant="secondary" @click="bidTimeMinutes = bidTimeMinutes + 30">+30</b-button>
+            <b-button size="sm" variant="secondary" @click="bidTimeMinutes = bidTimeMinutes + 60">+1h</b-button>
           </div>
 
           <!-- Place Bid Button -->
-          <b-button variant="primary" size="lg" @click="placeDictatorBid" class="w-100 mb-4 place-bid-btn">
-            <strong>Place Bid</strong>
+          <b-button variant="warning" @click="placeDictatorBid" class="w-100 place-bid-btn-compact">
+            <strong>PLACE BID</strong>
           </b-button>
 
-          <!-- Bidding Status -->
-          <div class="bidding-status-section">
-            <h6 class="mb-3">Bidding Status:</h6>
-            <div class="bidding-tally">
-              <div v-for="participant in participants" :key="participant.user_id" class="tally-item">
-                <span class="participant-name">{{ participant.username }}</span>
-                <span v-if="biddingTally[participant.user_id]" class="badge bg-success">✓ Bid Placed</span>
-                <span v-else class="badge bg-warning text-dark">⏳ Awaiting Bid</span>
+          <!-- Bidding Status - Compact list -->
+          <div class="bidding-status-compact">
+            <div class="status-header">Bidding Status</div>
+            <div class="bidding-list">
+              <div 
+                v-for="participant in participants" 
+                :key="participant.user_id" 
+                class="bid-participant"
+              >
+                <span class="p-name">{{ participant.username }}</span>
+                <span v-if="!biddingActive && biddingTally[participant.user_id]" class="p-bid">
+                  {{ String(Math.floor((dictator_bid_amounts[participant.user_id] || 0) / 60)).padStart(2, '0') }}:{{ String((dictator_bid_amounts[participant.user_id] || 0) % 60).padStart(2, '0') }}
+                </span>
+                <span v-if="biddingTally[participant.user_id]" class="p-status done">✓</span>
+                <span v-else class="p-status waiting">⏳</span>
               </div>
             </div>
           </div>
 
           <!-- Admin Conclude Button -->
-          <div v-if="isAdmin" class="admin-section mt-4 pt-4 border-top">
-            <b-button variant="success" size="lg" @click="concludeDictatorBidding" class="w-100">
-              <strong>Conclude Bidding</strong>
-            </b-button>
-          </div>
+          <b-button v-if="isAdmin" variant="danger" @click="concludeDictatorBidding" class="w-100 conclude-btn-compact">
+            <strong>Conclude Bidding</strong>
+          </b-button>
         </div>
+        <template #footer></template>
       </b-modal>
 
       <!-- Dictator Bidding Winner Modal -->
@@ -390,18 +336,37 @@
         id="dictatorBiddingWinnerModal"
         ref="dictatorBiddingWinnerModal"
         title="Auction Results"
-        hide-footer
         centered
+        size="md"
       >
-        <div class="text-center">
-          <h3 class="mb-3">SOLD!</h3>
-          <p class="lead">To the highest bidder:</p>
-          <h2 class="text-success mb-4">{{ dictatorWinner }}</h2>
-          <p class="text-muted">The winner has been crowned Dictator!</p>
-          <div class="mt-4 d-flex justify-content-end">
+        <div class="auction-results">
+          <div class="winner-banner">
+            <span class="crown">👑</span>
+            <h3>{{ dictatorWinner }}</h3>
+            <p>Crowned Dictator!</p>
+          </div>
+          
+          <div class="leaderboard-section">
+            <div class="leaderboard-header">Bid Leaderboard</div>
+            <div class="leaderboard-list">
+              <div 
+                v-for="(entry, index) in biddingLeaderboard" 
+                :key="entry.user_id" 
+                class="leaderboard-row"
+                :class="{ 'winner-row': entry.is_winner }"
+              >
+                <span class="rank">{{ index + 1 }}</span>
+                <span class="lb-name">{{ entry.username }}</span>
+                <span class="lb-bid">{{ String(Math.floor(entry.bid_amount / 60)).padStart(2, '0') }}:{{ String(entry.bid_amount % 60).padStart(2, '0') }}</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="mt-3 d-flex justify-content-end">
             <b-button variant="primary" size="sm" @click="dictatorBiddingWinnerModal?.hide()">OK</b-button>
           </div>
         </div>
+        <template #footer></template>
       </b-modal>
 
       <!-- End Game modal -->
@@ -409,14 +374,13 @@
         id="removeRoomModal"
         ref="removeRoomModal"
         title="End Game:"
-        hide-footer
       >
         Are you sure you want to end the game: {{ roomname }}
         <template #footer>
           <b-button size="sm" variant="secondary" :disabled="isRemoving" @click="removeRoomModal?.hide()">
             No
           </b-button>
-          <b-button size="sm" variant="success" :disabled="isRemoving" @click="confirmRemove">
+          <b-button size="sm" variant="danger" :disabled="isRemoving" @click="confirmRemove">
             {{ isRemoving ? 'Ending…' : 'Yes' }}
           </b-button>
         </template>
@@ -442,6 +406,37 @@
         <div v-else class="text-center">
           <p>No history data available</p>
         </div>
+        
+        <!-- Winner Selection Section -->
+        <div class="winner-selection-section mt-4" v-if="isAdmin && !loadingHistory">
+          <div class="winner-selection-card">
+            <h5 class="winner-title">🏆 Select Game Winner</h5>
+            <p class="winner-description">Choose a winner to award them a point on the leaderboard.</p>
+            
+            <div v-if="winnerSet" class="winner-confirmed">
+              <span class="winner-badge">✓ Winner: {{ getParticipantName(selectedWinner) }}</span>
+            </div>
+            
+            <div v-else class="winner-form">
+              <select v-model="selectedWinner" class="winner-select">
+                <option :value="null" disabled>-- Select Winner --</option>
+                <option v-for="player in activePlayers" :key="player.user_id" :value="player.user_id">
+                  {{ player.username }}
+                </option>
+              </select>
+              <b-button 
+                variant="success" 
+                size="sm"
+                :disabled="!selectedWinner || settingWinner"
+                @click="confirmWinner"
+                class="ms-2"
+              >
+                {{ settingWinner ? 'Saving...' : 'Confirm Winner' }}
+              </b-button>
+            </div>
+          </div>
+        </div>
+        
         <template #footer>
           <b-button size="sm" variant="secondary" @click="historyGraphModal?.hide()">
             Close
@@ -452,82 +447,6 @@
         </template>
       </b-modal>
 
-      <!-- Government role assignment modal (admin only, opened on change) -->
-      <b-modal
-        id="govAssignModal"
-        ref="govAssignModal"
-        title="Assign Government Roles"
-        hide-footer
-      >
-        <div v-if="govForm.type === 'Dictatorship'">
-          <label for="dictatorSelect" class="mr-2">Select the Dictator:</label>
-          <select id="dictatorSelect" v-model="govForm.dictator" class="form-control">
-            <option :value="null">Choose a user</option>
-            <option v-for="opt in participantOptions" :key="opt.value" :value="opt.value">
-              {{ opt.text }}
-            </option>
-          </select>
-        </div>
-
-        <div v-else-if="govForm.type === 'Republic'">
-          <div class="mb-3">
-            <label for="headSelect" class="mr-2">Head of State:</label>
-            <select id="headSelect" v-model="govForm.head_of_state" class="form-control">
-              <option :value="null">Choose a user</option>
-              <option v-for="opt in participantOptions" :key="opt.value" :value="opt.value">
-                {{ opt.text }}
-              </option>
-            </select>
-          </div>
-          <div>
-            <label for="advisorSelect" class="mr-2">Advisors (2):</label>
-            <select
-              id="advisorSelect"
-              v-model="govForm.advisors"
-              class="form-control"
-              multiple
-              size="5"
-            >
-              <option v-for="opt in participantOptions" :key="opt.value" :value="opt.value">
-                {{ opt.text }}
-              </option>
-            </select>
-            <small class="text-muted">Hold Ctrl (Cmd on Mac) to select two advisors.</small>
-          </div>
-        </div>
-
-        <div v-else-if="govForm.type === 'Communism'">
-          <label for="politburoSelect" class="mr-2">Politburo members (3):</label>
-          <select
-            id="politburoSelect"
-            v-model="govForm.politburo"
-            class="form-control"
-            multiple
-            size="6"
-          >
-            <option v-for="opt in participantOptions" :key="opt.value" :value="opt.value">
-              {{ opt.text }}
-            </option>
-          </select>
-          <small class="text-muted">Hold Ctrl (Cmd on Mac) to select three members.</small>
-        </div>
-
-        <div v-else>
-          <p class="text-muted">No roles required for {{ govForm.type }}.</p>
-        </div>
-
-        <div class="text-danger mt-2" v-if="govError">{{ govError }}</div>
-
-        <div class="d-flex justify-content-end mt-3">
-          <b-button size="sm" variant="secondary" :disabled="isSubmittingGov" @click="govAssignModal?.hide()">
-            Cancel
-          </b-button>
-          <b-button size="sm" class="ml-2" variant="primary" :disabled="isSubmittingGov" @click="submitGovernment">
-            {{ isSubmittingGov ? 'Saving…' : 'Save' }}
-          </b-button>
-        </div>
-      </b-modal>
-
       <!-- Wheel Spinner Component -->
       <WheelSpinner ref="wheelSpinnerRef" :participants="participants" />
 
@@ -535,107 +454,127 @@
       <b-modal
         id="politburoWheelModal"
         ref="politburoWheelModal"
-        title="Select Politburo Members (Spin 3 Times)"
-        size="xl"
-        hide-footer
+        title="Politburo Selection"
+        size="lg"
+        centered
       >
-        <div class="politburo-selection">
-          <div class="mb-3">
-            <label class="form-check-label">
-              <input type="checkbox" v-model="balanceBooksOnSave" class="form-check-input" />
-              Balance the books after selecting politburo
-            </label>
-          </div>
-
-          <div class="selected-members mb-3">
-            <h5>Selected Politburo Members ({{ politburoMembers.length }}/3):</h5>
-            <div v-if="politburoMembers.length === 0" class="text-muted">No members selected yet</div>
-            <div v-else class="member-list">
-              <span v-for="(memberId, idx) in politburoMembers" :key="idx" class="badge bg-primary me-2">
-                {{ participantOptions.find(p => p.value === memberId)?.text || 'Unknown' }}
-              </span>
+        <div class="politburo-selection-compact">
+          <!-- Selected Members Banner -->
+          <div class="selected-members-banner">
+            <div class="members-header">
+              <span class="members-icon">☭</span>
+              <span class="members-title">Politburo Members</span>
+              <span class="members-count">{{ politburoMembers.length }}/2</span>
+            </div>
+            <div class="members-slots">
+              <div class="member-slot" :class="{ filled: politburoMembers.length >= 1 }">
+                <span v-if="politburoMembers.length >= 1">{{ participantOptions.find(p => p.value === politburoMembers[0])?.text || '?' }}</span>
+                <span v-else class="empty-slot">Empty</span>
+              </div>
+              <div class="member-slot" :class="{ filled: politburoMembers.length >= 2 }">
+                <span v-if="politburoMembers.length >= 2">{{ participantOptions.find(p => p.value === politburoMembers[1])?.text || '?' }}</span>
+                <span v-else class="empty-slot">Empty</span>
+              </div>
             </div>
           </div>
 
-          <div class="wheel-container-politburo mb-3">
-            <WheelSpinner ref="politburoWheelRef" :participants="availablePolitburoCandidates" :show-custom-actions="true">
+          <!-- Wheel Container -->
+          <div class="wheel-container-politburo">
+            <WheelSpinner 
+              ref="politburoWheelRef" 
+              :participants="availablePolitburoCandidates" 
+              :show-custom-actions="true" 
+              :inline="true"
+              :is-admin="isAdmin"
+              :show-spin-button="politburoMembers.length < 2"
+              @spin-request="handlePolitburoSpinRequest"
+            >
               <template #winner-actions>
                 <b-button 
                   variant="success" 
                   size="lg"
                   @click="addToPolitburo"
-                  class="me-2"
+                  class="me-2 politburo-action-btn"
                 >
-                  Add to Politburo
+                  ✓ Add to Politburo
                 </b-button>
                 <b-button 
-                  variant="warning" 
+                  variant="secondary" 
                   size="lg"
                   @click="spinAgain"
+                  class="politburo-action-btn"
                 >
-                  Spin Again
+                  ↻ Spin Again
                 </b-button>
               </template>
             </WheelSpinner>
           </div>
 
-          <div v-if="showWheelResult && currentWheelWinner" class="wheel-result mb-3">
-            <div class="alert alert-info">
-              <h5>Wheel Result: {{ currentWheelWinner.username }}</h5>
-              <div class="result-actions mt-2">
-                <b-button 
-                  variant="success" 
-                  @click="addToPolitburo"
-                  class="me-2"
-                >
-                  Add to Politburo
-                </b-button>
-                <b-button 
-                  variant="warning" 
-                  @click="spinAgain"
-                >
-                  Spin Again
-                </b-button>
-              </div>
+          <!-- Admin Controls -->
+          <div v-if="isAdmin" class="politburo-admin-controls">
+            <div class="control-row-small">
+              <b-button 
+                variant="outline-warning" 
+                size="sm"
+                :disabled="politburoMembers.length === 0"
+                @click="resetPolitburoSelection"
+              >
+                ↺ Reset Selection
+              </b-button>
+            </div>
+            
+            <!-- Balance Books Toggle -->
+            <div class="balance-books-toggle">
+              <label class="toggle-switch">
+                <input type="checkbox" v-model="balanceBooksOnSave" />
+                <span class="toggle-slider"></span>
+              </label>
+              <span class="toggle-label">Balance the books after selection</span>
+            </div>
+            
+            <div class="final-actions">
+              <b-button 
+                variant="success" 
+                size="lg"
+                :disabled="politburoMembers.length !== 2 || isSubmittingGov"
+                @click="savePolitburoSelection"
+                class="complete-btn"
+              >
+                {{ isSubmittingGov ? 'Saving...' : '✓ Complete Selection' }}
+              </b-button>
+              <b-button 
+                variant="secondary" 
+                @click="cancelPolitburoSelection"
+              >
+                Cancel
+              </b-button>
             </div>
           </div>
 
-          <div class="politburo-actions">
-            <b-button 
-              variant="primary" 
-              :disabled="isSpinningPolitburo || politburoMembers.length >= 3"
-              @click="spinForNextMember"
-              class="me-2"
-            >
-              Politburo Spin The Wheel
-            </b-button>
-            <b-button 
-              variant="warning" 
-              :disabled="politburoMembers.length === 0"
-              @click="resetPolitburoSelection"
-              class="me-2"
-            >
-              Choose Again?
-            </b-button>
-            <b-button 
-              variant="success" 
-              :disabled="politburoMembers.length !== 3 || isSubmittingGov"
-              @click="savePolitburoSelection"
-              class="me-2"
-            >
-              {{ isSubmittingGov ? 'Saving...' : 'Save' }}
-            </b-button>
-            <b-button 
-              variant="secondary" 
-              @click="cancelPolitburoSelection"
-            >
-              Cancel
-            </b-button>
+          <!-- Non-admin watching message -->
+          <div v-else class="watching-message">
+            <span class="watching-icon">👁</span>
+            <span>Watching the Politburo selection...</span>
           </div>
 
           <div class="text-danger mt-2" v-if="govError">{{ govError }}</div>
         </div>
+        <template #footer></template>
       </b-modal>
+
+      <!-- Admin Controls Modal -->
+      <AdminControlsModal
+        ref="adminControlsModalRef"
+        :socket="socket"
+        :participants="participants"
+        :displayGovernments="displayGovernments"
+        :biddingTally="biddingTally"
+        :biddingActive="biddingActive"
+        :dictatorBiddingModal="dictatorBiddingModal"
+        @spin-wheel="openWheelSpinner"
+        @cast-vote="partakeGovVote"
+        @end-game="openRemoveModal"
+      />
     </b-container>
   </div>
 </template>
@@ -645,11 +584,24 @@ import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useStore } from 'vuex'
 import { useSocket } from '@/composables/useSocket'
-import ClickToEdit from '@/components/helpers/ClickToEdit.vue'
 import RoomListService from '@/services/RoomListService'
 import WheelSpinner from '@/components/SpinWheel.vue'
 import { Line } from 'vue-chartjs'
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js'
+
+// Import extracted room components
+import RoomHeader from '@/components/room/RoomHeader.vue'
+import RoomClock from '@/components/room/RoomClock.vue'
+import RoomParticipantsTable from '@/components/room/RoomParticipantsTable.vue'
+import RoomDroppedPlayers from '@/components/room/RoomDroppedPlayers.vue'
+import AdminControlsModal from '@/components/room/AdminControlsModal.vue'
+
+// Import composables
+import { useRoomState } from '@/composables/useRoomState'
+import { useGovernment } from '@/composables/useGovernment'
+import { useDictatorBidding } from '@/composables/useDictatorBidding'
+import { usePolitburoWheel } from '@/composables/usePolitburoWheel'
+import { useVoting } from '@/composables/useVoting'
 
 // Register Chart.js components
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend)
@@ -658,11 +610,26 @@ const store = useStore()
 const router = useRouter()
 const { socket } = useSocket()
 
-const clock = ref('')
-const newComponent = ref(false)
-const hover = ref(false)
-const roomname = ref('test')
-const participants = ref([])
+// Initialize composables
+const roomState = useRoomState()
+const government = useGovernment()
+const dictatorBidding = useDictatorBidding()
+const politburoWheel = usePolitburoWheel()
+const voting = useVoting()
+
+// Destructure room state refs and computed properties
+const { roomname, roomOwnerId, clock, participants, roomGovernment, jobs, governments, displayGovernments, govLabel } = roomState
+
+// Destructure government utility functions
+const { getGovernmentIconForParticipant, getPerkIconForParticipant } = government
+
+// Closures to match Room state injection into icon functions
+const iconForParticipant = (p) => getGovernmentIconForParticipant(p, roomGovernment.value)
+const perkIconForParticipant = (p) => getPerkIconForParticipant(p)
+
+// Computed early to avoid circular dependencies
+const currentUserId = computed(() => store.state.auth.userId)
+
 const activePlayers = computed(() => {
   const active = participants.value.filter(p => {
     // Check if clock is "00•00•00" (out of time) or player is dead
@@ -700,16 +667,32 @@ const droppedPlayers = computed(() => {
   return sorted
 })
 
+const currentUserParticipant = computed(() => {
+  return activePlayers.value.find(p => p.user_id === currentUserId.value)
+})
+
+const maxCollectables = computed(() => {
+  const participant = currentUserParticipant.value
+  if (!participant) return 5
+  
+  let max = 5
+  // +1 if no bleed
+  if (!participant.bleed || participant.bleed === 0) {
+    max += 1
+  }
+  // +1 if senior perk
+  if (participant.perk === 'Senior') {
+    max += 1
+  }
+  
+  return max
+})
+
 // FIX: add missing refs
-const roomGovernment = ref(null)
-const selectedGovernmentId = ref(null)
 const selectedJobId = ref(null)
 const selectedPerk = ref(null)
 const selectedHeaderApproval = ref(null)
-const selectedHeaderVote = ref(null)
 
-// NEW: track room owner/creator
-const roomOwnerId = ref(null)
 
 // History graph modal
 const historyGraphModal = ref(null)
@@ -718,6 +701,9 @@ const historyError = ref(null)
 const chartData = ref(null)
 const selectedPlayersForGraph = ref([])
 const allGraphPlayers = ref([])
+const selectedWinner = ref(null)
+const winnerSet = ref(false)
+const settingWinner = ref(false)
 const chartOptions = ref({
   responsive: true,
   maintainAspectRatio: false,
@@ -747,40 +733,19 @@ const chartOptions = ref({
   }
 })
 
-// Defaults
-const defaultGovernments = [
-  { id: 1, name: 'Democracy' },
-  { id: 2, name: 'Republic' },
-  { id: 3, name: 'Dictatorship' },
-  { id: 4, name: 'Communism' },
-  { id: 5, name: 'Anarchy' }
-]
-
 // State
-const governments = ref([...defaultGovernments])
-const jobs = ref([]) // ensure this exists
-
-// ADD: paying state
 const isPaying = ref(false)
+const isPayingJail = ref(false)
+const isSubmittingGov = ref(false)
+const govError = ref('')
 
-// Normalize label for backend or defaults
-function govLabel(g) {
-  return String(g?.name ?? g?.type ?? g?.label ?? '').trim()
-}
-
-// Always provide items with a name for rendering
-const displayGovernments = computed(() => {
-  const list = governments.value?.length ? governments.value : defaultGovernments
-  return list.map((g, idx) => ({
-    id: g.id ?? g.value ?? idx + 1,
-    name: govLabel(g) || 'Unnamed'
+// Options for selects based on current participants
+const participantOptions = computed(() =>
+  (participants.value || []).map(p => ({
+    value: p.user_id ?? p.userId ?? p.id,
+    text: p.username || `User ${p.user_id || p.id}`
   }))
-})
-
-const governmentOptionsDisplay = computed(() => {
-  const list = governments.value?.length ? governments.value : defaultGovernments
-  return [{ value: null, text: 'Select a government' }, ...list.map(g => ({ value: g.id, text: g.name }))]
-})
+)
 
 // ADD: modal refs and busy flags (fixes ReferenceError)
 const leaveRoomModal = ref(null)
@@ -789,32 +754,72 @@ const wheelSpinnerRef = ref(null)
 const politburoWheelModal = ref(null)
 const approvalStatusModal = ref(null)
 const govVoteModal = ref(null)
+const adminControlsModalRef = ref(null)
 const isLeaving = ref(false)
 const isRemoving = ref(false)
 const showVoteColumn = ref(true)
 const selectedApprovalOption = ref(null)
 const selectedVoteOption = ref(null)
 
-// Dictator bidding state
-const dictatorBiddingModal = ref(null)
-const dictatorBiddingWinnerModal = ref(null)
-const biddingActive = ref(false)
-const biddingTally = ref({}) // { userId: true/false indicating if they've bid }
-const currentUserBid = ref(null)
-const bidTimeMinutes = ref(0)
-const dictatorWinner = ref(null)
+// Dictator bidding state (from composable)
+const { 
+  dictatorBiddingModal, 
+  dictatorBiddingWinnerModal, 
+  biddingActive, 
+  biddingTally, 
+  currentUserBid, 
+  bidTimeMinutes, 
+  dictatorWinner,
+  initiateBidding,
+  placeBid,
+  concludeBidding,
+  announceBiddingWinner,
+  resetBidding
+} = dictatorBidding
 const concludeBiddingModal = ref(null)
+const dictator_bid_amounts = ref({})
+const biddingLeaderboard = ref([])
 
-// Politburo wheel state
-const politburoMembers = ref([])
-const isSpinningPolitburo = ref(false)
-const balanceBooksOnSave = ref(false)
-const currentWheelWinner = ref(null)
-const showWheelResult = ref(false)
+// Politburo wheel state (from composable)
+const { 
+  politburoMembers, 
+  isSpinningPolitburo, 
+  balanceBooksOnSave, 
+  currentWheelWinner, 
+  showWheelResult,
+  isSelectionComplete,
+  getAvailableCandidates,
+  addMember,
+  removeMember,
+  validateSelection
+} = politburoWheel
+
+// Voting state (from composable)
+const {
+  votingActive,
+  voteTally,
+  currentUserVote,
+  voteResults,
+  votingConcluded,
+  voteQuestion,
+  voteModal,
+  voteResultsModal,
+  votedCount,
+  totalParticipants: voteTotalParticipants,
+  allVoted,
+  resultsSummary,
+  initiateVoting,
+  castVote,
+  updateTally,
+  concludeVoting: concludeVotingLocal,
+  resetVoting
+} = voting
 
 // Available candidates for politburo wheel (exclude already selected members)
 const availablePolitburoCandidates = computed(() => {
-  return participants.value.filter(p => !politburoMembers.value.includes(p.user_id))
+  const candidates = getAvailableCandidates(participants.value)
+  console.log('[availablePolitburoCandidates] Total participants:', participants.value.length, 'Selected members:', politburoMembers.value.length, 'Available candidates:', candidates.length, 'Participants:', participants.value)
+  return candidates
 })
 
 // Build select options
@@ -822,13 +827,27 @@ const governmentOptions = computed(() => [
   { value: null, text: 'Select a government' },
   ...governments.value.map(g => ({ value: g.id, text: g.name }))
 ])
-const jobOptions = computed(() => [
-  { value: null, text: 'Select a job' },
-  ...jobs.value.map(j => ({
-    value: j.id,
-    text: j.tier ? `${j.name} (Tier ${j.tier})` : j.name
-  }))
-])
+const jobOptions = computed(() => {
+  // Sort jobs by faction: Finance first, then Illicit, then Public Service
+  // Within each faction, sort alphabetically by name
+  const factionOrder = { 'Finance': 1, 'Illicit': 2, 'Public Service': 3, 'Unemployed': 0 }
+  
+  const sortedJobs = [...jobs.value].sort((a, b) => {
+    const orderA = factionOrder[a.type] ?? 99
+    const orderB = factionOrder[b.type] ?? 99
+    
+    if (orderA !== orderB) return orderA - orderB
+    return a.name.localeCompare(b.name)
+  })
+  
+  return [
+    { value: null, text: 'Select a job' },
+    ...sortedJobs.map(j => ({
+      value: j.id,
+      text: j.tier ? `${j.name} (Tier ${j.tier})` : j.name
+    }))
+  ]
+})
 
 // Socket event handlers
 socket.on('updateClock', async (data) => {
@@ -937,16 +956,25 @@ socket.on('setUserId', (data) => {
 socket.on('UpdateUserStatus', (data) => {
   // backend sends JSON string here
   const room = JSON.parse(data.data)
-  participants.value = Array.isArray(room.participants) ? room.participants.map(p => ({
-    user_id: p.user_id,
-    username: p.username ?? 'Unknown',
-    job_name: p.job_name ?? '-',
-    job_tier: p.job_tier ?? '-',
-    clock: p.clock ?? '00•00•00',
-    bleed: p.bleed ?? 0,
-    heat: p.heat ?? 0,
-    perk: p.perk ?? nullif 
-  })) : []
+  participants.value = Array.isArray(room.participants) 
+    ? room.participants.map(updatedP => {
+        // Preserve existing participant data to avoid losing approval_status, gov_vote, etc
+        const existingP = participants.value.find(p => p.user_id === updatedP.user_id)
+        return {
+          user_id: updatedP.user_id,
+          username: updatedP.username ?? existingP?.username ?? 'Unknown',
+          job_name: updatedP.job_name ?? existingP?.job_name ?? '-',
+          job_tier: updatedP.job_tier ?? existingP?.job_tier ?? '-',
+          clock: updatedP.clock ?? existingP?.clock ?? '00•00•00',
+          bleed: updatedP.bleed ?? existingP?.bleed ?? 0,
+          heat: updatedP.heat ?? existingP?.heat ?? 0,
+          perk: updatedP.perk ?? existingP?.perk ?? null,
+          approval_status: updatedP.approval_status ?? existingP?.approval_status ?? null,
+          gov_vote: updatedP.gov_vote ?? existingP?.gov_vote ?? null,
+          is_in_jail: updatedP.is_in_jail ?? existingP?.is_in_jail ?? false
+        }
+      })
+    : []
 })
 
 // Socket diagnostics: see what arrives
@@ -988,6 +1016,8 @@ socket.on('room_state', (payload) => {
   const room = typeof payload === 'string' ? JSON.parse(payload) : payload
   roomname.value = room?.name || roomname.value
 
+  console.log('[room_state] Received room state:', room)
+
   // NEW: capture owner/creator id from common field names
   roomOwnerId.value =
     room?.owner_id ??
@@ -1004,8 +1034,13 @@ socket.on('room_state', (payload) => {
     clock: p.clock ?? '00•00•00',
     bleed: p.bleed ?? 0,
     heat: p.heat ?? 0,
-    perk: p.perk ?? null
+    perk: p.perk ?? null,
+    approval_status: p.approval_status ?? null,
+    gov_vote: p.gov_vote ?? null,
+    is_in_jail: p.is_in_jail ?? false
   })) : []
+  
+  console.log('[room_state] Participants loaded:', participants.value.length, participants.value)
   
   // Debug: Check for dropped players
   const dropped = participants.value.filter(p => p.clock === '00•00•00')
@@ -1014,10 +1049,6 @@ socket.on('room_state', (payload) => {
   }
   
   roomGovernment.value = room?.government || null
-
-  // Sync dropdown to current government type if we have collections
-  const syncId = findGovernmentIdByName(roomGovernment.value?.type)
-  if (syncId !== undefined) selectedGovernmentId.value = syncId
 
   // Sync current user's perk and clock
   const currentUser = participants.value.find(p => p.user_id === currentUserId.value)
@@ -1048,31 +1079,129 @@ socket.on('voteRecorded', (data) => {
   }
 })
 
-socket.on('startDictatorBidding', (data) => {
-  console.log('[startDictatorBidding] Bidding started')
-  biddingActive.value = true
-  biddingTally.value = {}
-  currentUserBid.value = null
-  bidTimeMinutes.value = 0
+// Secret voting socket listeners
+socket.on('startVoting', (data) => {
+  console.log('[startVoting] Voting session started', data)
+  votingActive.value = true
+  votingConcluded.value = false
+  currentUserVote.value = null
+  voteResults.value = null
   
-  // Initialize tally with all participants
-  participants.value.forEach(p => {
-    biddingTally.value[p.user_id] = false
-  })
+  if (data?.question) {
+    voteQuestion.value = data.question
+  }
+  
+  // Initialize tally from server or locally
+  if (data?.tally) {
+    voteTally.value = data.tally
+  } else {
+    voteTally.value = {}
+    participants.value.forEach(p => {
+      voteTally.value[p.user_id] = false
+    })
+  }
+  
+  // Open voting modal for all players
+  voteModal.value && voteModal.value.show()
+})
+
+socket.on('voteTallyUpdate', (data) => {
+  console.log('[voteTallyUpdate] Tally updated', data)
+  // Update tally (who has voted, not what)
+  if (data?.tally) {
+    voteTally.value = data.tally
+  }
+})
+
+socket.on('votingConcluded', (data) => {
+  console.log('[votingConcluded] Voting concluded', data)
+  votingActive.value = false
+  votingConcluded.value = true
+  voteResults.value = data.results || {}
+  
+  // Close voting modal and show results
+  voteModal.value && voteModal.value.hide()
+  
+  setTimeout(() => {
+    voteResultsModal.value && voteResultsModal.value.show()
+  }, 100)
+})
+
+socket.on('startDictatorBidding', (data) => {
+  console.log('[startDictatorBidding] Bidding started', data)
+  biddingActive.value = true
+  
+  // Check if this is a reconnect with existing tally data
+  if (data?.reconnect && data?.tally) {
+    biddingTally.value = data.tally
+    dictator_bid_amounts.value = data.bid_amounts || {}
+  } else {
+    // Fresh bidding start
+    biddingTally.value = {}
+    dictator_bid_amounts.value = {}
+    currentUserBid.value = null
+    bidTimeMinutes.value = 0
+    
+    // Initialize tally with all participants
+    participants.value.forEach(p => {
+      biddingTally.value[p.user_id] = false
+    })
+  }
   
   // Open bidding modal for all players
   dictatorBiddingModal.value && dictatorBiddingModal.value.show()
 })
 
+socket.on('startPolitburoSpin', (data) => {
+  console.log('[startPolitburoSpin] Received spin event with rotation:', data?.rotation)
+  
+  // Open the politburo modal for all players so they can see the spin
+  politburoWheelModal.value && politburoWheelModal.value.show()
+  
+  // Apply the synchronized rotation to all players (including admin)
+  if (politburoWheelRef.value && data?.rotation) {
+    setTimeout(() => {
+      politburoWheelRef.value.spinToRotation(data.rotation)
+    }, 200)
+    
+    // Reset spinning state after animation completes
+    setTimeout(() => {
+      isSpinningPolitburo.value = false
+    }, 5300)
+  }
+})
+
+socket.on('politburoMembersUpdate', (data) => {
+  console.log('[politburoMembersUpdate] Received members update:', data?.members)
+  
+  // Update local politburo members for all players
+  if (data?.members !== undefined) {
+    politburoMembers.value = data.members
+    
+    // Clear the winner on the wheel so everyone can see updated state
+    if (politburoWheelRef.value?.clearWinner) {
+      politburoWheelRef.value.clearWinner()
+    }
+  }
+})
+
+socket.on('closePolitburoModal', () => {
+  console.log('[closePolitburoModal] Closing modal for all participants')
+  politburoWheelModal.value && politburoWheelModal.value.hide()
+  resetPolitburoSelection()
+})
+
 socket.on('biddingTallyUpdate', (data) => {
   console.log('[biddingTallyUpdate]', data)
   biddingTally.value = data.tally || {}
+  dictator_bid_amounts.value = data.bid_amounts || {}
 })
 
 socket.on('dictatorWinner', (data) => {
   console.log('[dictatorWinner]', data)
   biddingActive.value = false
   dictatorWinner.value = data.winner_name
+  biddingLeaderboard.value = data.leaderboard || []
   dictatorBiddingModal.value && dictatorBiddingModal.value.hide()
   
   // Add a small delay to ensure room_state is processed before showing winner modal
@@ -1135,8 +1264,17 @@ function openLeaveModal() {
 function openRemoveModal() {
   removeRoomModal.value && removeRoomModal.value.show()
 }
-function openWheelSpinner() {
-  wheelSpinnerRef.value?.open()
+function openAdminControlsModal() {
+  adminControlsModalRef.value?.show()
+}
+
+function openWheelSpinner(options) {
+  // If called for Communism, open the politburo wheel modal
+  if (options?.forCommunism) {
+    politburoWheelModal.value?.show()
+  } else {
+    wheelSpinnerRef.value?.open()
+  }
 }
 
 // Replace custom buttons logic with OK handlers that keep the modal open during async
@@ -1182,6 +1320,11 @@ async function confirmRemove() {
   // Hide the confirmation modal
   removeRoomModal.value && removeRoomModal.value.hide()
   
+  // Reset winner state
+  selectedWinner.value = null
+  winnerSet.value = false
+  settingWinner.value = false
+  
   // Show history graph modal
   loadingHistory.value = true
   historyError.value = null
@@ -1196,10 +1339,16 @@ async function confirmRemove() {
       // Process history data for Chart.js
       const history = resp.data.history
       
-      // Generate color palette for players
+      // Generate color palette for 8 players - distinct, high-contrast colors
       const colors = [
-        '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
-        '#FF9F40', '#FF6384', '#C9CBCF', '#4BC0C0', '#FF6384'
+        '#FF4136', // Red
+        '#2ECC40', // Green
+        '#0074D9', // Blue
+        '#FF851B', // Orange
+        '#B10DC9', // Purple
+        '#FFDC00', // Yellow
+        '#39CCCC', // Teal
+        '#F012BE'  // Magenta
       ]
       
       // Track all players for filter
@@ -1229,14 +1378,7 @@ async function confirmRemove() {
           const relativeMinutes = Math.round((snapshotTime - gameStartTime) / 60000)
           return {
             x: `${Math.floor(relativeMinutes / 60)}h ${relativeMinutes % 60}m`,
-            y: s.clock_minutes,
-            timestamp: s.timestamp,
-            bleed: s.bleed,
-            heat: s.heat,
-            job_name: s.job_name,
-            perk: s.perk,
-            government_type: s.government_type,
-            government_role: s.government_role
+            y: s.clock_minutes
           }
         }),
         borderColor: colors[index % colors.length],
@@ -1287,40 +1429,14 @@ async function confirmRemove() {
               label: function(context) {
                 const timeValue = context.parsed.y
                 const minutesValue = Math.round(timeValue)
+                const formatClock = (minutes) => {
+                  const days = Math.floor(minutes / 1440)
+                  const hours = Math.floor((minutes % 1440) / 60)
+                  const mins = minutes % 60
+                  return `${String(days).padStart(2, '0')}•${String(hours).padStart(2, '0')}•${String(mins).padStart(2, '0')}`
+                }
                 const formattedTime = formatClock(minutesValue)
-                return `Time: ${formattedTime} (${minutesValue} mins)`
-              },
-              afterLabel: function(context) {
-                const point = context.raw
-                const lines = []
-                
-                // Add real-world time
-                if (point.timestamp) {
-                  const realTime = new Date(point.timestamp)
-                  lines.push(`Real Time: ${realTime.toLocaleTimeString()}`)
-                }
-                
-                // Add government info
-                if (point.government_type) {
-                  let govInfo = `Gov: ${point.government_type}`
-                  if (point.government_role) {
-                    govInfo += ` (${point.government_role})`
-                  }
-                  lines.push(govInfo)
-                } else {
-                  lines.push('Gov: None')
-                }
-                
-                // Add job info
-                lines.push(`Job: ${point.job_name || 'None'}`)
-                
-                // Add perk info
-                lines.push(`Perk: ${point.perk || 'None'}`)
-                
-                // Add bleed/heat
-                lines.push(`Bleed: ${point.bleed}, Heat: ${point.heat}`)
-                
-                return lines
+                return `Time: ${formattedTime}`
               }
             }
           }
@@ -1383,6 +1499,34 @@ async function finalizeRemoveRoom() {
   }
 }
 
+// Winner selection
+async function confirmWinner() {
+  if (!selectedWinner.value || settingWinner.value) return
+  
+  const roomId = store.state.auth.roomId
+  console.log('[SetWinner] Setting winner:', { roomId, winnerId: selectedWinner.value })
+  
+  settingWinner.value = true
+  try {
+    const resp = await RoomListService.setWinner({ 
+      roomId, 
+      winnerId: selectedWinner.value 
+    })
+    console.log('[SetWinner] Response:', resp?.data)
+    winnerSet.value = true
+  } catch (e) {
+    console.error('[SetWinner] Failed:', e)
+    alert(e.response?.data?.errors || 'Failed to set winner')
+  } finally {
+    settingWinner.value = false
+  }
+}
+
+function getParticipantName(userId) {
+  const player = activePlayers.value.find(p => p.user_id === userId)
+  return player?.username || `User ${userId}`
+}
+
 // Graph filtering and formatting
 const filteredChartData = computed(() => {
   if (!chartData.value || !chartData.value.datasets) return chartData.value
@@ -1417,20 +1561,9 @@ function leaveRoom() {
   } catch {}
 }
 
-function changeComponent() {
-  newComponent.value = !newComponent.value
-}
 function uClock(time) {
   socket.emit('updateClock', JSON.stringify(time))
 }
-function handleHover(s) {
-  hover.value = s
-}
-
-// Computed
-const username = computed(() => store.state.auth.username)
-const currentRoomId = computed(() => store.state.auth.roomId)
-const currentUserId = computed(() => store.state.auth.userId)
 
 // Admin check: ONLY the room creator can change gov (or leave superuser id 1 if you want)
 const isAdmin = computed(() => {
@@ -1441,8 +1574,7 @@ const isAdmin = computed(() => {
 })
 
 const currentGovernmentName = computed(() => {
-  const govt = displayGovernments.value?.find(g => g.id === selectedGovernmentId.value)
-  return govt?.name || 'Unknown'
+  return roomGovernment.value?.type || 'Unknown'
 })
 
 const isCommunist = computed(() => {
@@ -1479,17 +1611,29 @@ function clearApprovalStatus() {
 }
 
 function partakeGovVote() {
-  console.log('Opening government vote modal')
-  selectedVoteOption.value = null
-  showVoteColumn.value = true
-  govVoteModal.value?.show()
+  console.log('[partakeGovVote] Admin starting new voting session')
+  // Admin emits startVoting to initiate a secret voting session
+  socket.emit('startVoting', JSON.stringify({ 
+    question: 'Cast your vote on the current matter' 
+  }))
+}
+
+function submitVote(choice) {
+  console.log('[submitVote] Casting vote:', choice)
+  currentUserVote.value = choice
+  socket.emit('partakeGovVote', JSON.stringify({ choice: choice }))
+}
+
+function concludeVote() {
+  console.log('[concludeVote] Admin concluding voting')
+  socket.emit('concludeVoting')
 }
 
 function confirmGovVote() {
+  // Legacy function - kept for compatibility but not used in new flow
   if (selectedVoteOption.value) {
     console.log('Casting vote:', selectedVoteOption.value)
     socket.emit('partakeGovVote', JSON.stringify({ choice: selectedVoteOption.value }))
-    govVoteModal.value?.hide()
   }
 }
 
@@ -1518,18 +1662,6 @@ function onHeaderApprovalChange() {
   }
 }
 
-function onHeaderVoteChange() {
-  if (selectedHeaderVote.value) {
-    console.log('Setting vote from header:', selectedHeaderVote.value)
-    socket.emit('partakeGovVote', JSON.stringify({ choice: selectedHeaderVote.value }))
-    const participant = participants.value.find(p => p.user_id === currentUserId.value)
-    if (participant) {
-      participant.gov_vote = selectedHeaderVote.value
-    }
-    selectedHeaderVote.value = null
-  }
-}
-
 // ADD: Get Paid handler -> emits "balanceChange"
 function getPaid() {
   if (isPaying.value) return
@@ -1544,87 +1676,21 @@ function getPaid() {
   }
 }
 
-// Government assignment state
-const govAssignModal = ref(null)
-const isSubmittingGov = ref(false)
-const govError = ref('')
-const govForm = ref({
-  type: null,
-  dictator: null,
-  head_of_state: null,
-  advisors: [],
-  politburo: []
-})
-
-// Options for selects based on current participants
-const participantOptions = computed(() =>
-  (participants.value || []).map(p => ({
-    value: p.user_id ?? p.userId ?? p.id,
-    text: p.username || `User ${p.user_id || p.id}`
-  }))
-)
-
-// When admin changes government dropdown
-function onGovernmentChange() {
-  if (!isAdmin.value) {
-    selectedGovernmentId.value = findGovernmentIdByName(roomGovernment.value?.type)
-    return
+// Pay jail fee handler -> emits "getOutOfJail"
+function getOutOfJail() {
+  if (isPayingJail.value) return
+  isPayingJail.value = true
+  try {
+    console.log('[GetOutOfJail] emit getOutOfJail')
+    socket.emit('getOutOfJail')
+  } catch (e) {
+    console.error('[GetOutOfJail] emit failed', e)
+  } finally {
+    setTimeout(() => { isPayingJail.value = false }, 600)
   }
-  const sel =
-    displayGovernments.value.find(g => g.id === selectedGovernmentId.value) ||
-    governments.value.find(g => g.id === selectedGovernmentId.value)
-  const typeName = govLabel(sel)
-  if (!typeName) return
-
-  if (typeName === 'Democracy' || typeName === 'Anarchy') {
-    socket.emit('updateGovernment', JSON.stringify({ type: typeName }))
-    return
-  }
-
-  if (typeName === 'Dictatorship') {
-    // Start dictator bidding process
-    biddingActive.value = true
-    biddingTally.value = {}
-    currentUserBid.value = null
-    bidTimeMinutes.value = 0
-    
-    // Initialize tally with all participants
-    participants.value.forEach(p => {
-      biddingTally.value[p.user_id] = false
-    })
-    
-    // Broadcast to all players to open bidding modal
-    socket.emit('startDictatorBidding', JSON.stringify({ initiatedBy: currentUserId.value }))
-    
-    // Open bidding modal for admin
-    dictatorBiddingModal.value && dictatorBiddingModal.value.show()
-    return
-  }
-
-  if (typeName === 'Communism') {
-    // Open special politburo wheel modal
-    govForm.value = {
-      type: 'Communism',
-      dictator: null,
-      head_of_state: null,
-      advisors: [],
-      politburo: []
-    }
-    govError.value = ''
-    politburoWheelModal.value && politburoWheelModal.value.show()
-    return
-  }
-
-  govForm.value = {
-    type: typeName,
-    dictator: null,
-    head_of_state: null,
-    advisors: [],
-    politburo: []
-  }
-  govError.value = ''
-  govAssignModal.value && govAssignModal.value.show()
 }
+
+
 
 // IMPORTANT: remove the old watcher that auto-emitted updateGovernment.
 // It bypassed the isAdmin check. Keep only job watcher.
@@ -1668,166 +1734,6 @@ function concludeDictatorBidding() {
   
   console.log('[concludeDictatorBidding] Concluding bidding')
   socket.emit('concludeDictatorBidding', JSON.stringify({}))
-}
-
-// Build and emit payload based on govForm
-function submitGovernment() {
-  if (!isAdmin.value) return
-  govError.value = ''
-
-  const t = govForm.value.type
-  let payload = { type: t }
-
-  if (t === 'Dictatorship') {
-    if (!govForm.value.dictator) {
-      govError.value = 'Please select a dictator.'
-      return
-    }
-    payload.dictator = Number(govForm.value.dictator)
-  } else if (t === 'Republic') {
-    if (!govForm.value.head_of_state || (govForm.value.advisors || []).length !== 2) {
-      govError.value = 'Select a head of state and exactly 2 advisors.'
-      return
-    }
-    payload.head_of_state = Number(govForm.value.head_of_state)
-    payload.advisors = govForm.value.advisors.slice(0, 2).map(Number)
-    // prevent duplicates
-    const all = [payload.head_of_state, ...payload.advisors]
-    if (new Set(all).size !== 3) {
-      govError.value = 'Head of state and advisors must be different people.'
-      return
-    }
-  } else if (t === 'Communism') {
-    if ((govForm.value.politburo || []).length !== 3) {
-      govError.value = 'Select exactly 3 politburo members.'
-      return
-    }
-    payload.politburo = govForm.value.politburo.slice(0, 3).map(Number)
-    if (new Set(payload.politburo).size !== 3) {
-      govError.value = 'Politburo members must be different people.'
-      return
-    }
-  }
-
-  isSubmittingGov.value = true
-  try {
-    socket.emit('updateGovernment', JSON.stringify(payload))
-    govAssignModal.value && govAssignModal.value.hide()
-  } finally {
-    isSubmittingGov.value = false
-  }
-}
-
-// Find by name OR type (from room_state.government.type)
-function findGovernmentIdByName(name) {
-  if (!name) return null
-  const target = String(name).toLowerCase()
-  const g = governments.value.find(x => {
-    const a = x?.name ? String(x.name).toLowerCase() : ''
-    const b = x?.type ? String(x.type).toLowerCase() : ''
-    return a === target || b === target
-  })
-  return g ? g.id ?? null : null
-}
-
-// Map participants helper (tolerant of shapes)
-function mapParticipants(list) {
-  return Array.isArray(list)
-    ? list.map(p => ({
-        user_id: p.user_id ?? p.userId ?? p.id,
-        username: p.username ?? (p.user && p.user.username) ?? '(unknown)',
-        job_name: p.job_name ?? (p.job && p.job.name) ?? '-',
-        bleed: p.bleed ?? 0
-      }))
-    : []
-}
-
-// Normalize government payload from backend into role-based sets
-function normalizeGovernment(g) {
-  const out = {
-    type: g?.type ? String(g.type) : null,
-    dictator: null,
-    head_of_state: null,
-    advisors: new Set(),
-    politburo: new Set(),
-    members: new Set()
-  }
-  if (!g) return out
-
-  // Common flat fields
-  out.dictator = g.leader_id ?? g.leaderId ?? g.dictator_id ?? g.dictatorId ?? null
-  out.head_of_state = g.head_of_state_id ?? g.headOfStateId ?? null
-
-  // Generic member ids
-  const mIds = g.member_ids ?? g.memberUserIds
-  if (Array.isArray(mIds)) mIds.forEach(id => out.members.add(Number(id)))
-
-  // roles map object variants
-  const rolesMap = g.roles ?? g.roleMap ?? g.membersByRole
-  if (rolesMap) {
-    if (rolesMap.dictator != null) out.dictator = Number(rolesMap.dictator)
-    const hs = rolesMap.head_of_state ?? rolesMap.headOfState
-    if (hs != null) out.head_of_state = Number(hs)
-    const adv = rolesMap.advisors ?? rolesMap.advisor ?? []
-    ;(Array.isArray(adv) ? adv : [adv]).forEach(id => out.advisors.add(Number(id)))
-    const pb = rolesMap.politburo ?? []
-    ;(Array.isArray(pb) ? pb : [pb]).forEach(id => out.politburo.add(Number(id)))
-  }
-
-  // members array of objects/numbers
-  if (Array.isArray(g.members)) {
-    for (const m of g.members) {
-      if (m && typeof m === 'object') {
-        const uid = Number(m.user_id ?? m.userId ?? m.id)
-        const role = String(m.role ?? '').toLowerCase()
-        if (!Number.isNaN(uid)) {
-          out.members.add(uid)
-          if (role === 'dictator') out.dictator = uid
-          else if (role === 'head_of_state' || role === 'headofstate') out.head_of_state = uid
-          else if (role === 'advisor') out.advisors.add(uid)
-          else if (role === 'politburo') out.politburo.add(uid)
-        }
-      } else if (typeof m === 'number' || typeof m === 'string') {
-        out.members.add(Number(m))
-      }
-    }
-  }
-
-  return out
-}
-
-// Return the correct icon for a participant based on type + role
-function iconForParticipant(p) {
-  const g = normalizeGovernment(roomGovernment.value)
-  if (!g.type) return null
-
-  const type = g.type.toLowerCase()
-  const uid = Number(p.user_id ?? p.userId ?? p.id)
-
-  if (type === 'dictatorship') {
-    // Only the dictator
-    return g.dictator === uid ? '/dictator.png' : null
-  }
-
-  if (type === 'republic') {
-    // Head of state has its own icon; advisors use republic.png
-    if (g.head_of_state === uid) return '/headOfState.png'
-    if (g.advisors.has(uid)) return '/republic.png'
-    // Fallback: if no roles provided but member flagged, show republic icon
-    if (g.members.has(uid)) return '/republic.png'
-    return null
-  }
-
-  if (type === 'communism') {
-    // Politburo members
-    if (g.politburo.has(uid)) return '/communism.png'
-    // Fallback: if only generic members are provided, treat as politburo for icon purposes
-    if (g.members.has(uid) && g.politburo.size === 0) return '/communism.png'
-    return null
-  }
-
-  // No icons for Democracy/unknown
-  return null
 }
 
 // Change Bleed (+/- 1) for the current user
@@ -1887,39 +1793,45 @@ function changeHeat(delta) {
   }
 }
 
-// Return perk icon for a participant
-function perkIconForParticipant(p) {
-  const perk = p.perk
-  if (!perk) return null
-  
-  if (perk === 'Manager') return '/manager.png'
-  if (perk === 'Senior') return '/senior.png'
-  if (perk === 'Executive') return '/executive.png'
-  
-  return null
-}
-
 // Politburo wheel functions
 const politburoWheelRef = ref(null)
 
-function spinForNextMember() {
-  if (politburoMembers.value.length >= 3 || isSpinningPolitburo.value) return
+function handlePolitburoSpinRequest() {
+  // Called when the spin button inside the wheel is clicked
+  console.log('[handlePolitburoSpinRequest] Spin requested')
+  
+  if (politburoMembers.value.length >= 2 || isSpinningPolitburo.value) {
+    console.log('[handlePolitburoSpinRequest] Blocking: already have 2 members or spinning in progress')
+    return
+  }
   
   if (!politburoWheelRef.value) {
     console.error('[Politburo] Wheel ref not available')
     return
   }
   
+  // Generate spin data (rotation) on admin side
+  const spinData = politburoWheelRef.value.generateSpinData()
+  if (!spinData) {
+    console.error('[Politburo] Could not generate spin data')
+    return
+  }
+  
   isSpinningPolitburo.value = true
   
-  // Open the wheel modal and trigger the spin
-  politburoWheelRef.value.open()
+  // Broadcast to all players with the pre-determined rotation
+  const roomId = store.state.auth.roomId
+  socket.emit('startPolitburoSpin', JSON.stringify({ 
+    room_id: roomId,
+    rotation: spinData.rotation 
+  }))
   
-  // Small delay to ensure modal is open, then trigger spin
-  setTimeout(() => {
-    politburoWheelRef.value.spinWheel()
-    isSpinningPolitburo.value = false
-  }, 100)
+  // The socket listener will apply the rotation for everyone including admin
+}
+
+function spinForNextMember() {
+  // Legacy function - now redirects to handlePolitburoSpinRequest
+  handlePolitburoSpinRequest()
 }
 
 function addToPolitburo() {
@@ -1942,21 +1854,31 @@ function addToPolitburo() {
   if (!politburoMembers.value.includes(participant.user_id)) {
     politburoMembers.value.push(participant.user_id)
     console.log('[Politburo] Added member:', participant.username, 'ID:', participant.user_id)
+    
+    // Broadcast the update to all room participants
+    socket.emit('updatePolitburoMembers', JSON.stringify({ 
+      members: politburoMembers.value 
+    }))
   } else {
     console.log('[Politburo] Member already in list:', participant.username)
   }
   
-  // Close the wheel modal
-  politburoWheelRef.value?.wheelModal?.hide()
+  // Clear the winner state so wheel can be spun again
+  if (politburoWheelRef.value?.clearWinner) {
+    politburoWheelRef.value.clearWinner()
+  }
 }
 
 function spinAgain() {
-  // Close current wheel modal and spin again
-  politburoWheelRef.value?.wheelModal?.hide()
+  // Clear winner and spin again
+  if (politburoWheelRef.value?.clearWinner) {
+    politburoWheelRef.value.clearWinner()
+  }
   
+  // Trigger another spin after brief delay
   setTimeout(() => {
-    spinForNextMember()
-  }, 300)
+    handlePolitburoSpinRequest()
+  }, 100)
 }
 
 function resetPolitburoSelection() {
@@ -1965,6 +1887,14 @@ function resetPolitburoSelection() {
   govError.value = ''
   showWheelResult.value = false
   currentWheelWinner.value = null
+  
+  // Clear wheel winner state
+  if (politburoWheelRef.value?.clearWinner) {
+    politburoWheelRef.value.clearWinner()
+  }
+  
+  // Broadcast reset to all players
+  socket.emit('updatePolitburoMembers', JSON.stringify({ members: [] }))
 }
 
 function cancelPolitburoSelection() {
@@ -1973,8 +1903,8 @@ function cancelPolitburoSelection() {
 }
 
 function savePolitburoSelection() {
-  if (politburoMembers.value.length !== 3) {
-    govError.value = 'Must select exactly 3 politburo members'
+  if (politburoMembers.value.length !== 2) {
+    govError.value = 'Must select exactly 2 politburo members'
     return
   }
   
@@ -1989,6 +1919,9 @@ function savePolitburoSelection() {
   try {
     socket.emit('updateGovernment', JSON.stringify(payload))
     
+    // Broadcast to close modal for all participants
+    socket.emit('closePolitburoModal')
+    
     // If balance books is checked, wait for government update then balance
     if (balanceBooksOnSave.value) {
       // Wait longer to ensure government is saved first
@@ -1998,17 +1931,7 @@ function savePolitburoSelection() {
       }, 1000)
     }
     
-    politburoWheelModal.value && politburoWheelModal.value.hide()
-    
-    // Don't reset immediately if we're balancing books
-    if (!balanceBooksOnSave.value) {
-      resetPolitburoSelection()
-    } else {
-      // Reset after balance books completes
-      setTimeout(() => {
-        resetPolitburoSelection()
-      }, 1500)
-    }
+    // Modal closing and reset is handled by the closePolitburoModal socket event for everyone
   } catch (e) {
     console.error('[Politburo] Save failed', e)
     govError.value = 'Failed to save politburo selection'
@@ -2027,7 +1950,7 @@ function shareTheWealth() {
 
 <style>
 #app {
-  background: #0a0e27;
+  background: #0B0F19;
   padding: 0;
 }
 
@@ -2038,73 +1961,13 @@ function shareTheWealth() {
   padding-right: 0 !important;
 }
 
-/* Remove nested box styling */
-.top-actions {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 0;
-  margin-top: 0;
-}
-
-.top-actions-group { 
-  gap: 10px;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  background: transparent;
-  padding: 0;
-  box-shadow: none;
-}
-
-.top-actions-group .butt {
-  background: #0f1535 !important;
-  border: 2px solid #00dd33 !important;
-  color: #00dd33 !important;
-  font-weight: 600 !important;
-  border-radius: 8px !important;
-  padding: 8px 15px !important;
-  box-shadow: 0 0 10px rgba(0, 221, 51, 0.3) !important;
-  transition: all 0.2s ease !important;
-  height: auto !important;
-}
-
-.top-actions-group .butt:hover {
-  transform: translateY(-2px) !important;
-  box-shadow: 0 0 20px rgba(0, 221, 51, 0.6) !important;
-  text-shadow: 0 0 8px rgba(0, 221, 51, 0.6) !important;
-}
-
-.top-actions-group .butt[variant="danger"] {
-  background: #0f1535 !important;
-  border: 2px solid #ff4444 !important;
-  color: #ff4444 !important;
-  box-shadow: 0 0 10px rgba(255, 68, 68, 0.3) !important;
-}
-
-.top-actions-group .butt[variant="danger"]:hover {
-  box-shadow: 0 0 20px rgba(255, 68, 68, 0.6) !important;
-  text-shadow: 0 0 8px rgba(255, 68, 68, 0.6) !important;
-}
-
-.top-actions-group .butt[variant="info"] {
-  background: #0f1535 !important;
-  border: 2px solid #00ccff !important;
-  color: #00ccff !important;
-  box-shadow: 0 0 10px rgba(0, 204, 255, 0.3) !important;
-}
-
-.top-actions-group .butt[variant="info"]:hover {
-  box-shadow: 0 0 20px rgba(0, 204, 255, 0.6) !important;
-  text-shadow: 0 0 8px rgba(0, 204, 255, 0.6) !important;
-}
-
 .dropped-table {
   opacity: 0.6;
 }
 
 .dropped-row {
   text-decoration: line-through;
-  background-color: rgba(0, 221, 51, 0.05) !important;
+  background-color: rgba(241, 245, 249, 0.05) !important;
   color: #888 !important;
 }
 
@@ -2127,20 +1990,19 @@ function shareTheWealth() {
   height: 45px;
   text-align: center;
   margin-right: 0;
-  background: #0f1535 !important;
-  border: 2px solid #00dd33 !important;
-  color: #00dd33 !important;
+  background: #1A1F2E !important;
+  border: 2px solid #22D3EE !important;
+  color: #F1F5F9 !important;
   font-weight: 700 !important;
   border-radius: 8px !important;
-  box-shadow: 0 0 10px rgba(0, 221, 51, 0.3) !important;
   transition: all 0.2s ease !important;
   font-size: 1.05em !important;
 }
 
 .addremovebuttonClock:hover {
   transform: translateY(-2px) !important;
-  box-shadow: 0 0 20px rgba(0, 221, 51, 0.6) !important;
-  text-shadow: 0 0 8px rgba(0, 221, 51, 0.6) !important;
+  border-color: #EAB308 !important;
+  color: #EAB308 !important;
 }
 
 .addremovebuttonClock:active {
@@ -2158,11 +2020,10 @@ function shareTheWealth() {
 }
 
 .itemRow h1 {
-  color: #00dd33;
+  color: #F1F5F9;
   font-size: 2em;
   font-weight: 700;
-  margin-bottom: 20px;
-  text-shadow: 0 0 10px rgba(0, 221, 51, 0.4);
+  margin-bottom: 20px;;
   font-family: 'Barlow Condensed';
 }
 
@@ -2172,15 +2033,12 @@ function shareTheWealth() {
   font-weight: bold;
   color: #00ff00;
   font-family: 'Barlow Condensed', monospace;
-  text-shadow: 0 0 10px rgba(0, 255, 0, 0.5),
-               0 0 20px rgba(0, 255, 0, 0.3);
   background: radial-gradient(ellipse at center, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.9) 100%);
   border: 3px solid #000;
   border-radius: 15px;
   padding: 26px 44px;
   display: inline-block;
-  letter-spacing: 8px;
-  box-shadow: 0 0 30px rgba(0, 0, 0, 0.5), inset 0 0 30px rgba(0, 255, 0, 0.1);
+  letter-spacing: 8px;;
 }
 
 .itemRowButtons{
@@ -2204,26 +2062,11 @@ function shareTheWealth() {
   clear: both;
 }
 
-/* Fixed header row height */
-.table {
-  background: #0f1535 !important;
-  border: 1px solid rgba(0, 221, 51, 0.3) !important;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 0 20px rgba(0, 221, 51, 0.3), inset 0 0 15px rgba(0, 221, 51, 0.08) !important;
-  margin-top: 20px;
-  table-layout: fixed;
-  width: 100%;
-}
-
-.table thead {
-  background: #0a0e27 !important;
-  border-bottom: 2px solid rgba(0, 221, 51, 0.4) !important;
-}
+/* Table styling - core table rules only */
 
 .table thead tr {
   height: 50px;
-  background: #0a0e27 !important;
+  background: #0B0F19 !important;
   overflow: hidden;
   max-height: 50px;
 }
@@ -2231,52 +2074,43 @@ function shareTheWealth() {
 .table thead th {
   vertical-align: middle;
   height: 50px;
-  border: 1px solid rgba(0, 221, 51, 0.2) !important;
-  color: #00dd33 !important;
+  border: 1px solid #22D3EE !important;
+  color: #EAB308 !important;
   font-weight: 700 !important;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  text-shadow: 0 0 10px rgba(0, 221, 51, 0.5);
+  letter-spacing: 0.5px;;
   text-align: center !important;
   font-family: 'Barlow Condensed' !important;
   font-size: 1.15em !important;
-  background: #0a0e27 !important;
+  background: #1A1F2E !important;
   padding: 4px 13px !important;
   line-height: 20px;
   overflow: hidden;
   max-height: 50px;
 }
 
-.username-header {
-  box-shadow: 0 0 25px rgba(255, 204, 0, 0.6), inset 0 0 10px rgba(255, 204, 0, 0.2) !important;
-}
-
 .table tbody {
-  background: #0f1535 !important;
+  background: #1A1F2E !important;
 }
 
 .table tbody td {
-  border-color: rgba(0, 221, 51, 0.15) !important;
+  border-color: rgba(241, 245, 249, 0.15) !important;
   padding: 15px !important;
   vertical-align: middle;
-  color: #00dd33 !important;
+  color: #F1F5F9 !important;
   font-weight: 500;
   text-align: center !important;
   font-size: 1.1em !important;
-  background: #0f1535 !important;
+  background: #1A1F2E !important;
   height: 60px !important;
   min-height: 60px !important;
   max-height: 60px !important;
   overflow: hidden !important;
 }
 
-.table tbody td:first-child {
-  text-shadow: 0 0 10px rgba(0, 221, 51, 0.5), 0 0 20px rgba(255, 204, 0, 0.8), 0 0 30px rgba(255, 204, 0, 0.5);
-}
-
 .table tbody tr {
   transition: background-color 0.2s ease;
-  background: #0f1535 !important;
+  background: #1A1F2E !important;
   height: 60px !important;
   min-height: 60px !important;
   max-height: 60px !important;
@@ -2284,7 +2118,7 @@ function shareTheWealth() {
 }
 
 .table tbody tr:hover {
-  background-color: rgba(0, 221, 51, 0.1) !important;
+  background-color: rgba(241, 245, 249, 0.1) !important;
 }
 
 .intselect {
@@ -2320,9 +2154,8 @@ ul {
 }
 
 .center-row h3 {
-  color: #00dd33;
-  font-weight: 700;
-  text-shadow: 0 0 15px rgba(0, 221, 51, 0.5);
+  color: #F1F5F9;
+  font-weight: 700;;
   font-size: 1.5em;
   margin: 0;
 }
@@ -2348,19 +2181,27 @@ ul {
   gap: 8px;
 }
 
-.control-group { }
 .job-controls { margin-right: 0px; }
 
 .govt-label {
-  color: #00dd33 !important;
-  font-weight: 700 !important;
-  text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 10px rgba(0, 221, 51, 0.5), 0 0 20px rgba(255, 0, 0, 0.8), 0 0 30px rgba(255, 0, 0, 0.5);
+  color: #F1F5F9 !important;
+  font-weight: 700 !important;;
   font-family: 'Barlow Condensed' !important;
   font-size: 1.9em !important;
   padding: 13px 18px !important;
   display: inline-block !important;
   letter-spacing: 1px !important;
   text-transform: uppercase;
+}
+
+.room__max-collectables {
+  color: #F1F5F9 !important;
+  font-weight: 600 !important;
+  font-size: 1em !important;
+  text-align: center !important;
+  margin-top: 12px !important;
+  margin-bottom: 24px !important;
+  letter-spacing: 0.5px !important;
 }
 
 .govt-dropdown-wrapper {
@@ -2371,11 +2212,10 @@ ul {
 }
 
 .govt-dropdown-wrapper label {
-  color: #00dd33 !important;
+  color: #F1F5F9 !important;
   font-weight: 700 !important;
   font-size: 1.8em !important;
-  margin: 0 !important;
-  text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 10px rgba(0, 221, 51, 0.5), 0 0 20px rgba(255, 0, 0, 0.8), 0 0 30px rgba(255, 0, 0, 0.5);
+  margin: 0 !important;;
   font-family: 'Barlow Condensed' !important;
   letter-spacing: 1px !important;
   text-transform: uppercase;
@@ -2385,7 +2225,7 @@ ul {
   font-size: 1.5em !important;
   font-weight: 700 !important;
   padding: 0 !important;
-  color: #00dd33 !important;
+  color: #F1F5F9 !important;
   background-color: transparent !important;
   border: none !important;
   box-shadow: none !important;
@@ -2410,14 +2250,13 @@ ul {
   border: none !important;
   font-size: 1.8em !important;
   font-weight: 700 !important;
-  color: #00dd33 !important;
+  color: #F1F5F9 !important;
   font-family: 'Barlow Condensed' !important;
   cursor: pointer !important;
   width: auto !important;
   height: auto !important;
   line-height: 1.2 !important;
-  vertical-align: middle !important;
-  text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 10px rgba(0, 221, 51, 0.5), 0 0 20px rgba(255, 0, 0, 0.8), 0 0 30px rgba(255, 0, 0, 0.5);
+  vertical-align: middle !important;;
   text-transform: uppercase !important;
 }
 
@@ -2427,14 +2266,14 @@ ul {
   top: 11px;
   pointer-events: none;
   font-size: 1.1em;
-  color: #00dd33 !important;
+  color: #F1F5F9 !important;
   margin: 0 !important;
   line-height: 1.2;
 }
 
 .govt-dropdown-wrapper select option {
   background-color: #001535 !important;
-  color: #00dd33 !important;
+  color: #F1F5F9 !important;
   font-weight: 700 !important;
 }
 
@@ -2443,13 +2282,13 @@ ul {
   font-size: 14px;
   margin: 0;
   line-height: 38px;
-  color: #00dd33;
+  color: #F1F5F9;
 }
 
 .perk-btn {
   padding: 8px 12px;
-  border: 2px solid rgba(0, 221, 51, 0.3);
-  background: #0f1535;
+  border: 2px solid rgba(241, 245, 249, 0.3);
+  background: #1A1F2E;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -2459,24 +2298,22 @@ ul {
   align-items: center;
   justify-content: center;
   gap: 4px;
-  color: #00dd33;
+  color: #F1F5F9;
   height: 38px;
   min-width: 38px;
 }
 
 .perk-btn:hover {
-  border-color: #00dd33;
-  background: rgba(0, 221, 51, 0.1);
-  transform: translateY(-1px);
-  box-shadow: 0 0 10px rgba(0, 221, 51, 0.3);
+  border-color: #F1F5F9;
+  background: rgba(241, 245, 249, 0.1);
+  transform: translateY(-1px);;
 }
 
 .perk-btn.active {
-  border-color: #00dd33;
-  background: rgba(0, 221, 51, 0.2);
-  color: #00dd33;
-  font-weight: 600;
-  box-shadow: 0 0 15px rgba(0, 221, 51, 0.4);
+  border-color: #F1F5F9;
+  background: rgba(241, 245, 249, 0.2);
+  color: #F1F5F9;
+  font-weight: 600;;
 }
 
 .perk-btn-icon {
@@ -2504,20 +2341,17 @@ ul {
 }
 .market-btn { 
   min-width: 200px;
-  background: #0f1535 !important;
-  border: 2px solid #00dd33 !important;
-  color: #00dd33 !important;
+  background: #1A1F2E !important;
+  border: 2px solid #F1F5F9 !important;
+  color: #F1F5F9 !important;
   font-weight: 600 !important;
-  border-radius: 8px !important;
-  box-shadow: 0 0 10px rgba(0, 221, 51, 0.3) !important;
+  border-radius: 8px !important;;
   transition: all 0.2s ease !important;
   padding: 12px 20px !important;
 }
 
 .market-btn:hover {
-  transform: translateY(-2px) !important;
-  box-shadow: 0 0 20px rgba(0, 221, 51, 0.6) !important;
-  text-shadow: 0 0 8px rgba(0, 221, 51, 0.6) !important;
+  transform: translateY(-2px) !important;;;
 }
 
 .senate-controls {
@@ -2546,41 +2380,27 @@ ul {
 }
 .senate-btn { 
   min-width: auto;
-  background: #0f1535 !important;
-  border: 2px solid #00dd33 !important;
-  color: #00dd33 !important;
+  background: #1A1F2E !important;
+  border: 2px solid #F1F5F9 !important;
+  color: #F1F5F9 !important;
   font-weight: 600 !important;
-  border-radius: 8px !important;
-  box-shadow: 0 0 15px rgba(0, 221, 51, 0.4) !important;
+  border-radius: 8px !important;;
   transition: all 0.3s ease !important;
   padding: 10px 16px !important;
   font-size: 0.95em !important;
 }
 
 .senate-btn:hover {
-  transform: translateY(-2px) !important;
-  box-shadow: 0 0 25px rgba(0, 221, 51, 0.7) !important;
-  text-shadow: 0 0 10px rgba(0, 221, 51, 0.7) !important;
+  transform: translateY(-2px) !important;;;
 }
 
 /* Special glow for the Show/Hide Senate Tabs button */
 .senate-controls .senate-btn:nth-child(3) {
-  box-shadow: 0 0 20px rgba(0, 221, 51, 0.5), 0 0 40px rgba(0, 221, 51, 0.3) !important;
   animation: senateBtnGlow 2s ease-in-out infinite;
 }
 
 .senate-controls .senate-btn:nth-child(3):hover {
-  box-shadow: 0 0 30px rgba(0, 221, 51, 0.8), 0 0 60px rgba(0, 221, 51, 0.5) !important;
   animation: none;
-}
-
-@keyframes senateBtnGlow {
-  0%, 100% {
-    box-shadow: 0 0 20px rgba(0, 221, 51, 0.5), 0 0 40px rgba(0, 221, 51, 0.3) !important;
-  }
-  50% {
-    box-shadow: 0 0 30px rgba(0, 221, 51, 0.7), 0 0 50px rgba(0, 221, 51, 0.4) !important;
-  }
 }
 
 /* Icons next to usernames (slightly larger) */
@@ -2629,6 +2449,9 @@ td > .gov-icon { transform: translateY(-1px); }
   font-size: 1.15em !important;
   font-family: 'Barlow Condensed' !important;
   line-height: 28px;             /* match button height for perfect baseline */
+  color: #EAB308 !important;     /* Match other header colors */
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .bleed-btn,
@@ -2641,7 +2464,18 @@ td > .gov-icon { transform: translateY(-1px); }
   justify-content: center;
   line-height: 1;
   font-weight: 700;
-  border-width: 1px;
+  border-width: 2px;
+  background: #1A1F2E !important;
+  border-color: #22D3EE !important;
+  color: #F1F5F9 !important;
+  transition: all 0.2s ease;
+}
+
+.bleed-btn:hover,
+.heat-btn:hover {
+  border-color: #EAB308 !important;
+  color: #EAB308 !important;
+  transform: translateY(-1px);
 }
 
 /* optional: small spacing tweaks */
@@ -2732,24 +2566,24 @@ td > .gov-icon { transform: translateY(-1px); }
   font-size: 0.85em;
   font-weight: 600;
   min-width: 60px;
-  border: 1px solid rgba(0, 221, 51, 0.3);
+  border: 1px solid rgba(241, 245, 249, 0.3);
   background: transparent;
 }
 
 .approval-empty,
 .vote-empty {
   color: #666;
-  background: rgba(0, 221, 51, 0.05);
-  border-color: rgba(0, 221, 51, 0.2);
+  background: rgba(241, 245, 249, 0.05);
+  border-color: rgba(241, 245, 249, 0.2);
 }
 
 .approval-approve {
-  background: rgba(0, 221, 51, 0.2);
-  color: #00dd33;
-  border-color: rgba(0, 221, 51, 0.5);
+  background: rgba(241, 245, 249, 0.2);
+  color: #F1F5F9;
+  border-color: rgba(241, 245, 249, 0.5);
 }
 
-.approval-disapprove {
+.approval-reject {
   background: rgba(255, 68, 68, 0.2);
   color: #ff4444;
   border-color: rgba(255, 68, 68, 0.5);
@@ -2762,9 +2596,9 @@ td > .gov-icon { transform: translateY(-1px); }
 }
 
 .vote-yes {
-  background: rgba(0, 221, 51, 0.2);
-  color: #00dd33;
-  border-color: rgba(0, 221, 51, 0.5);
+  background: rgba(241, 245, 249, 0.2);
+  color: #F1F5F9;
+  border-color: rgba(241, 245, 249, 0.5);
 }
 
 .vote-no {
@@ -2806,11 +2640,10 @@ td > .gov-icon { transform: translateY(-1px); }
 /* Show the pretty header text */
 .job-title-text {
   display: block;
-  color: #00dd33 !important;
+  color: #EAB308 !important;
   font-weight: 700 !important;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  text-shadow: 0 0 10px rgba(0, 221, 51, 0.5);
+  letter-spacing: 0.5px;;
   font-family: 'Barlow Condensed' !important;
   font-size: 1.15em !important;
   padding: 15px !important;
@@ -2852,11 +2685,10 @@ td > .gov-icon { transform: translateY(-1px); }
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #00dd33 !important;
+  color: #EAB308 !important;
   font-weight: 700 !important;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  text-shadow: 0 0 10px rgba(0, 221, 51, 0.5);
+  letter-spacing: 0.5px;;
   font-family: 'Barlow Condensed' !important;
   font-size: 1.15em !important;
   padding: 15px !important;
@@ -2899,11 +2731,10 @@ td > .gov-icon { transform: translateY(-1px); }
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #00dd33 !important;
+  color: #EAB308 !important;
   font-weight: 700 !important;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  text-shadow: 0 0 10px rgba(0, 221, 51, 0.5);
+  letter-spacing: 0.5px;;
   font-family: 'Barlow Condensed' !important;
   font-size: 1.15em !important;
   padding: 5px 10px !important;
@@ -2945,11 +2776,10 @@ td > .gov-icon { transform: translateY(-1px); }
 /* Show the pretty vote header text */
 .vote-title-text {
   display: inline;
-  color: #00dd33 !important;
+  color: #EAB308 !important;
   font-weight: 700 !important;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  text-shadow: 0 0 10px rgba(0, 221, 51, 0.5);
+  letter-spacing: 0.5px;;
   font-family: 'Barlow Condensed' !important;
   font-size: 1.15em !important;
   padding: 5px 10px !important;
@@ -2965,22 +2795,20 @@ td > .gov-icon { transform: translateY(-1px); }
 
 /* Get Paid button styling */
 .btn-get-paid {
-  background: #0f1535 !important;
-  border: 2px solid #ffcc00 !important;
-  color: #ffcc00 !important;
+  background: #1A1F2E !important;
+  border: 2px solid #EAB308 !important;
+  color: #EAB308 !important;
   font-weight: 600 !important;
   border-radius: 8px !important;
   padding: 8px 20px !important;
-  box-shadow: 0 0 15px rgba(255, 204, 0, 0.4) !important;
   transition: all 0.2s ease !important;
   font-size: 0.9em !important;
   min-width: 150px;
 }
 
 .btn-get-paid:hover {
-  border-color: #ffff00 !important;
-  box-shadow: 0 0 20px rgba(255, 204, 0, 0.6) !important;
-  text-shadow: 0 0 8px rgba(255, 204, 0, 0.4) !important;
+  border-color: #F1F5F9 !important;
+  color: #F1F5F9 !important;
   transform: translateY(-2px) !important;
 }
 
@@ -3038,8 +2866,8 @@ td > .gov-icon { transform: translateY(-1px); }
 
 .selected-members {
   padding: 15px;
-  background: #0f1535;
-  border: 1px solid rgba(0, 221, 51, 0.2);
+  background: #1A1F2E;
+  border: 1px solid rgba(241, 245, 249, 0.2);
   border-radius: 8px;
 }
 
@@ -3079,11 +2907,37 @@ td > .gov-icon { transform: translateY(-1px); }
   justify-content: space-between;
   align-items: center;
   padding: 8px 12px;
-  background: #0f1535;
-  border: 1px solid rgba(0, 221, 51, 0.1);
+  background: #1A1F2E;
+  border: 1px solid rgba(241, 245, 249, 0.1);
   border-radius: 4px;
   font-size: 0.9em;
-  color: #00dd33;
+  color: #F1F5F9;
+}
+
+.tally-item.bid-tally-row {
+  padding: 12px 16px;
+  justify-content: space-between;
+  align-items: center;
+  border: 2px solid rgba(235, 163, 8, 0.5);
+  background: rgba(235, 163, 8, 0.05);
+}
+
+.tally-item.bid-tally-row .participant-name {
+  font-weight: 600;
+  color: #F1F5F9;
+  flex: 1;
+  text-align: left;
+}
+
+.tally-item.bid-tally-row .bid-amount {
+  font-size: 1.2em;
+  font-weight: 700;
+  color: #EAB308;
+  min-width: 80px;
+  text-align: center;
+  margin-right: 15px;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 2px;
 }
 
 .participant-name {
@@ -3097,9 +2951,8 @@ td > .gov-icon { transform: translateY(-1px); }
 .bid-time-display {
   font-size: 2em;
   font-weight: bold;
-  color: #00dd33;
-  font-family: 'Barlow Condensed';
-  text-shadow: 0 0 10px rgba(0, 221, 51, 0.5);
+  color: #F1F5F9;
+  font-family: 'Barlow Condensed';;
 }
 
 .bid-time-controls {
@@ -3120,7 +2973,7 @@ td > .gov-icon { transform: translateY(-1px); }
   font-size: 0.9em;
   text-transform: uppercase;
   letter-spacing: 1px;
-  color: #00dd33;
+  color: #F1F5F9;
 }
 
 .time-buttons {
@@ -3135,8 +2988,7 @@ td > .gov-icon { transform: translateY(-1px); }
   font-family: 'Barlow Condensed';
   min-width: 50px;
   text-align: center;
-  color: #00dd33;
-  text-shadow: 0 0 8px rgba(0, 221, 51, 0.3);
+  color: #F1F5F9;;
 }
 
 .time-buttons .btn {
@@ -3149,14 +3001,36 @@ td > .gov-icon { transform: translateY(-1px); }
   padding: 10px 0;
 }
 
+.your-time-section {
+  background: #0B0F19;
+  border: 2px solid #22D3EE;
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+}
+
+.your-time-label {
+  margin: 0 0 10px 0;
+  font-size: 1em;
+  color: #F1F5F9;
+  font-weight: 600;
+}
+
+.your-time-display {
+  font-size: 2.5em;
+  font-weight: bold;
+  font-family: 'Barlow Condensed', monospace;
+  letter-spacing: 4px;
+  color: #22D3EE;
+}
+
 .bid-display-section {
-  background: #0a0e27;
-  border: 2px solid rgba(0, 221, 51, 0.3);
+  background: #1A1F2E;
+  border: 2px solid rgba(241, 245, 249, 0.3);
   border-radius: 12px;
   padding: 30px 20px;
   text-align: center;
-  color: #00dd33;
-  box-shadow: 0 0 20px rgba(0, 221, 51, 0.2), inset 0 0 20px rgba(0, 221, 51, 0.05);
+  color: #F1F5F9;
 }
 
 .bid-instruction {
@@ -3170,14 +3044,13 @@ td > .gov-icon { transform: translateY(-1px); }
   font-size: 4em;
   font-weight: bold;
   font-family: 'Barlow Condensed';
-  letter-spacing: 8px;
-  text-shadow: 0 0 20px rgba(0, 221, 51, 0.5), 0 0 40px rgba(0, 221, 51, 0.3);
-  color: #00dd33;
+  letter-spacing: 8px;;
+  color: #F1F5F9;
 }
 
 .bid-buttons-section {
-  background: #0f1535;
-  border: 1px solid rgba(0, 221, 51, 0.2);
+  background: #1A1F2E;
+  border: 1px solid rgba(241, 245, 249, 0.2);
   border-radius: 12px;
   padding: 20px;
 }
@@ -3194,16 +3067,13 @@ td > .gov-icon { transform: translateY(-1px); }
   font-weight: 600;
   border-width: 2px;
   transition: all 0.2s ease;
-  background: #0f1535;
-  border-color: #00dd33;
-  color: #00dd33;
-  box-shadow: 0 0 10px rgba(0, 221, 51, 0.2);
+  background: #1A1F2E;
+  border-color: #F1F5F9;
+  color: #F1F5F9;;
 }
 
 .bid-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 0 20px rgba(0, 221, 51, 0.4);
-  text-shadow: 0 0 8px rgba(0, 221, 51, 0.6);
+  transform: translateY(-2px);;;
 }
 
 .bid-btn:active {
@@ -3214,33 +3084,34 @@ td > .gov-icon { transform: translateY(-1px); }
   padding: 16px;
   font-size: 1.1em;
   letter-spacing: 1px;
-  box-shadow: 0 0 15px rgba(0, 221, 51, 0.3);
   transition: all 0.3s ease;
-  background: #0f1535;
-  border: 2px solid #00dd33;
-  color: #00dd33;
+  background: linear-gradient(135deg, #FF6B3D 0%, #FF8F3D 100%) !important;
+  border: 3px solid #FFB81C !important;
+  color: white !important;
+  font-weight: 700;
+  text-transform: uppercase;
+  box-shadow: 0 4px 15px rgba(255, 107, 61, 0.4);
 }
 
 .place-bid-btn:hover {
-  box-shadow: 0 0 30px rgba(0, 221, 51, 0.6);
-  transform: translateY(-2px);
-  text-shadow: 0 0 8px rgba(0, 221, 51, 0.6);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(255, 107, 61, 0.6);
+  border-color: white !important;
 }
 
 .bidding-status-section {
-  background: #0f1535;
+  background: #1A1F2E;
   border-radius: 12px;
   padding: 20px;
-  border-left: 4px solid #00dd33;
+  border-left: 4px solid #F1F5F9;
 }
 
 .bidding-status-section h6 {
-  color: #00dd33;
+  color: #F1F5F9;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 1px;
-  font-size: 0.85em;
-  text-shadow: 0 0 8px rgba(0, 221, 51, 0.3);
+  font-size: 0.85em;;
 }
 
 .admin-section {
@@ -3267,6 +3138,489 @@ td > .gov-icon { transform: translateY(-1px); }
   padding: 15px;
   border: 1px solid #e0e0e0;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+/* Government Vote Modal Styles */
+.vote-container {
+  text-align: center;
+  padding: 20px;
+}
+
+.vote-title {
+  color: #EAB308;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 30px;
+}
+
+.vote-buttons-row {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 30px;
+}
+
+.vote-button {
+  flex: 1;
+  min-width: 120px;
+  padding: 20px 15px;
+  font-size: 1.1em;
+  font-weight: 700;
+  border: 3px solid;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.vote-yes {
+  background: #22c55e !important;
+  border-color: #16a34a !important;
+  color: #ffffff !important;
+}
+
+.vote-yes:hover {
+  background: #16a34a !important;
+  transform: scale(1.05);
+  box-shadow: 0 8px 20px rgba(34, 197, 94, 0.5);
+}
+
+.vote-yes.vote-selected {
+  background: #15803d !important;
+  color: white !important;
+  box-shadow: 0 10px 30px rgba(34, 197, 94, 0.6);
+}
+
+.vote-no {
+  background: #ef4444 !important;
+  border-color: #dc2626 !important;
+  color: #ffffff !important;
+}
+
+.vote-no:hover {
+  background: #dc2626 !important;
+  transform: scale(1.05);
+  box-shadow: 0 8px 20px rgba(239, 68, 68, 0.5);
+}
+
+.vote-no.vote-selected {
+  background: #b91c1c !important;
+  color: white !important;
+  box-shadow: 0 10px 30px rgba(239, 68, 68, 0.6);
+}
+
+.vote-abstain {
+  background: #f59e0b !important;
+  border-color: #d97706 !important;
+  color: #ffffff !important;
+}
+
+.vote-abstain:hover {
+  background: #d97706 !important;
+  transform: scale(1.05);
+  box-shadow: 0 8px 20px rgba(245, 158, 11, 0.5);
+}
+
+.vote-abstain.vote-selected {
+  background: #b45309 !important;
+  color: white !important;
+  box-shadow: 0 10px 30px rgba(245, 158, 11, 0.6);
+}
+
+.vote-tally {
+  border-top: 2px solid rgba(235, 163, 8, 0.3);
+  padding-top: 20px;
+}
+
+.vote-tally-title {
+  color: #EAB308;
+  font-weight: 700;
+  margin-bottom: 15px;
+  text-transform: uppercase;
+}
+
+.tally-row {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.tally-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 15px 20px;
+  border-radius: 8px;
+  min-width: 80px;
+  border: 2px solid;
+}
+
+.tally-item.yes {
+  background: rgba(34, 211, 102, 0.1);
+  border-color: #22d366;
+}
+
+.tally-item.no {
+  background: rgba(255, 77, 77, 0.1);
+  border-color: #ff4d4d;
+}
+
+.tally-item.abstain {
+  background: rgba(255, 193, 7, 0.1);
+  border-color: #ffc107;
+}
+
+.tally-item.pending {
+  background: rgba(241, 245, 249, 0.1);
+  border-color: #a0aec0;
+}
+
+.tally-count {
+  font-size: 1.5em;
+  font-weight: 700;
+  color: #EAB308;
+  display: block;
+  margin-bottom: 5px;
+}
+
+.tally-label {
+  font-size: 0.75em;
+  text-transform: uppercase;
+  color: #F1F5F9;
+  font-weight: 600;
+}
+
+/* Secret Voting Modal Styles */
+.vote-question-box {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  border: 2px solid #3b82f6;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 25px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.vote-question-icon {
+  font-size: 2em;
+}
+
+.vote-question-text {
+  color: #f1f5f9;
+  font-size: 1.2em;
+  font-weight: 500;
+  margin: 0;
+}
+
+.vote-section {
+  margin-bottom: 25px;
+}
+
+.vote-section-title {
+  color: #EAB308;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.vote-count-badge {
+  background: #3b82f6;
+  color: white;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.8em;
+  font-weight: 600;
+}
+
+.vote-icon {
+  display: block;
+  font-size: 1.5em;
+  margin-bottom: 5px;
+}
+
+.vote-submitted-box {
+  background: linear-gradient(135deg, #065f46 0%, #064e3b 100%);
+  border: 2px solid #10b981;
+  border-radius: 12px;
+  padding: 30px;
+  text-align: center;
+  margin-bottom: 25px;
+}
+
+.vote-submitted-icon {
+  font-size: 3em;
+  display: block;
+  margin-bottom: 15px;
+}
+
+.vote-submitted-text {
+  color: #ecfdf5;
+  font-size: 1.2em;
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+
+.vote-submitted-hint {
+  color: #a7f3d0;
+  font-size: 0.9em;
+  margin: 0;
+}
+
+.vote-participants-section {
+  background: #0f172a;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.vote-participants-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.vote-participant-card {
+  background: #1e293b;
+  border: 2px solid #334155;
+  border-radius: 8px;
+  padding: 12px 15px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.3s ease;
+}
+
+.vote-participant-card.has-voted {
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.participant-status-icon {
+  font-size: 1.3em;
+}
+
+.participant-name {
+  color: #f1f5f9;
+  font-weight: 600;
+  flex: 1;
+}
+
+.participant-vote-status {
+  font-size: 0.85em;
+  color: #94a3b8;
+}
+
+.vote-participant-card.has-voted .participant-vote-status {
+  color: #10b981;
+}
+
+.vote-admin-section {
+  text-align: center;
+  padding-top: 20px;
+}
+
+.vote-divider {
+  border-color: rgba(59, 130, 246, 0.3);
+  margin-bottom: 20px;
+}
+
+.conclude-vote-btn {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+  border: none !important;
+  padding: 15px 40px !important;
+  font-size: 1.1em !important;
+  font-weight: 700 !important;
+  border-radius: 10px !important;
+  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4) !important;
+  transition: all 0.3s ease !important;
+}
+
+.conclude-vote-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 35px rgba(59, 130, 246, 0.5) !important;
+}
+
+.conclude-icon {
+  margin-right: 10px;
+}
+
+.admin-hint {
+  color: #94a3b8;
+  font-size: 0.85em;
+  margin-top: 10px;
+}
+
+/* Vote Results Modal Styles */
+.vote-results-container {
+  padding: 10px;
+}
+
+.vote-outcome-banner {
+  padding: 25px;
+  border-radius: 12px;
+  text-align: center;
+  margin-bottom: 25px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+}
+
+.vote-outcome-banner.outcome-passed {
+  background: linear-gradient(135deg, #065f46 0%, #064e3b 100%);
+  border: 3px solid #10b981;
+}
+
+.vote-outcome-banner.outcome-rejected {
+  background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%);
+  border: 3px solid #ef4444;
+}
+
+.vote-outcome-banner.outcome-tie {
+  background: linear-gradient(135deg, #78350f 0%, #92400e 100%);
+  border: 3px solid #f59e0b;
+}
+
+.outcome-icon {
+  font-size: 2.5em;
+}
+
+.outcome-text {
+  font-size: 2em;
+  font-weight: 800;
+  color: white;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+}
+
+.vote-counts-row {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  margin-bottom: 30px;
+}
+
+.vote-count-box {
+  flex: 1;
+  max-width: 150px;
+  padding: 20px;
+  border-radius: 12px;
+  text-align: center;
+  border: 3px solid;
+}
+
+.vote-count-box.yes {
+  background: rgba(34, 197, 94, 0.2);
+  border-color: #22c55e;
+}
+
+.vote-count-box.no {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: #ef4444;
+}
+
+.vote-count-box.abstain {
+  background: rgba(245, 158, 11, 0.2);
+  border-color: #f59e0b;
+}
+
+.count-number {
+  font-size: 2.5em;
+  font-weight: 800;
+  display: block;
+}
+
+.vote-count-box.yes .count-number {
+  color: #22c55e;
+}
+
+.vote-count-box.no .count-number {
+  color: #ef4444;
+}
+
+.vote-count-box.abstain .count-number {
+  color: #f59e0b;
+}
+
+.count-label {
+  font-size: 0.85em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.individual-votes-section {
+  background: #0f172a;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.votes-title {
+  color: #EAB308;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 15px;
+}
+
+.individual-votes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.individual-vote-card {
+  padding: 12px 15px;
+  border-radius: 8px;
+  border: 2px solid;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.individual-vote-card.vote-yes {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: #10b981;
+}
+
+.individual-vote-card.vote-no {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: #ef4444;
+}
+
+.individual-vote-card.vote-abstain {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: #f59e0b;
+}
+
+.voter-name {
+  color: #f1f5f9;
+  font-weight: 600;
+}
+
+.voter-choice {
+  font-size: 0.85em;
+  font-weight: 700;
+}
+
+.individual-vote-card.vote-yes .voter-choice {
+  color: #10b981;
+}
+
+.individual-vote-card.vote-no .voter-choice {
+  color: #ef4444;
+}
+
+.individual-vote-card.vote-abstain .voter-choice {
+  color: #f59e0b;
 }
 
 .graph-filters h6 {
@@ -3304,4 +3658,743 @@ td > .gov-icon { transform: translateY(-1px); }
   border-radius: 6px;
   border-left: 3px solid #667eea;
 }
+
+/* Admin Controls Modal Styles */
+.admin-controls-container {
+  padding: 20px;
+}
+
+.admin-controls-group {
+  background: #1A1F2E;
+  border: 1px solid rgba(235, 163, 8, 0.3);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.admin-controls-group h5 {
+  color: #EAB308;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-family: 'Barlow Condensed';
+  font-size: 1.3em;
+  margin-bottom: 15px;
+}
+
+.admin-controls-group .btn {
+  font-weight: 700;
+  border: 2px solid;
+  border-radius: 8px;
+  padding: 12px 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.3s ease;
+  font-size: 1.05em;
+}
+
+.admin-controls-group .btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  border-width: 2px;
+}
+
+.admin-controls-group .btn-primary {
+  background: #0D47A1 !important;
+  border-color: #42A5F5 !important;
+  color: #E3F2FD !important;
+}
+
+.admin-controls-group .btn-primary:hover {
+  background: #1565C0 !important;
+  border-color: #64B5F6 !important;
+  color: #F5F5F5 !important;
+}
+
+.admin-controls-group .btn-info {
+  background: #00838F !important;
+  border-color: #4DB6AC !important;
+  color: #E0F2F1 !important;
+}
+
+.admin-controls-group .btn-info:hover {
+  background: #00A8B4 !important;
+  border-color: #80CBC4 !important;
+  color: #F5F5F5 !important;
+}
+
+.admin-controls-group .btn-success {
+  background: #2E7D32 !important;
+  border-color: #66BB6A !important;
+  color: #E8F5E9 !important;
+}
+
+.admin-controls-group .btn-success:hover {
+  background: #388E3C !important;
+  border-color: #81C784 !important;
+  color: #F5F5F5 !important;
+}
+
+.admin-controls-group .btn-danger {
+  background: #C62828 !important;
+  border-color: #EF5350 !important;
+  color: #FFEBEE !important;
+}
+
+.admin-controls-group .btn-danger:hover {
+  background: #D32F2F !important;
+  border-color: #F44336 !important;
+  color: #F5F5F5 !important;
+}
+
+.admin-controls-group .mb-4 {
+  margin-bottom: 20px;
+}
+
+.admin-controls-group .mb-4:last-child {
+  margin-bottom: 0;
+}
+
+.admin-controls-group .mb-2 {
+  margin-bottom: 12px;
+}
+
+/* Government Display Styles */
+.room-government__row {
+  margin-top: 12px;
+  margin-bottom: 12px;
+}
+
+.room-government__container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+.room-government__control-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.room-government__label {
+  color: #F1F5F9 !important;
+  font-weight: 700 !important;
+  font-family: 'Barlow Condensed' !important;
+  font-size: 1.9em !important;
+  padding: 13px 18px !important;
+  display: inline-block !important;
+  letter-spacing: 1px !important;
+  text-transform: uppercase;
+}
+
+.room-government__label strong {
+  color: #60a5fa !important;
+  margin-left: 8px;
+}
 </style>
+
+<style>
+/* Hide default modal footer for modals that don't need it */
+#govVoteModal .modal-footer,
+#dictatorBiddingModal .modal-footer,
+#dictatorBiddingWinnerModal .modal-footer,
+#politburoWheelModal .modal-footer {
+  display: none !important;
+}
+
+/* Vote Modal Button Overrides - Force visible text on solid backgrounds */
+#govVoteModal .vote-button.vote-yes,
+#govVoteModal .vote-button.vote-yes.btn-success,
+.vote-button.vote-yes {
+  background-color: #22c55e !important;
+  border-color: #16a34a !important;
+  color: #ffffff !important;
+}
+
+#govVoteModal .vote-button.vote-yes:hover {
+  background-color: #16a34a !important;
+}
+
+#govVoteModal .vote-button.vote-no,
+#govVoteModal .vote-button.vote-no.btn-danger,
+.vote-button.vote-no {
+  background-color: #ef4444 !important;
+  border-color: #dc2626 !important;
+  color: #ffffff !important;
+}
+
+#govVoteModal .vote-button.vote-no:hover {
+  background-color: #dc2626 !important;
+}
+
+#govVoteModal .vote-button.vote-abstain,
+#govVoteModal .vote-button.vote-abstain.btn-warning,
+.vote-button.vote-abstain {
+  background-color: #f59e0b !important;
+  border-color: #d97706 !important;
+  color: #ffffff !important;
+}
+
+#govVoteModal .vote-button.vote-abstain:hover {
+  background-color: #d97706 !important;
+}
+
+/* Ensure strong text inside buttons is also white */
+#govVoteModal .vote-button strong,
+.vote-button strong {
+  color: #ffffff !important;
+}
+
+/* Ensure vote icon inside buttons is also white */
+#govVoteModal .vote-button .vote-icon,
+.vote-button .vote-icon {
+  color: #ffffff !important;
+}
+
+/* Hide X close button on dictator bidding modal */
+#dictatorBiddingModal .btn-close,
+#dictatorBiddingModal .modal-header .close,
+#dictatorBiddingModal .modal-header button[aria-label="Close"] {
+  display: none !important;
+}
+
+/* Compact Dictator Bidding Modal Styles */
+.dictator-bid-container-compact {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bid-top-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.your-time-compact,
+.bid-amount-compact {
+  flex: 1;
+  background: #1e293b;
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+  border: 1px solid #475569;
+}
+
+.time-label,
+.bid-label {
+  display: block;
+  font-size: 0.75rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.time-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #22d3ee;
+  font-family: 'Barlow Condensed', sans-serif;
+}
+
+.bid-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #f97316;
+  font-family: 'Barlow Condensed', sans-serif;
+}
+
+.bid-buttons-compact {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+}
+
+.bid-buttons-compact .btn {
+  padding: 8px 4px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.place-bid-btn-compact {
+  padding: 10px;
+  font-size: 1rem;
+}
+
+.bidding-status-compact {
+  background: #334155;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.status-header {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.bidding-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.bid-participant {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #1e293b;
+  padding: 6px 10px;
+  border-radius: 4px;
+}
+
+.p-name {
+  flex: 1;
+  color: #f1f5f9;
+  font-size: 0.9rem;
+}
+
+.p-bid {
+  color: #f97316;
+  font-weight: 600;
+  margin-right: 8px;
+}
+
+.p-status {
+  font-size: 1rem;
+}
+
+.p-status.done {
+  color: #22c55e;
+}
+
+.p-status.waiting {
+  color: #eab308;
+}
+
+.conclude-btn-compact {
+  margin-top: 4px;
+  padding: 10px;
+}
+
+/* Auction Results Modal Styles */
+.auction-results {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.winner-banner {
+  text-align: center;
+  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+  border: 2px solid #f97316;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.winner-banner .crown {
+  font-size: 2rem;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.winner-banner h3 {
+  color: #f97316;
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0;
+  font-family: 'Barlow Condensed', sans-serif;
+}
+
+.winner-banner p {
+  color: #94a3b8;
+  margin: 4px 0 0;
+  font-size: 0.9rem;
+}
+
+.leaderboard-section {
+  background: #334155;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.leaderboard-header {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.leaderboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.leaderboard-row {
+  display: flex;
+  align-items: center;
+  background: #1e293b;
+  padding: 8px 12px;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.leaderboard-row.winner-row {
+  background: linear-gradient(90deg, #451a03 0%, #1e293b 100%);
+  border: 1px solid #f97316;
+}
+
+.leaderboard-row .rank {
+  width: 24px;
+  height: 24px;
+  background: #475569;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  margin-right: 10px;
+}
+
+.leaderboard-row.winner-row .rank {
+  background: #f97316;
+  color: #000;
+}
+
+.leaderboard-row .lb-name {
+  flex: 1;
+  color: #f1f5f9;
+  font-size: 0.95rem;
+}
+
+.leaderboard-row.winner-row .lb-name {
+  color: #f97316;
+  font-weight: 600;
+}
+
+.leaderboard-row .lb-bid {
+  color: #22d3ee;
+  font-weight: 600;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1rem;
+}
+
+/* Politburo Selection Modal Styles */
+.politburo-selection-compact {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.selected-members-banner {
+  background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%);
+  border-radius: 10px;
+  padding: 12px;
+  border: 2px solid #dc2626;
+}
+
+.members-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.members-icon {
+  font-size: 1.3rem;
+  color: #fbbf24;
+}
+
+.members-title {
+  flex: 1;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #f1f5f9;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.members-count {
+  background: #450a0a;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-weight: 700;
+  color: #fbbf24;
+  font-size: 0.85rem;
+}
+
+.members-slots {
+  display: flex;
+  gap: 10px;
+}
+
+.member-slot {
+  flex: 1;
+  background: #450a0a;
+  border: 2px dashed #dc2626;
+  border-radius: 8px;
+  padding: 8px 12px;
+  text-align: center;
+  font-weight: 600;
+  color: #94a3b8;
+  transition: all 0.3s;
+}
+
+.member-slot.filled {
+  background: #16a34a;
+  border: 2px solid #22c55e;
+  color: #f1f5f9;
+}
+
+.member-slot .empty-slot {
+  font-style: italic;
+  color: #6b7280;
+}
+
+.wheel-container-politburo {
+  background: #1e293b;
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.politburo-admin-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #334155;
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.control-row {
+  display: flex;
+  gap: 10px;
+}
+
+.control-row-small {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.control-row .spin-btn {
+  flex: 1;
+}
+
+.balance-books-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+}
+
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #475569;
+  transition: 0.3s;
+  border-radius: 24px;
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.3s;
+  border-radius: 50%;
+}
+
+.toggle-switch input:checked + .toggle-slider {
+  background-color: #22c55e;
+}
+
+.toggle-switch input:checked + .toggle-slider:before {
+  transform: translateX(20px);
+}
+
+.toggle-label {
+  color: #f1f5f9;
+  font-size: 0.9rem;
+}
+
+.final-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.final-actions .complete-btn {
+  flex: 1;
+  background-color: #22c55e !important;
+  border-color: #22c55e !important;
+  color: #ffffff !important;
+}
+
+.final-actions .complete-btn:disabled {
+  background-color: #475569 !important;
+  border-color: #475569 !important;
+  color: #94a3b8 !important;
+}
+
+/* Politburo action buttons - Add to Politburo and Spin Again */
+.politburo-action-btn {
+  color: #ffffff !important;
+  font-weight: 600 !important;
+}
+
+.politburo-action-btn.btn-success {
+  background-color: #22c55e !important;
+  border-color: #16a34a !important;
+  color: #ffffff !important;
+}
+
+.politburo-action-btn.btn-success:hover {
+  background-color: #16a34a !important;
+  border-color: #15803d !important;
+}
+
+.politburo-action-btn.btn-secondary {
+  background-color: #475569 !important;
+  border-color: #64748b !important;
+  color: #ffffff !important;
+}
+
+.politburo-action-btn.btn-secondary:hover {
+  background-color: #64748b !important;
+  border-color: #94a3b8 !important;
+}
+
+.watching-message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  background: #334155;
+  border-radius: 8px;
+  color: #94a3b8;
+  font-size: 0.95rem;
+}
+
+.watching-message .watching-icon {
+  font-size: 1.2rem;
+}
+
+/* Winner Selection Styles */
+.winner-selection-section {
+  border-top: 1px solid #334155;
+  padding-top: 20px;
+}
+
+.winner-selection-card {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  border: 2px solid #eab308;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.winner-title {
+  color: #eab308;
+  font-weight: 700;
+  font-size: 1.2rem;
+  margin-bottom: 8px;
+}
+
+.winner-description {
+  color: #94a3b8;
+  font-size: 0.9rem;
+  margin-bottom: 16px;
+}
+
+.winner-form {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.winner-select {
+  flex: 1;
+  padding: 10px 14px;
+  background: #0f172a;
+  border: 2px solid #334155;
+  border-radius: 8px;
+  color: #f1f5f9;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.winner-select:hover,
+.winner-select:focus {
+  border-color: #eab308;
+  outline: none;
+}
+
+.winner-select option {
+  background: #1e293b;
+  color: #f1f5f9;
+}
+
+.winner-confirmed {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.winner-badge {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 1.1rem;
+  padding: 12px 24px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+</style>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
