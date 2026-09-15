@@ -101,6 +101,21 @@
         </div>
       </b-col>
     </b-row>
+
+    <!-- Black Market Buy Button Row -->
+    <b-row class="room-clock__black-market-row">
+      <b-col cols="12" class="text-center">
+        <b-button
+          class="room-clock__black-market-btn"
+          :disabled="isLoadingBlackMarket"
+          @click="$emit('buy-black-market')"
+          title="Buy a collectable from the Black Market (2.5 hours)"
+        >
+          <span v-if="!isLoadingBlackMarket">🕶️ BLACK MARKET — Buy Collectable (2.5h)</span>
+          <span v-else>Buying…</span>
+        </b-button>
+      </b-col>
+    </b-row>
   </div>
 </template>
 
@@ -114,7 +129,7 @@ const props = defineProps({
   },
   maxCollectables: {
     type: Number,
-    default: 5
+    default: 4
   },
   isLoadingPay: {
     type: Boolean,
@@ -123,10 +138,14 @@ const props = defineProps({
   isLoadingJail: {
     type: Boolean,
     default: false
+  },
+  isLoadingBlackMarket: {
+    type: Boolean,
+    default: false
   }
 })
 
-const emit = defineEmits(['adjust-clock', 'get-paid', 'get-out-of-jail'])
+const emit = defineEmits(['adjust-clock', 'get-paid', 'get-out-of-jail', 'buy-black-market'])
 
 const onAdjustClock = (delta) => {
   emit('adjust-clock', delta)
@@ -418,5 +437,35 @@ const onAdjustClock = (delta) => {
 
 .room-clock__control-button:active {
   transform: translateY(0) !important;
+}
+
+/* BLACK MARKET BUTTON */
+.room-clock__black-market-row {
+  margin-top: 8px;
+  margin-bottom: 12px;
+}
+
+.room-clock__black-market-btn {
+  padding: 10px 24px !important;
+  background: linear-gradient(135deg, #1a0a2e 0%, #2d1b4e 100%) !important;
+  border: 2px solid #8b5cf6 !important;
+  border-radius: 8px !important;
+  color: #e2d9f3 !important;
+  font-weight: 700 !important;
+  font-size: 0.95em !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 4px 8px rgba(139, 92, 246, 0.3) !important;
+}
+
+.room-clock__black-market-btn:not(:disabled):hover {
+  transform: translateY(-2px) !important;
+  border-color: #a78bfa !important;
+  box-shadow: 0 6px 16px rgba(139, 92, 246, 0.5) !important;
+  color: #fff !important;
+}
+
+.room-clock__black-market-btn:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
 }
 </style>

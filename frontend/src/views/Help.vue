@@ -50,7 +50,7 @@
             </div>
             <div class="keyword-item">
               <span class="keyword-term">Item</span>
-              <span class="keyword-def">Refers to a job, a title, each collectable (equipped or in hand), completed assignment slips, or revolution tokens.</span>
+              <span class="keyword-def">Refers to a job; a title; each collectable, equipped or in hand, or completed assignment slips.</span>
             </div>
           </div>
         </div>
@@ -67,7 +67,6 @@
             <p class="objective-main">The winner is the <strong>last person alive</strong> with time still on your clock.</p>
             <div class="objective-notes">
               <p>⚠️ It is possible that <strong>the game itself can win</strong> if players lose to a scenario or "die" at the same time.</p>
-              <p>⭐ There is also a scenario card in which a singular player can win the game instantly.</p>
             </div>
           </div>
         </div>
@@ -83,7 +82,7 @@
           <ol class="step-list">
             <li>
               <strong>Set Your Clock</strong>
-              <p>Every player starts with <span class="highlight">24 hours</span> on their clocks.</p>
+              <p>Every player starts with <span class="highlight">24 hours</span> on their clocks. You will need to keep track of your time on your phone, paper, David's app etc.</p>
             </li>
             <li>
               <strong>Starting Government</strong>
@@ -148,7 +147,7 @@
           </div>
 
           <div class="warning-box">
-            <p><strong>Important:</strong> There is no set order in a turn except payment minus bleeding effect. You <strong>cannot</strong> perform any of these actions when it is not your turn. A player may trade or negotiate with you during their turn, but whoever's turn it is takes precedence.</p>
+            <p><strong>Important:</strong> There is no set order in a turn for you to complete specific actions other than bleeding effect plus payment. A player may trade or negotiate with you if it is their turn, but whoever's turn it is takes precedence.</p>
           </div>
         </div>
       </div>
@@ -196,22 +195,22 @@
         <div class="section-content">
           <div class="info-block">
             <p>At every stage of the game a government will be in power. The <strong>starting government is always Democracy</strong>.</p>
-            <p>Each government has specific characteristics which affect <span class="highlight">government leaders</span> (dictator or politburo members) and <span class="highlight">peasants</span> (non-government leaders).</p>
+            <p>Each government has specific characteristics which affect <span class="highlight">government leaders</span> (dictator, head of state, or politburo members) and <span class="highlight">peasants</span> (non-government leaders).</p>
           </div>
 
           <div class="gov-rules">
             <h4>Government Oppression</h4>
-            <p>Government leaders can introduce government oppression by spending <strong>2 hours at the Senate</strong>. There is no limit to the amount of government oppression that can be passed under a single government. Each government oppression can only be used by a single government leader.</p>
+            <p>Government leaders can introduce government oppression by spending <strong>2 hours at the Senate</strong>. There is a limit of <strong>four</strong> government oppressions that can be in place at any one time. Each government has restrictions on how many oppressions can be used per turn.</p>
           </div>
 
           <div class="gov-rules">
             <h4>Approval Voting</h4>
             <p>During each government, players have an <strong>approval vote</strong> which is set to "approve" by default at the start of any new government.</p>
             <ul>
-              <li>Players can change their approval status at the Senate by spending <strong>1 hour</strong></li>
-              <li>When the majority of votes reject the current government, a <strong>government vote</strong> takes place by all alive players</li>
-              <li>If the vote passes: government is removed, all oppressions are removed, a new government is installed (cannot be the previous type)</li>
-              <li>If the vote fails: the player who instigated receives <strong>+1 heat</strong></li>
+              <li>Players can change their approval status when visiting the Senate <strong>at no cost</strong></li>
+              <li>When a cast vote leads to the majority now rejecting the current government, the player decides what government type should be considered next; a <strong>government vote</strong> takes place by all alive players</li>
+              <li>If the vote passes: government is removed, all oppressions are removed, a new government is installed (the previous type cannot be selected)</li>
+              <li>If the vote fails: the player who instigated receives <strong>+1 heat</strong>; the next player who visits the Senate with a majority reject vote will propose the next government type</li>
             </ul>
             <p>The government can also be altered or overthrown by scenario cards.</p>
           </div>
@@ -342,12 +341,12 @@
                 <ul>
                   <li>+1 to die against War</li>
                   <li>Win all ties against War</li>
-                  <li>+1 collectable in hand</li>
+                  <li>+1 heat counter</li>
                 </ul>
               </div>
               <div class="title-req">
                 <h5>Requirements:</h5>
-                <p>Promotion card and no bleeding effect</p>
+                <p>Promotion card and must have no bleeding effect</p>
               </div>
             </div>
 
@@ -366,7 +365,7 @@
                 <ul>
                   <li>+1 to die against War</li>
                   <li>Win all ties against War</li>
-                  <li>+1 collectable in hand</li>
+                  <li>+1 heat counter</li>
                   <li>Use the ability of another available Tier 3 job</li>
                 </ul>
               </div>
@@ -411,8 +410,8 @@
             <!-- Start -->
             <div class="tile-card">
               <div class="tile-icon start">🏁</div>
-              <h4>Start</h4>
-              <p>Activate any job abilities which are dependent on passing the Start Tile; this includes landing on the Start tile itself.</p>
+              <h4>Start (-1 heat)</h4>
+              <p>If a player lands on or passes the Start Tile they passively remove <strong>-1 heat</strong> from their counter (cannot go negative).</p>
             </div>
 
             <!-- Collectables -->
@@ -420,7 +419,7 @@
               <div class="tile-icon collectables">🎴</div>
               <h4>Collectables / Promotions</h4>
               <p>Draw a free collectable. Purchase up to 5 additional collectables (1 hour each) of which only 1 can be a promotion card (2 hours).</p>
-              <p class="tile-note">Max: 5 in hand + 2 equipped. You may go above but must end turn with 5.</p>
+              <p class="tile-note">Max: 5 in hand + 2 equipped. You may go above but must end turn with 5. You can trade or discard collectables if you have too many.</p>
             </div>
 
             <!-- Assignment Slip -->
@@ -457,11 +456,12 @@
               <h4>Senate</h4>
               <p>Takes up three tiles. Receive a shortcut card on any Senate tile. Options (one per visit):</p>
               <ul>
-                <li>1 hour: Change your approval status</li>
-                <li>2 hours: Change another player's approval status</li>
+                <li>Do nothing</li>
+                <li>Free: Change your approval status</li>
+                <li>1 hour: Change another player's approval status</li>
                 <li>2 hours: Purchase government oppression (if gov leader)</li>
               </ul>
-              <p class="tile-note">Third Senate tile also lets you Time Virus a player.</p>
+              <p class="tile-note">Senate costs do not count as purchases. Third Senate tile also lets you Time Virus a player.</p>
             </div>
 
             <!-- Hospital -->
@@ -482,7 +482,7 @@
             <div class="tile-card">
               <div class="tile-icon market">🕶️</div>
               <h4>Black Market</h4>
-              <p>Spend 2 hours to purchase a used collectable from the discard pile. Only one per visit.</p>
+              <p>Spend 2.5 hours to purchase a used collectable from the discard pile. Only one per visit.</p>
               <p class="tile-note">At game start, a Revolution Token is placed in the discard pile and can be purchased here.</p>
             </div>
 
@@ -490,7 +490,7 @@
             <div class="tile-card wide">
               <div class="tile-icon jail">🔒</div>
               <h4>Jail</h4>
-              <p>Sent here with 3 heat tokens. You lose your job but keep collectables; heat resets to zero. If you hold a title, you get demoted by one rank; managers lose their title. Being sent to jail ends your turn.</p>
+              <p>Sent here with 3 heat tokens (4 for a Senior/Executive). You lose your job, you get demoted by one rank but you keep your collectables; your heat is reset to zero. If you were a Manager, you lose your title altogether. Being sent to jail ends your turn.</p>
               <p>Next turn: Pay <strong>8 hours</strong> (after bleeding), move to Start, and continue your turn normally.</p>
               <p class="tile-note">You're still involved in activities while in jail and can be a government member. You cannot receive heat whilst in jail.</p>
             </div>
@@ -507,16 +507,16 @@
         <div class="section-content">
           <div class="death-info">
             <p class="death-main">When your clock reaches 0, <strong>you die</strong>.</p>
-            <p>You lose your job, title, and any government oppressions. Your player bust remains on the tile you died on and your collectables are left out for other players to loot your body.</p>
+            <p>You lose your job and title. Your player bust remains on the tile you died on, and your items are left out on display for other players to loot your body.</p>
           </div>
 
           <div class="loot-rules">
             <h4>Looting Rules</h4>
             <ul>
               <li>If you die in jail, your bust moves to the Start Tile</li>
-              <li>If a player <strong>passes</strong> your body whilst moving, they can take a <strong>single collectable</strong></li>
-              <li>If a player <strong>lands on</strong> or <strong>advances directly to</strong> your body, they take <strong>all</strong> your collectables</li>
-              <li>Your player bust is removed once all collectables have been looted</li>
+              <li>If a player <strong>passes</strong> your body whilst moving or advancing, they can take a <strong>single item</strong> from your body</li>
+              <li>If a player <strong>lands on</strong> or <strong>advances directly to</strong> your body, they will take <strong>all</strong> your items</li>
+              <li>Your player bust is removed from the game board once all your items have been looted</li>
             </ul>
           </div>
         </div>
@@ -583,7 +583,7 @@
                 <h4>Famine</h4>
                 <span class="horseman-range">(51-75)</span>
               </div>
-              <p>During Famine, <strong>no income is earned from jobs</strong>. Time can still be earned through assignments, being a government leader, or transferring time.</p>
+              <p>During Famine, <strong>no income is earned from jobs or job titles</strong>. Time can still be earned through completing assignments, being a government leader, or transferring time between players through stealing/siphoning etc.</p>
               <p>Upon each activation, each player must remove <strong>1.5 hours</strong> from their clock. At the end of Famine, all 7.5 hours are returned to each player.</p>
             </div>
 

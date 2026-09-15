@@ -8,6 +8,11 @@
             Username
           </th>
 
+          <!-- Income Header -->
+          <th class="room-participants-table__header room-participants-table__header--income">
+            Income
+          </th>
+
           <!-- Job Title Header with Dropdown -->
           <th class="room-participants-table__header room-participants-table__header--job-title">
             <select
@@ -113,7 +118,11 @@
       <tbody>
         <tr v-for="p in activePlayers" :key="p.user_id || p.userId || p.id">
           <!-- Username Column -->
-          <td class="room-participants-table__cell room-participants-table__cell--username">
+          <td
+            class="room-participants-table__cell room-participants-table__cell--username"
+            :class="{ 'room-participants-table__cell--state-enemy': isStateEnemy(p) }"
+          >
+            <span v-if="isStateEnemy(p)" class="room-participants-table__enemy-icon">⚔️</span>
             {{ p.username }}
             <img
               v-if="getGovernmentIcon(p)"
@@ -121,6 +130,11 @@
               class="room-participants-table__gov-icon"
               alt="Government Role"
             />
+          </td>
+
+          <!-- Income Column -->
+          <td class="room-participants-table__cell room-participants-table__cell--income">
+            {{ playerIncomeMap[p.user_id || p.userId || p.id] || '+00:00' }}
           </td>
 
           <!-- Job Title Column -->
@@ -174,7 +188,7 @@
 
         <!-- Empty State -->
         <tr v-if="!activePlayers.length">
-          <td :colspan="7" class="room-participants-table__cell--empty">
+          <td :colspan="8" class="room-participants-table__cell--empty">
             No participants yet
           </td>
         </tr>
@@ -222,6 +236,14 @@ const props = defineProps({
   perkIcon: {
     type: Function,
     required: true
+  },
+  roomGovernment: {
+    type: Object,
+    default: null
+  },
+  stateEnemies: {
+    type: Array,
+    default: () => []
   }
 })
 
@@ -229,9 +251,47 @@ const getGovernmentIcon = (participant) => {
   return props.governmentIcon(participant)
 }
 
+const isStateEnemy = (participant) => {
+  const id = participant.user_id || participant.userId || participant.id
+  return props.stateEnemies.some(e => e.user_id === id)
+}
+
 const getPerkIcon = (participant) => {
   return props.perkIcon(participant)
 }
+
+const playerIncomeMap = computed(() => {
+  const map = {}
+  for (const p of props.activePlayers) {
+    const id = p.user_id || p.userId || p.id
+    const job = props.jobs.find(j => j.name === p.job_name)
+    const jobIncome = (job?.tier || 0) * 10
+
+    let perkBonus = 0
+    if (p.perk === 'Manager') perkBonus = 10
+    else if (p.perk === 'Senior') perkBonus = 20
+    else if (p.perk === 'Executive') perkBonus = 30
+
+    let govBonus = 0
+    const gov = props.roomGovernment
+    if (gov?.type === 'Communism') {
+      const isMember = gov.members?.some(m => m.user_id === id)
+      govBonus = isMember ? 10 : -20
+    } else if (gov?.type === 'Dictatorship') {
+      const isDictator = gov.members?.some(m => m.user_id === id && m.role === 'dictator')
+      govBonus = isDictator ? 10 : 0
+    }
+
+    const bleedPenalty = (p.bleed || 0) * 10
+    const total = jobIncome + perkBonus + govBonus - bleedPenalty
+    const sign = total >= 0 ? '+' : '-'
+    const abs = Math.abs(total)
+    const h = String(Math.floor(abs / 60)).padStart(2, '0')
+    const m = String(abs % 60).padStart(2, '0')
+    map[id] = `${sign}${h}:${m}`
+  }
+  return map
+})
 
 // Two-way bindings for parent state
 const emit = defineEmits([
@@ -372,6 +432,12 @@ const voteModel = computed({
   width: 100px;
   min-width: 100px;
   max-width: 100px;
+}
+
+.room-participants-table__header--income {
+  width: 80px;
+  min-width: 80px;
+  max-width: 80px;
 }
 
 .room-participants-table__header--job-title {
@@ -520,6 +586,23 @@ const voteModel = computed({
   width: 100px;
   min-width: 100px;
   max-width: 100px;
+}
+
+.room-participants-table__cell--state-enemy {
+  color: #ef4444 !important;
+  font-weight: 700;
+}
+
+.room-participants-table__enemy-icon {
+  margin-right: 2px;
+}
+
+.room-participants-table__cell--income {
+  width: 80px;
+  min-width: 80px;
+  max-width: 80px;
+  font-family: 'Courier New', monospace;
+  font-weight: 600;
 }
 
 .room-participants-table__cell--job-title {

@@ -14,9 +14,11 @@
         :maxCollectables="maxCollectables"
         :isLoadingPay="isPaying"
         :isLoadingJail="isPayingJail"
+        :isLoadingBlackMarket="isBuyingBlackMarket"
         @adjust-clock="uClock"
         @get-paid="getPaid"
         @get-out-of-jail="getOutOfJail"
+        @buy-black-market="buyBlackMarket"
       />
 
       <!-- Government Display -->
@@ -47,6 +49,8 @@
         :currentUserId="currentUserId"
         :governmentIcon="iconForParticipant"
         :perkIcon="perkIconForParticipant"
+        :roomGovernment="roomGovernment"
+        :stateEnemies="currentStateEnemies"
         @update:selectedJobId="(id) => selectedJobId = id"
         @update:selectedPerk="(perk) => selectedPerk = perk"
         @update:selectedHeaderApproval="(status) => selectedHeaderApproval = status"
@@ -265,6 +269,189 @@
         </div>
       </b-modal>
 
+      <!-- Republic Head of State Voting Modal -->
+      <b-modal
+        id="republicVotingModal"
+        ref="republicVotingModal"
+        title="🏛️ Republic — Vote for Head of State"
+        :hide-header-close="!isAdmin"
+        no-close-on-backdrop
+        no-close-on-esc
+        size="md"
+        centered
+      >
+        <div class="republic-vote-container">
+          <p class="republic-vote-description">Select who you want to be <strong>Head of State</strong>:</p>
+          
+          <!-- Candidate Selection -->
+          <div v-if="!republicCurrentUserVote" class="republic-candidates">
+            <b-button
+              v-for="candidate in republicCandidates"
+              :key="candidate.user_id"
+              variant="outline-primary"
+              class="republic-candidate-btn"
+              @click="castRepublicVote(candidate.user_id)"
+            >
+              {{ candidate.username }}
+            </b-button>
+          </div>
+          
+          <!-- Voted Confirmation -->
+          <div v-else class="vote-submitted-box">
+            <span class="vote-submitted-icon">✅</span>
+            <p class="vote-submitted-text">Your vote has been recorded.</p>
+          </div>
+          
+          <!-- Voting Progress -->
+          <div class="vote-participants-section mt-3">
+            <h5 class="vote-section-title">
+              Voting Progress
+              <span class="vote-count-badge">
+                {{ Object.values(republicVoteTally).filter(v => v).length }} / {{ Object.keys(republicVoteTally).length }}
+              </span>
+            </h5>
+            <div class="vote-participants-grid">
+              <div
+                v-for="candidate in republicCandidates"
+                :key="candidate.user_id"
+                class="vote-participant-card"
+                :class="{ 'has-voted': republicVoteTally[candidate.user_id] }"
+              >
+                <span class="participant-status-icon">{{ republicVoteTally[candidate.user_id] ? '🗳️' : '⏳' }}</span>
+                <span class="participant-name">{{ candidate.username }}</span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Admin Conclude -->
+          <div v-if="isAdmin" class="vote-admin-section mt-3">
+            <b-button variant="primary" size="lg" class="w-100" @click="concludeRepublicVote">
+              🔓 Conclude Vote & Reveal Winner
+            </b-button>
+          </div>
+        </div>
+        <template #footer></template>
+      </b-modal>
+
+      <!-- Republic Vote Results Modal -->
+      <b-modal
+        id="republicResultsModal"
+        ref="republicResultsModal"
+        title="🏛️ Republic — Election Results"
+        size="md"
+        centered
+      >
+        <div v-if="republicWinner" class="republic-results">
+          <div class="winner-banner">
+            <span class="crown">🏛️</span>
+            <h3>{{ republicWinner.winner_name }}</h3>
+            <p>Elected Head of State!</p>
+          </div>
+          
+          <div class="leaderboard-section">
+            <div class="leaderboard-header">Vote Results</div>
+            <div class="leaderboard-list">
+              <div
+                v-for="(entry, index) in republicVoteResults"
+                :key="entry.user_id"
+                class="leaderboard-row"
+                :class="{ 'winner-row': entry.is_winner }"
+              >
+                <span class="rank">{{ index + 1 }}</span>
+                <span class="lb-name">{{ entry.username }}</span>
+                <span class="lb-bid">{{ entry.votes }} vote{{ entry.votes !== 1 ? 's' : '' }}</span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Head of State selects advisors -->
+          <div v-if="currentUserId === republicWinner.winner_id" class="republic-advisor-selection mt-3">
+            <h5>Select Your 2 Advisors:</h5>
+            <div class="republic-advisor-grid">
+              <b-button
+                v-for="candidate in republicAdvisorCandidates"
+                :key="candidate.user_id"
+                :variant="republicSelectedAdvisors.includes(candidate.user_id) ? 'success' : 'outline-secondary'"
+                class="republic-candidate-btn"
+                @click="toggleRepublicAdvisor(candidate.user_id)"
+              >
+                {{ candidate.username }}
+                <span v-if="republicSelectedAdvisors.includes(candidate.user_id)">✓</span>
+              </b-button>
+            </div>
+            <b-button
+              variant="primary"
+              class="w-100 mt-2"
+              :disabled="republicSelectedAdvisors.length !== 2"
+              @click="confirmRepublicAdvisors"
+            >
+              Confirm Advisors
+            </b-button>
+          </div>
+          <div v-else class="mt-3 text-center text-muted">
+            <p>Waiting for {{ republicWinner.winner_name }} to select advisors...</p>
+          </div>
+        </div>
+        <template #footer></template>
+      </b-modal>
+
+      <!-- Republic State Enemies Panel (floating, minimizable) -->
+      <div
+        v-if="isRepublicMember && currentGovernmentName === 'Republic'"
+        class="state-enemies-panel"
+        :class="{ 'state-enemies-panel--minimized': stateEnemiesPanelMinimized }"
+      >
+        <div class="state-enemies-panel__header" @click="stateEnemiesPanelMinimized = !stateEnemiesPanelMinimized">
+          <span>⚔️ State Enemies</span>
+          <span class="state-enemies-panel__toggle">{{ stateEnemiesPanelMinimized ? '▲' : '▼' }}</span>
+        </div>
+        <div v-if="!stateEnemiesPanelMinimized" class="state-enemies-panel__body">
+          <p class="state-enemies-panel__hint">Vote for players to mark as state enemies. Requires Head of State + at least 1 advisor.</p>
+          <div class="state-enemies-panel__players">
+            <div
+              v-for="player in stateEnemyCandidates"
+              :key="player.user_id"
+              class="state-enemies-panel__player"
+            >
+              <span class="state-enemies-panel__name">{{ player.username }}</span>
+              <div class="state-enemies-panel__votes">
+                <span
+                  v-for="voter in republicGovMembers"
+                  :key="voter.user_id"
+                  class="state-enemies-panel__vote-dot"
+                  :class="{
+                    'state-enemies-panel__vote-dot--active': stateEnemyVoterBreakdown[voter.user_id]?.includes(player.user_id),
+                    'state-enemies-panel__vote-dot--head': voter.role === 'head_of_state'
+                  }"
+                  :title="voter.username + (voter.role === 'head_of_state' ? ' (HoS)' : ' (Advisor)')"
+                >
+                  {{ voter.role === 'head_of_state' ? '👑' : '🛡️' }}
+                </span>
+              </div>
+              <b-button
+                v-if="!myEnemyVotes.includes(player.user_id)"
+                size="sm"
+                variant="outline-danger"
+                @click="voteStateEnemy(player.user_id, 'add')"
+              >
+                Mark Enemy
+              </b-button>
+              <b-button
+                v-else
+                size="sm"
+                variant="outline-success"
+                @click="voteStateEnemy(player.user_id, 'remove')"
+              >
+                Forgive
+              </b-button>
+              <span v-if="currentStateEnemies.some(e => e.user_id === player.user_id)" class="state-enemies-panel__enemy-badge">⚔️ ENEMY</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+
       <!-- Dictator Bidding Modal -->
       <b-modal
         id="dictatorBiddingModal"
@@ -344,22 +531,6 @@
             <span class="crown">👑</span>
             <h3>{{ dictatorWinner }}</h3>
             <p>Crowned Dictator!</p>
-          </div>
-          
-          <div class="leaderboard-section">
-            <div class="leaderboard-header">Bid Leaderboard</div>
-            <div class="leaderboard-list">
-              <div 
-                v-for="(entry, index) in biddingLeaderboard" 
-                :key="entry.user_id" 
-                class="leaderboard-row"
-                :class="{ 'winner-row': entry.is_winner }"
-              >
-                <span class="rank">{{ index + 1 }}</span>
-                <span class="lb-name">{{ entry.username }}</span>
-                <span class="lb-bid">{{ String(Math.floor(entry.bid_amount / 60)).padStart(2, '0') }}:{{ String(entry.bid_amount % 60).padStart(2, '0') }}</span>
-              </div>
-            </div>
           </div>
           
           <div class="mt-3 d-flex justify-content-end">
@@ -673,9 +844,9 @@ const currentUserParticipant = computed(() => {
 
 const maxCollectables = computed(() => {
   const participant = currentUserParticipant.value
-  if (!participant) return 5
+  if (!participant) return 4
   
-  let max = 5
+  let max = 4
   // +1 if no bleed
   if (!participant.bleed || participant.bleed === 0) {
     max += 1
@@ -736,6 +907,7 @@ const chartOptions = ref({
 // State
 const isPaying = ref(false)
 const isPayingJail = ref(false)
+const isBuyingBlackMarket = ref(false)
 const isSubmittingGov = ref(false)
 const govError = ref('')
 
@@ -814,6 +986,41 @@ const {
   concludeVoting: concludeVotingLocal,
   resetVoting
 } = voting
+
+// Republic voting state
+const republicVotingModal = ref(null)
+const republicResultsModal = ref(null)
+const republicCandidates = ref([])
+const republicVoteTally = ref({})
+const republicCurrentUserVote = ref(null)
+const republicWinner = ref(null)
+const republicVoteResults = ref([])
+const republicSelectedAdvisors = ref([])
+const republicAdvisorCandidates = computed(() =>
+  republicCandidates.value.filter(c => c.user_id !== republicWinner.value?.winner_id)
+)
+
+// Republic state enemies state
+const stateEnemiesPanelMinimized = ref(false)
+const stateEnemyVoterBreakdown = ref({})
+const myEnemyVotes = ref([])
+const currentStateEnemies = ref([])
+const republicGovMembers = ref([])
+const isRepublicMember = computed(() => {
+  if (!roomGovernment.value || currentGovernmentName.value !== 'Republic') return false
+  return roomGovernment.value.members?.some(m => m.user_id === currentUserId.value)
+})
+const stateEnemyCandidates = computed(() => {
+  // Use republicGovMembers if populated (from stateEnemyVoteUpdate), else fall back to roomGovernment
+  const members = republicGovMembers.value.length > 0
+    ? republicGovMembers.value
+    : (roomGovernment.value?.members || [])
+  const headOfStateId = members.find(m => m.role === 'head_of_state')?.user_id
+  return participants.value.filter(p => {
+    const pid = p.user_id || p.id
+    return pid !== headOfStateId
+  })
+})
 
 // Available candidates for politburo wheel (exclude already selected members)
 const availablePolitburoCandidates = computed(() => {
@@ -1208,6 +1415,52 @@ socket.on('dictatorWinner', (data) => {
   setTimeout(() => {
     dictatorBiddingWinnerModal.value && dictatorBiddingWinnerModal.value.show()
   }, 100)
+})
+
+// --- Republic voting socket handlers ---
+socket.on('startRepublicVoting', (data) => {
+  console.log('[startRepublicVoting]', data)
+  republicCandidates.value = data.candidates || []
+  republicVoteTally.value = data.tally || {}
+  republicCurrentUserVote.value = null
+  republicWinner.value = null
+  republicVoteResults.value = []
+  republicSelectedAdvisors.value = []
+  republicVotingModal.value && republicVotingModal.value.show()
+})
+
+socket.on('republicVoteTallyUpdate', (data) => {
+  console.log('[republicVoteTallyUpdate]', data)
+  republicVoteTally.value = data.tally || {}
+})
+
+socket.on('republicVoteResults', (data) => {
+  console.log('[republicVoteResults]', data)
+  republicWinner.value = { winner_id: data.winner_id, winner_name: data.winner_name }
+  republicVoteResults.value = data.results || []
+  republicVotingModal.value && republicVotingModal.value.hide()
+  republicResultsModal.value && republicResultsModal.value.show()
+})
+
+socket.on('republicAdvisorsConfirmed', (data) => {
+  console.log('[republicAdvisorsConfirmed]', data)
+  republicResultsModal.value && republicResultsModal.value.hide()
+  // State enemies panel will become active via room_state update
+})
+
+socket.on('stateEnemyVoteUpdate', (data) => {
+  console.log('[stateEnemyVoteUpdate]', data)
+  stateEnemyVoterBreakdown.value = data.voter_breakdown || {}
+  currentStateEnemies.value = data.enemies || []
+  republicGovMembers.value = data.gov_members || []
+  // Update my own votes
+  const myId = currentUserId.value
+  myEnemyVotes.value = stateEnemyVoterBreakdown.value[myId] || []
+})
+
+socket.on('stateEnemiesAnnouncement', (data) => {
+  console.log('[stateEnemiesAnnouncement]', data)
+  currentStateEnemies.value = data.enemies || []
 })
 
 onMounted(async () => {
@@ -1690,6 +1943,19 @@ function getOutOfJail() {
   }
 }
 
+// Buy Black Market collectable handler -> emits "buyBlackMarket"
+function buyBlackMarket() {
+  if (isBuyingBlackMarket.value) return
+  isBuyingBlackMarket.value = true
+  try {
+    console.log('[BuyBlackMarket] emit buyBlackMarket')
+    socket.emit('buyBlackMarket')
+  } catch (e) {
+    console.error('[BuyBlackMarket] emit failed', e)
+  } finally {
+    setTimeout(() => { isBuyingBlackMarket.value = false }, 600)
+  }
+}
 
 
 // IMPORTANT: remove the old watcher that auto-emitted updateGovernment.
@@ -1734,6 +2000,40 @@ function concludeDictatorBidding() {
   
   console.log('[concludeDictatorBidding] Concluding bidding')
   socket.emit('concludeDictatorBidding', JSON.stringify({}))
+}
+
+// --- Republic voting methods ---
+function castRepublicVote(candidateUserId) {
+  republicCurrentUserVote.value = candidateUserId
+  socket.emit('castRepublicVote', JSON.stringify({ candidate_user_id: candidateUserId }))
+}
+
+function concludeRepublicVote() {
+  if (!isAdmin.value) return
+  socket.emit('concludeRepublicVoting', JSON.stringify({}))
+}
+
+function toggleRepublicAdvisor(userId) {
+  const idx = republicSelectedAdvisors.value.indexOf(userId)
+  if (idx >= 0) {
+    republicSelectedAdvisors.value.splice(idx, 1)
+  } else if (republicSelectedAdvisors.value.length < 2) {
+    republicSelectedAdvisors.value.push(userId)
+  }
+}
+
+function confirmRepublicAdvisors() {
+  if (republicSelectedAdvisors.value.length !== 2) return
+  socket.emit('selectRepublicAdvisors', JSON.stringify({ advisor_ids: republicSelectedAdvisors.value }))
+}
+
+function voteStateEnemy(targetUserId, action) {
+  socket.emit('updateStateEnemyVote', JSON.stringify({ target_user_id: targetUserId, action }))
+  if (action === 'add') {
+    if (!myEnemyVotes.value.includes(targetUserId)) myEnemyVotes.value.push(targetUserId)
+  } else {
+    myEnemyVotes.value = myEnemyVotes.value.filter(id => id !== targetUserId)
+  }
 }
 
 // Change Bleed (+/- 1) for the current user
@@ -4382,6 +4682,195 @@ td > .gov-icon { transform: translateY(-1px); }
   display: inline-flex;
   align-items: center;
   gap: 8px;
+}
+
+/* Republic Voting */
+.republic-vote-container {
+  text-align: center;
+}
+.republic-vote-description {
+  margin-bottom: 12px;
+  color: #94a3b8;
+}
+.republic-candidates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+.republic-candidate-btn {
+  min-width: 120px;
+}
+.vote-submitted-box {
+  text-align: center;
+  padding: 16px;
+}
+.vote-submitted-icon {
+  font-size: 2rem;
+}
+.vote-submitted-text {
+  color: #22c55e;
+  margin-top: 4px;
+}
+.vote-participants-section {
+  border-top: 1px solid rgba(241,245,249,0.15);
+  padding-top: 12px;
+}
+.vote-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #eab308;
+  font-size: 1rem;
+}
+.vote-count-badge {
+  background: #1e293b;
+  border-radius: 12px;
+  padding: 2px 10px;
+  font-size: 0.85rem;
+  color: #22d3ee;
+}
+.vote-participants-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.vote-participant-card {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: #0b0f19;
+  border: 1px solid rgba(241,245,249,0.1);
+}
+.vote-participant-card.has-voted {
+  border-color: #22c55e;
+}
+.participant-status-icon {
+  font-size: 1rem;
+}
+.participant-name {
+  color: #f1f5f9;
+  font-size: 0.9rem;
+}
+.vote-admin-section {
+  border-top: 1px solid rgba(241,245,249,0.15);
+  padding-top: 12px;
+}
+
+/* Republic Results */
+.republic-results .winner-banner {
+  text-align: center;
+  padding: 20px;
+  background: linear-gradient(135deg, rgba(34,211,238,0.08), rgba(234,179,8,0.08));
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+.republic-advisor-selection h5 {
+  color: #eab308;
+  text-align: center;
+}
+.republic-advisor-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+/* State Enemies Panel */
+.state-enemies-panel {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  width: 320px;
+  background: #1a1f2e;
+  border: 1px solid #22d3ee;
+  border-radius: 12px;
+  z-index: 1050;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+  overflow: hidden;
+}
+.state-enemies-panel--minimized {
+  width: 180px;
+}
+.state-enemies-panel__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: #0b0f19;
+  cursor: pointer;
+  color: #eab308;
+  font-weight: 700;
+  font-size: 0.95rem;
+  user-select: none;
+}
+.state-enemies-panel__toggle {
+  font-size: 0.8rem;
+}
+.state-enemies-panel__body {
+  padding: 10px 14px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+.state-enemies-panel__hint {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-bottom: 8px;
+}
+.state-enemies-panel__players {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.state-enemies-panel__player {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 6px 8px;
+  background: #0b0f19;
+  border-radius: 6px;
+}
+.state-enemies-panel__name {
+  flex: 1;
+  color: #f1f5f9;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.state-enemies-panel__votes {
+  display: flex;
+  gap: 2px;
+}
+.state-enemies-panel__vote-dot {
+  font-size: 0.8rem;
+  opacity: 0.3;
+  cursor: default;
+}
+.state-enemies-panel__vote-dot--active {
+  opacity: 1;
+}
+.state-enemies-panel__enemy-badge {
+  color: #ef4444;
+  font-weight: 700;
+  font-size: 0.75rem;
+  margin-left: auto;
+}
+
+/* State Enemies Announcement Bar */
+.state-enemies-announcement {
+  background: linear-gradient(90deg, rgba(239,68,68,0.15), rgba(239,68,68,0.05));
+  border: 1px solid rgba(239,68,68,0.3);
+  border-radius: 8px;
+  padding: 8px 16px;
+  margin: 8px auto;
+  max-width: 600px;
+  text-align: center;
+  color: #f87171;
+  font-size: 0.95rem;
 }
 </style>
 

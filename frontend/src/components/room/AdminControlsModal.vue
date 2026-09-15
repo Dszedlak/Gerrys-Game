@@ -203,9 +203,13 @@ const processGovernmentChange = async () => {
       return
     }
 
-    // Handle Republic - open role assignment modal
-    roomGovModal.value?.show('Republic')
-    hideGovernmentSelection()
+    // Handle Republic - start popular vote for head of state
+    if (govType === 'Republic') {
+      props.socket.emit('startRepublicVoting')
+      hideGovernmentSelection()
+      hide()
+      return
+    }
   } finally {
     isProcessingGov.value = false
   }

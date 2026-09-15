@@ -6,6 +6,11 @@
         "type": "Democracy"
     },
     {
+        "id": 2,
+        "type": "Republic",
+        "note": "Head of state and 2 advisors. Government leaders can introduce oppressions."
+    },
+    {
         "id": 3,
         "type": "Dictatorship",
         "note": "Dictator receives +10 minutes income and 2 abilities immediately. Chosen by one vote blind auction."
