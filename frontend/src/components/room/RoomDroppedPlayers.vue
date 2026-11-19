@@ -1,49 +1,56 @@
 <template>
-  <b-row v-if="droppedPlayers.length > 0" class="room-dropped-players__row">
-    <b-col></b-col>
-    <b-col cols="4">
-      <h5 class="room-dropped-players__title">Dropped Players</h5>
-      <table class="room-dropped-players__table">
-        <thead>
-          <tr>
-            <th>Username</th>
-            <th>Job Title</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr 
-            v-for="p in droppedPlayers" 
-            :key="p.user_id || p.userId || p.id"
-            class="room-dropped-players__row-item"
-          >
-            <td>
-              {{ p.username }}
-              <img
-                v-if="governmentIcon(p)"
-                :src="governmentIcon(p)"
-                class="room-dropped-players__gov-icon"
-                alt=""
-              />
-            </td>
-            <td>
-              {{ p.job_name }}
-              <img
-                v-if="perkIcon(p)"
-                :src="perkIcon(p)"
-                class="room-dropped-players__perk-icon"
-                :alt="p.perk"
-              />
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </b-col>
-    <b-col></b-col>
-  </b-row>
+  <div class="room-dropped-players">
+    <button
+      type="button"
+      class="room-dropped-players__toggle"
+      :class="{ 'room-dropped-players__toggle--empty': droppedPlayers.length === 0 }"
+      :disabled="droppedPlayers.length === 0"
+      :aria-expanded="open"
+      @click="open = !open"
+    >
+      <span class="room-dropped-players__caret">{{ open ? '▾' : '▸' }}</span>
+      Dropped players ({{ droppedPlayers.length }})
+    </button>
+
+    <table v-if="open && droppedPlayers.length > 0" class="room-dropped-players__table">
+      <thead>
+        <tr>
+          <th>Username</th>
+          <th>Job Title</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr
+          v-for="p in droppedPlayers"
+          :key="p.user_id || p.userId || p.id"
+          class="room-dropped-players__row-item"
+        >
+          <td>
+            {{ p.username }}
+            <img
+              v-if="governmentIcon(p)"
+              :src="governmentIcon(p)"
+              class="room-dropped-players__gov-icon"
+              alt=""
+            />
+          </td>
+          <td>
+            {{ p.job_name }}
+            <img
+              v-if="perkIcon(p)"
+              :src="perkIcon(p)"
+              class="room-dropped-players__perk-icon"
+              :alt="p.perk"
+            />
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 </template>
 
 <script setup>
-import { defineProps } from 'vue'
+import { ref } from 'vue'
 
 defineProps({
   droppedPlayers: {
@@ -59,28 +66,47 @@ defineProps({
     required: true
   }
 })
+
+// Collapsed by default so eliminated players never push the live roster around
+const open = ref(false)
 </script>
 
 <style scoped>
-.room-dropped-players__row {
-  height: auto;
-  padding-right: 0;
-  padding-left: 0;
-  margin-top: 30px;
-  margin-bottom: 30px;
-  position: relative;
-  z-index: 1;
-  clear: both;
+.room-dropped-players {
+  padding: 0 16px 16px 16px;
 }
 
-.room-dropped-players__title {
+.room-dropped-players__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  background: transparent;
+  border: none;
   color: #888;
   font-weight: 600;
-  margin-bottom: 12px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.room-dropped-players__toggle:hover:not(:disabled) {
+  color: #F1F5F9;
+}
+
+.room-dropped-players__toggle--empty {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.room-dropped-players__caret {
+  font-size: 0.75rem;
 }
 
 .room-dropped-players__table {
   width: 100%;
+  max-width: 520px;
+  margin-top: 8px;
   background: #1A1F2E !important;
   border: 1px solid rgba(241, 245, 249, 0.3) !important;
   border-radius: 8px;

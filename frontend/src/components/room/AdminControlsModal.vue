@@ -4,48 +4,42 @@
     <b-modal
       ref="modal"
       id="adminControlsModal"
-      title="⚙️ Admin Controls"
-      size="lg"
+      title="Admin Controls"
+      size="md"
       centered
+      no-footer
     >
-      <div class="admin-controls-container">
-        <div class="admin-controls-group mb-4">
-          <h5 class="mb-3">Game Management</h5>
-          <b-button 
-            variant="primary" 
-            @click="openGovernmentSelection"
-            class="w-100 mb-2"
+      <section class="admin-section">
+        <h6 class="admin-section__label">Game</h6>
+        <div class="admin-list">
+          <button
+            v-for="action in actions"
+            :key="action.title"
+            type="button"
+            class="admin-action"
+            @click="action.run"
           >
-            🏛️ Change Government
-          </b-button>
-          <b-button 
-            variant="info" 
-            @click="handleSpinWheel"
-            class="w-100 mb-2"
-          >
-            🎡 Spin Wheel
-          </b-button>
-          <b-button 
-            variant="success" 
-            @click="handleCastVote"
-            class="w-100 mb-2"
-          >
-            🗳️ Cast Vote
-          </b-button>
+            <span class="admin-action__icon" aria-hidden="true">{{ action.icon }}</span>
+            <span class="admin-action__text">
+              <span class="admin-action__title">{{ action.title }}</span>
+              <span class="admin-action__desc">{{ action.desc }}</span>
+            </span>
+            <span class="admin-action__chevron" aria-hidden="true">›</span>
+          </button>
         </div>
-        
-        <div class="admin-controls-group">
-          <h5 class="mb-3">End Game</h5>
-          <b-button 
-            variant="danger" 
-            @click="handleEndGame"
-            class="w-100"
-          >
-            🏁 End Game & View History
-          </b-button>
-        </div>
-      </div>
-      <template #footer></template>
+      </section>
+
+      <section class="admin-section admin-section--danger">
+        <h6 class="admin-section__label">Danger zone</h6>
+        <button type="button" class="admin-action admin-action--danger" @click="handleEndGame">
+          <span class="admin-action__icon" aria-hidden="true">🏁</span>
+          <span class="admin-action__text">
+            <span class="admin-action__title">End game</span>
+            <span class="admin-action__desc">Show the clock history, then close the room for everyone</span>
+          </span>
+          <span class="admin-action__chevron" aria-hidden="true">›</span>
+        </button>
+      </section>
     </b-modal>
 
     <!-- Government Selection Modal -->
@@ -236,6 +230,12 @@ const handleEndGame = () => {
   emit('end-game')
 }
 
+const actions = [
+  { icon: '🏛️', title: 'Change government', desc: 'Switch the room to a new government system', run: openGovernmentSelection },
+  { icon: '🎡', title: 'Spin wheel', desc: 'Spin the wheel for the whole room', run: handleSpinWheel },
+  { icon: '🗳️', title: 'Cast vote', desc: 'Start a secret vote for all players', run: handleCastVote }
+]
+
 defineExpose({
   show,
   hide
@@ -243,96 +243,121 @@ defineExpose({
 </script>
 
 <style scoped>
-.admin-controls-container {
-  padding: 0;
+/* ---------- Admin panel: a calm, settings-style list ---------- */
+.admin-section + .admin-section {
+  margin-top: 20px;
 }
 
-.admin-controls-group {
-  margin-bottom: 1.5rem;
-  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-  border: 1px solid #334155;
-  border-radius: 12px;
-  padding: 20px;
-}
-
-.admin-controls-group:last-child {
-  margin-bottom: 0;
-}
-
-.admin-controls-group h5 {
-  color: #f1f5f9;
-  font-weight: 700;
-  font-size: 1.1rem;
-  margin-bottom: 1rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 2px solid #3b82f6;
+.admin-section__label {
+  margin: 0 0 8px 2px;
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  letter-spacing: 1px;
+}
+
+/* Rows share borders, so the group reads as one list */
+.admin-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #1f2937;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.admin-action {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 14px;
+  width: 100%;
+  padding: 14px 16px;
+  background: #111827;
+  border: none;
+  color: #e5e7eb;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
 }
 
-.admin-controls-group h5::before {
-  content: "⚙";
-  font-size: 1rem;
+.admin-list .admin-action + .admin-action {
+  border-top: 1px solid #1f2937;
 }
 
-.admin-controls-group:last-child h5::before {
-  content: "⛔";
+.admin-action:hover {
+  background: #1a2332;
 }
 
-.admin-controls-group .btn {
-  padding: 14px 20px;
-  font-weight: 600;
-  font-size: 1rem;
+.admin-action:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: -2px;
+}
+
+.admin-action__icon {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #1f2937;
   border-radius: 8px;
-  transition: all 0.2s ease;
-  border-width: 2px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  font-size: 1.05rem;
+  line-height: 1;
 }
 
-.admin-controls-group .btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+.admin-action__text {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
-.admin-controls-group .btn-primary {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
-  border-color: #60a5fa !important;
+.admin-action__title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #f1f5f9;
 }
 
-.admin-controls-group .btn-primary:hover {
-  background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%) !important;
+.admin-action__desc {
+  font-size: 0.82rem;
+  color: #94a3b8;
 }
 
-.admin-controls-group .btn-info {
-  background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%) !important;
-  border-color: #22d3ee !important;
-  color: #ffffff !important;
+.admin-action__chevron {
+  flex: 0 0 auto;
+  color: #475569;
+  font-size: 1.4rem;
+  line-height: 1;
+  transition: transform 0.15s ease, color 0.15s ease;
 }
 
-.admin-controls-group .btn-info:hover {
-  background: linear-gradient(135deg, #22d3ee 0%, #06b6d4 100%) !important;
+.admin-action:hover .admin-action__chevron {
+  color: #94a3b8;
+  transform: translateX(2px);
 }
 
-.admin-controls-group .btn-success {
-  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%) !important;
-  border-color: #4ade80 !important;
+/* Danger zone: same shape, quietly red rather than shouting */
+.admin-section--danger .admin-section__label {
+  color: #f87171;
 }
 
-.admin-controls-group .btn-success:hover {
-  background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%) !important;
+.admin-action--danger {
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  border-radius: 10px;
 }
 
-.admin-controls-group .btn-danger {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
-  border-color: #f87171 !important;
+.admin-action--danger .admin-action__icon {
+  background: rgba(248, 113, 113, 0.12);
 }
 
-.admin-controls-group .btn-danger:hover {
-  background: linear-gradient(135deg, #f87171 0%, #ef4444 100%) !important;
+.admin-action--danger .admin-action__title {
+  color: #fca5a5;
+}
+
+.admin-action--danger:hover {
+  background: rgba(248, 113, 113, 0.08);
 }
 
 .gov-selection {
@@ -436,17 +461,30 @@ defineExpose({
 /* Style modal headers */
 #adminControlsModal .modal-header,
 #govSelectModal .modal-header {
-  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-  border-bottom: 2px solid #3b82f6;
+  background: #0f172a;
+  border-bottom: 1px solid #1f2937;
   padding: 16px 20px;
 }
 
 #adminControlsModal .modal-title,
 #govSelectModal .modal-title {
   color: #f1f5f9;
-  font-weight: 700;
-  font-size: 1.25rem;
-  letter-spacing: 0.5px;
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+/* The default close icon is dark; invert it for the dark header */
+#adminControlsModal .btn-close,
+#govSelectModal .btn-close {
+  filter: invert(1) grayscale(1) brightness(1.6);
+}
+
+#adminControlsModal .modal-content,
+#govSelectModal .modal-content {
+  background: #0f172a;
+  border: 1px solid #1f2937;
+  border-radius: 12px;
+  overflow: hidden;
 }
 
 #adminControlsModal .modal-body,

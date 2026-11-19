@@ -6,6 +6,7 @@
         <div class="help-icon">📖</div>
         <h1 class="help-title">Gerry's Game Rules</h1>
         <p class="help-subtitle">Version 4.24 - Complete Guide</p>
+        <PremiumMembership />
       </div>
 
       <!-- Table of Contents -->
@@ -182,6 +183,21 @@
           <div class="special-job">
             <h4>🎭 Chaos Creator (Special)</h4>
             <p>The "roll the die" effect is also the player's movement roll.</p>
+          </div>
+
+          <div class="special-job">
+            <h4>🏥 Doctor (Special)</h4>
+            <p>While a Doctor is in the game, <strong>Hospital items cost double</strong> (60 minutes each) for everyone — including the Doctor.</p>
+          </div>
+
+          <div class="special-job">
+            <h4>🎗️ Charity Commissioner (Special)</h4>
+            <p>While a Charity Commissioner is in the game, <strong>every other player loses 20 minutes</strong> of turn income. The Charity Commissioner is not affected.</p>
+          </div>
+
+          <div class="special-job">
+            <h4>🏛️ Chancellor (Special)</h4>
+            <p>When voting to change government, the Chancellor's vote <strong>counts twice in favour of change</strong>. A vote to remain in the same government counts once.</p>
           </div>
         </div>
       </div>
@@ -469,6 +485,7 @@
               <div class="tile-icon hospital">🏥</div>
               <h4>Hospital</h4>
               <p>Takes up two tiles. Receive a hospital item card. Purchase up to 5 additional hospital items for 30 minutes each.</p>
+              <p class="tile-note">⚠️ If a <strong>Doctor</strong> is in the game, hospital items cost <strong>60 minutes each</strong> (doubled). This applies to the Doctor as well.</p>
             </div>
 
             <!-- Go to Job Centre -->
@@ -636,8 +653,11 @@
 </template>
 
 <script>
+import PremiumMembership from '@/components/PremiumMembership.vue'
+
 export default {
-  name: 'HelpPage'
+  name: 'HelpPage',
+  components: { PremiumMembership }
 }
 </script>
 

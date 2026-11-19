@@ -37,6 +37,25 @@
         
         <!-- User Section -->
         <div class="navbar-user">
+          <!-- Room controls live here while you are in a room -->
+          <div v-if="inRoom" class="navbar-room-controls">
+            <button
+              v-if="isRoomAdmin"
+              type="button"
+              class="navbar-room-btn navbar-room-btn--admin"
+              @click="openAdminControls"
+            >
+              ⚙ Admin Controls
+            </button>
+            <button
+              type="button"
+              class="navbar-room-btn navbar-room-btn--leave"
+              @click="leaveRoom"
+            >
+              Leave Room
+            </button>
+          </div>
+
           <router-link v-if="!username" to="/login" class="login-btn">
             Sign In
           </router-link>
@@ -68,8 +87,16 @@
 </template>
 
 <script>
+import { useRoomChrome } from '@/composables/useRoomChrome'
+
 export default {
   name: "App",
+  setup() {
+    // Room.vue registers its handlers here while it is mounted, so the
+    // navbar can carry the room's own controls.
+    const { inRoom, isRoomAdmin, leaveRoom, openAdminControls } = useRoomChrome()
+    return { inRoom, isRoomAdmin, leaveRoom, openAdminControls }
+  },
   data() {
     return {
       dropdownOpen: false
@@ -260,6 +287,38 @@ html, body {
 .navbar-user {
   display: flex;
   align-items: center;
+  gap: 12px;
+}
+
+/* Room controls, shown in the navbar only while inside a room */
+.navbar-room-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.navbar-room-btn {
+  padding: 7px 14px;
+  background: #1A1F2E;
+  border: 1px solid rgba(241, 245, 249, 0.45);
+  border-radius: 8px;
+  color: #F1F5F9;
+  font-weight: 600;
+  font-size: 0.82rem;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.navbar-room-btn:hover {
+  transform: translateY(-2px);
+  border-color: #EAB308;
+  color: #EAB308;
+}
+
+.navbar-room-btn--leave:hover {
+  border-color: #ef4444;
+  color: #ef4444;
 }
 
 .login-btn {
@@ -272,6 +331,15 @@ html, body {
   font-size: 0.95rem;
   text-decoration: none !important;
   transition: all 0.2s ease;
+}
+
+/* Beats the global a:visited/a:hover/a:focus yellow in overrides.css,
+   which would otherwise put yellow text on this yellow button */
+a.login-btn,
+a.login-btn:hover,
+a.login-btn:focus,
+a.login-btn:visited {
+  color: #000 !important;
 }
 
 .login-btn:hover {

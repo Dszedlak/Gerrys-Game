@@ -9,6 +9,98 @@ import re
 from datetime import datetime, timedelta
 from app.data_collections.loader import get_collections
 
+# Jobs whose presence in a room changes the rules for everyone.
+CHARITY_COMMISSIONER_JOB = "Charity Commissioner"
+CHARITY_COMMISSIONER_PENALTY = -20
+CHANCELLOR_JOB = "Chancellor"
+# The Chancellor's vote counts twice, but only in favour of changing government.
+CHANCELLOR_CHANGE_VOTE_WEIGHT = 2
+
+
+def vote_weight(vote: str, is_chancellor: bool) -> int:
+    """
+    How many votes this ballot carries.
+
+    The Chancellor carries two votes, but only in favour of changing
+    government - a vote to remain counts once, like everyone else's.
+    """
+    if is_chancellor and vote == "yes":
+        return CHANCELLOR_CHANGE_VOTE_WEIGHT
+    return 1
+
+
+TIER_3 = 3
+
+
+def _alive_participants_with_job(room_id: int, job_id: int, exclude_user_id=None):
+    """Alive players in this room currently holding `job_id`."""
+    q = RoomParticipants.query.filter(
+        RoomParticipants.roomId == room_id,
+        RoomParticipants.job_id == job_id,
+    )
+    if exclude_user_id is not None:
+        q = q.filter(RoomParticipants.userId != exclude_user_id)
+    return [p for p in q.all() if (p.clock - datetime.min).total_seconds() > 0]
+
+
+def _tier3_job_taken(room_id: int, job_id: int, exclude_user_id=None) -> bool:
+    """
+    Is this Tier 3 job already held by another *alive* player?
+
+    Dead players release their job, which matches how the Doctor and Charity
+    Commissioner effects already ignore eliminated players.
+    """
+    return len(_alive_participants_with_job(room_id, job_id, exclude_user_id)) > 0
+
+
+def _tier3_job_holder_name(room_id: int, job_id: int, exclude_user_id=None) -> str:
+    holders = _alive_participants_with_job(room_id, job_id, exclude_user_id)
+    if not holders:
+        return "another player"
+    name = db.session.query(User.username).filter_by(id=holders[0].userId).scalar()
+    return name or "another player"
+
+
+def _user_room(user_id) -> str:
+    """
+    Per-user socket room, used to send a payload to one player only.
+
+    Normalised to an int so that a JWT identity and a DB column resolve to
+    the same room name - a mismatch here would silently deliver nothing.
+    """
+    return f"user_{int(user_id)}"
+
+
+def _has_job_in_room(room_id: int, job_name: str, exclude_user_id=None) -> bool:
+    """Is any alive player in this room holding `job_name`?"""
+    q = (
+        RoomParticipants.query
+        .join(Job, RoomParticipants.job_id == Job.id)
+        .filter(RoomParticipants.roomId == room_id, Job.name == job_name)
+    )
+    if exclude_user_id is not None:
+        q = q.filter(RoomParticipants.userId != exclude_user_id)
+    for participant in q.all():
+        if (participant.clock - datetime.min).total_seconds() > 0:
+            return True
+    return False
+
+
+def _user_has_job(user_id: int, room_id: int, job_name: str) -> bool:
+    """Does this specific player hold `job_name`?"""
+    participant = (
+        RoomParticipants.query
+        .join(Job, RoomParticipants.job_id == Job.id)
+        .filter(
+            RoomParticipants.roomId == room_id,
+            RoomParticipants.userId == user_id,
+            Job.name == job_name,
+        )
+        .first()
+    )
+    return participant is not None
+
+
 def _is_room_member(room_id: int, user_id: int) -> bool:
     return RoomParticipants.query.filter_by(roomId=room_id, userId=user_id).first() is not None
 
@@ -45,6 +137,9 @@ def on_join(payload=None):
 
     room_identifier = str(room.id)
     join_room(room_identifier)
+    # Personal room, so the server can address one player directly (e.g. the
+    # government-only state enemy breakdown).
+    join_room(_user_room(user_id))
     print(f"[join] user {user_id} joined socket room {room_identifier}")
     print(f"[join] userData.clock = {userData.clock}, formatted = {timeFormat(userData.clock)}")
 
@@ -54,17 +149,16 @@ def on_join(payload=None):
     emit("setUserId", {"data": get_jwt_identity()})
     emit("updateClock", {"data": getClock(userData)})
     
-    # If dictator bidding is active for this room, send bidding state to reconnecting user
+    # If dictator bidding is active for this room, send bidding state to reconnecting user.
+    # The auction is blind: only who has bid is shared, never the amounts.
     if bidding_active.get(room.id, False):
         tally = {}
-        bid_amounts = {}
         for participant in RoomParticipants.query.filter_by(roomId=room.id):
-            if room.id in dictator_bids and participant.userId in dictator_bids[room.id]:
-                tally[participant.userId] = True
-                bid_amounts[participant.userId] = dictator_bids[room.id][participant.userId]
-            else:
-                tally[participant.userId] = False
-        emit("startDictatorBidding", {"reconnect": True, "tally": tally, "bid_amounts": bid_amounts})
+            tally[participant.userId] = (
+                room.id in dictator_bids and participant.userId in dictator_bids[room.id]
+            )
+        own_bid = dictator_bids.get(room.id, {}).get(userData.userId)
+        emit("startDictatorBidding", {"reconnect": True, "tally": tally, "own_bid": own_bid})
     
     print("user joined room:", room_identifier)
 
@@ -181,6 +275,14 @@ def update_government(data):
         db.session.add(GovernmentMember(government_id=government.id, user_id=uid, role=role))
 
     db.session.commit()
+
+    # Leaving Republic retires any standing state enemies, so the next Republic
+    # starts from a clean slate rather than re-announcing stale nominations.
+    if gov_type != "Republic":
+        republic_enemy_votes.pop(room.id, None)
+        republic_prev_enemies.pop(room.id, None)
+        republic_vote_winner.pop(room.id, None)
+
     print(serialize_room(room))
     emit("room_state", serialize_room(room), to=str(room.id))
 
@@ -320,11 +422,18 @@ def balanceChange(data=None):
                 print(f"[balanceChange] Dictatorship: User is dictator, bonus: +10")
             else:
                 print(f"[balanceChange] Dictatorship: User is not dictator, no special bonus")
-    
+
+    # Charity Commissioner in the game: every opposition player (i.e. everyone
+    # except the Commissioner themselves) loses 20 minutes of turn income.
+    charity_penalty = 0
+    if userData.roomId and _has_job_in_room(userData.roomId, CHARITY_COMMISSIONER_JOB, exclude_user_id=userData.userId):
+        charity_penalty = CHARITY_COMMISSIONER_PENALTY
+        print(f"[balanceChange] Charity Commissioner in game: penalty {charity_penalty}")
+
     bleed_penalty = userData.bleed * 10
-    net_income = job_income + perk_bonus + government_bonus - bleed_penalty
-    
-    print(f"[balanceChange] Bleed: {userData.bleed}, penalty: {bleed_penalty}, perk: {userData.perk}, perk_bonus: {perk_bonus}, government_bonus: {government_bonus}, net: {net_income}")
+    net_income = job_income + perk_bonus + government_bonus + charity_penalty - bleed_penalty
+
+    print(f"[balanceChange] Bleed: {userData.bleed}, penalty: {bleed_penalty}, perk: {userData.perk}, perk_bonus: {perk_bonus}, government_bonus: {government_bonus}, charity_penalty: {charity_penalty}, net: {net_income}")
     
     # Calculate new clock value, but don't let it go below datetime.min (00•00•00)
     try:
@@ -417,6 +526,17 @@ def update_job(data):
         if not job or job.tier > 6:
             emit("error", {"message": "Invalid job selection."})
             return
+
+        # Tier 3 jobs are unique per game - there can only be one Doctor,
+        # one Chancellor and so on. Tier 1 and 2 jobs may be duplicated.
+        if job.tier == TIER_3 and _tier3_job_taken(userData.roomId, job.id, userData.userId):
+            holder = _tier3_job_holder_name(userData.roomId, job.id, userData.userId)
+            emit("error", {
+                "message": f"{job.name} is already taken by {holder}. "
+                           f"Only one player can hold each Tier 3 job."
+            })
+            return
+
         userData.job_id = job.id
 
     db.session.commit()
@@ -769,23 +889,27 @@ def conclude_voting(data=None):
     results = {}
     for voter_id, vote in ballots.items():
         username = db.session.query(User.username).filter_by(id=voter_id).scalar()
+        is_chancellor = _user_has_job(voter_id, room.id, CHANCELLOR_JOB)
+        weight = vote_weight(vote, is_chancellor)
         results[voter_id] = {
             "vote": vote,
-            "username": username
+            "username": username,
+            "is_chancellor": is_chancellor,
+            "weight": weight
         }
-        
+
         # Also update the database
         participant = RoomParticipants.query.filter_by(userId=voter_id, roomId=room.id).first()
         if participant:
             participant.gov_vote = vote
-    
+
     db.session.commit()
-    
-    # Calculate vote counts
-    yes_count = sum(1 for v in ballots.values() if v == 'yes')
-    no_count = sum(1 for v in ballots.values() if v == 'no')
-    abstain_count = sum(1 for v in ballots.values() if v == 'abstain')
-    
+
+    # Calculate vote counts, honouring the Chancellor's double vote for change
+    yes_count = sum(r["weight"] for r in results.values() if r["vote"] == 'yes')
+    no_count = sum(r["weight"] for r in results.values() if r["vote"] == 'no')
+    abstain_count = sum(r["weight"] for r in results.values() if r["vote"] == 'abstain')
+
     # Determine outcome
     if yes_count > no_count:
         outcome = "PASSED"
@@ -844,10 +968,13 @@ voting_question = {}  # { room_id: question_text }
 # Republic head of state voting (in-memory, per room)
 republic_votes = {}  # { room_id: { voter_id: candidate_id, ... } }
 republic_voting_active = {}  # { room_id: True/False }
+republic_vote_winner = {}  # { room_id: user_id } - who actually won the popular vote
 
 # Republic state enemies (in-memory, per room)
 # Votes from head_of_state and advisors on who should be state enemies
 republic_enemy_votes = {}  # { room_id: { voter_id: set(target_ids), ... } }
+# Last announced enemy set, so we can report who was newly declared and who was forgiven
+republic_prev_enemies = {}  # { room_id: set(user_ids) }
 
 @socketio.on("startDictatorBidding")
 @jwt_required()
@@ -910,19 +1037,15 @@ def place_dictator_bid(data=None):
     
     dictator_bids[room.id][user_id] = bid_amount
     
-    # Build tally with bid amounts for broadcast
+    # Build tally of who has bid. The auction is blind, so amounts are never
+    # broadcast - a player only ever learns their own bid.
     tally = {}
-    bid_amounts = {}
     for participant in RoomParticipants.query.filter_by(roomId=room.id):
-        if participant.userId in dictator_bids[room.id]:
-            tally[participant.userId] = True
-            bid_amounts[participant.userId] = dictator_bids[room.id][participant.userId]
-        else:
-            tally[participant.userId] = False
-    
-    # Broadcast tally update with bid amounts
+        tally[participant.userId] = participant.userId in dictator_bids[room.id]
+
+    # Broadcast who has bid (not what they bid)
     room_identifier = str(room.id)
-    socketio.emit("biddingTallyUpdate", {"tally": tally, "bid_amounts": bid_amounts}, to=room_identifier)
+    socketio.emit("biddingTallyUpdate", {"tally": tally}, to=room_identifier)
     print(f"[placeDictatorBid] User {user_id} bid {bid_amount} in room {room.id}")
 
 @socketio.on("concludeDictatorBidding")
@@ -957,14 +1080,15 @@ def conclude_dictator_bidding(data=None):
     winner_bid_minutes = room_bids[winner_id]
     winner_name = db.session.query(User.username).filter_by(id=winner_id).scalar()
     
-    # Build leaderboard sorted by bid amount (highest first)
+    # Build leaderboard sorted by bid amount (highest first).
+    # Amounts are deliberately omitted: the room learns who won, never what
+    # anybody spent.
     leaderboard = []
     for user_id_bid, bid_amount in sorted(room_bids.items(), key=lambda x: x[1], reverse=True):
         username = db.session.query(User.username).filter_by(id=user_id_bid).scalar()
         leaderboard.append({
             "user_id": user_id_bid,
             "username": username,
-            "bid_amount": bid_amount,
             "is_winner": user_id_bid == winner_id
         })
     
@@ -1151,6 +1275,10 @@ def conclude_republic_voting(data=None):
     if not room:
         emit("error", {"message": "Room not found"}); return
 
+    # Only the admin (room creator) may conclude the vote
+    if room.id != user_id:
+        emit("error", {"message": "Only admin can conclude voting"}); return
+
     room_bids = republic_votes.get(room.id, {})
     if not room_bids:
         emit("error", {"message": "No votes cast"}); return
@@ -1160,10 +1288,14 @@ def conclude_republic_voting(data=None):
     for voter_id, candidate_id in room_bids.items():
         vote_counts[candidate_id] = vote_counts.get(candidate_id, 0) + 1
 
-    # Sort by vote count descending
-    sorted_candidates = sorted(vote_counts.items(), key=lambda x: x[1], reverse=True)
+    # Highest count wins; ties are broken deterministically by lowest user id
+    # so every client agrees on the same head of state.
+    sorted_candidates = sorted(vote_counts.items(), key=lambda x: (-x[1], x[0]))
     winner_id = sorted_candidates[0][0]
     winner_name = db.session.query(User.username).filter_by(id=winner_id).scalar()
+
+    # Remember who actually won, so only they can appoint advisors
+    republic_vote_winner[room.id] = winner_id
 
     # Build results with vote counts for all candidates
     results = []
@@ -1225,6 +1357,12 @@ def select_republic_advisors(data=None):
     if republic_voting_active.get(room_id, True):
         emit("error", {"message": "No republic vote concluded"}); return
 
+    winner_id = republic_vote_winner.get(room_id)
+    if winner_id is None:
+        emit("error", {"message": "No republic vote concluded"}); return
+    if int(winner_id) != int(user_id):
+        emit("error", {"message": "Only the elected head of state can select advisors"}); return
+
     head_of_state = user_id
     advisors = [int(a) for a in advisors]
     ids = [head_of_state] + advisors
@@ -1245,6 +1383,7 @@ def select_republic_advisors(data=None):
 
     # Initialize state enemies voting for this room
     republic_enemy_votes[room.id] = {}
+    republic_prev_enemies[room.id] = set()
 
     room_identifier = str(room.id)
     socketio.emit("republicAdvisorsConfirmed", {"head_of_state": head_of_state, "advisors": advisors}, to=room_identifier)
@@ -1349,11 +1488,22 @@ def _broadcast_state_enemies(room):
         if voter_id:
             voter_breakdown[voter_id] = list(votes.get(voter_id, set()))
 
+    def _named(ids):
+        out = []
+        for uid in ids:
+            username = db.session.query(User.username).filter_by(id=uid).scalar()
+            out.append({"user_id": uid, "username": username})
+        return out
+
     # Build enemy list with usernames
-    enemy_list = []
-    for eid in enemies:
-        username = db.session.query(User.username).filter_by(id=eid).scalar()
-        enemy_list.append({"user_id": eid, "username": username})
+    enemy_list = _named(enemies)
+
+    # Work out what actually changed since the last broadcast so the room can be
+    # told who was just declared an enemy and who has been forgiven.
+    previous = republic_prev_enemies.get(room_id, set())
+    newly_declared = _named(enemies - previous)
+    forgiven = _named(previous - enemies)
+    republic_prev_enemies[room_id] = set(enemies)
 
     # Build gov members list for the panel
     gov_members_list = []
@@ -1363,20 +1513,28 @@ def _broadcast_state_enemies(room):
 
     room_identifier = str(room_id)
 
-    # Send detailed breakdown to gov members only
-    socketio.emit("stateEnemyVoteUpdate", {
-        "voter_breakdown": voter_breakdown,
-        "enemies": enemy_list,
-        "gov_members": gov_members_list,
-        "head_of_state_id": head_id
-    }, to=room_identifier)
+    # The per-voter breakdown is for the government only - ordinary players see
+    # the outcome, not who voted for whom.
+    for member in gov_members:
+        socketio.emit("stateEnemyVoteUpdate", {
+            "voter_breakdown": voter_breakdown,
+            "enemies": enemy_list,
+            "gov_members": gov_members_list,
+            "head_of_state_id": head_id
+        }, to=_user_room(member.user_id))
 
     # Announce enemies publicly to all players
     socketio.emit("stateEnemiesAnnouncement", {
-        "enemies": enemy_list
+        "enemies": enemy_list,
+        "newly_declared": newly_declared,
+        "forgiven": forgiven
     }, to=room_identifier)
 
-    print(f"[stateEnemies] Room {room_id}: enemies = {[e['username'] for e in enemy_list]}")
+    print(
+        f"[stateEnemies] Room {room_id}: enemies = {[e['username'] for e in enemy_list]}, "
+        f"newly_declared = {[e['username'] for e in newly_declared]}, "
+        f"forgiven = {[e['username'] for e in forgiven]}"
+    )
 
 
 def getClock(userData) -> datetime:

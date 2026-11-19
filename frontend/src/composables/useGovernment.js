@@ -103,9 +103,10 @@ export function useGovernment() {
     const perk = participant.perk
     if (!perk) return null
 
-    if (perk === 'Manager') return '/manager.png'
-    if (perk === 'Senior') return '/senior.png'
-    if (perk === 'Executive') return '/executive.png'
+    // Filenames are case-sensitive on Linux hosts - these match the files on disk.
+    if (perk === 'Manager') return '/manager.PNG'
+    if (perk === 'Senior') return '/senior.PNG'
+    if (perk === 'Executive') return '/Executive.PNG'
 
     return null
   }

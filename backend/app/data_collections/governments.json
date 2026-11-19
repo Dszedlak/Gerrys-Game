@@ -19,5 +19,10 @@
         "id": 4,
         "type": "Communism",
         "note": "Politburo composed of two players. Leaders receive 10 minutes extra per turn. Peasants pay 20 minutes per turn to the state."
+    },
+    {
+        "id": 5,
+        "type": "Anarchy",
+        "note": "No leaders and no government income effects."
     }
 ]

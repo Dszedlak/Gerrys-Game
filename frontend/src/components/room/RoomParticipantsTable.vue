@@ -21,9 +21,20 @@
               class="room-participants-table__header-select"
             >
               <option :value="null">Select a job</option>
-              <option v-for="j in jobs" :key="j.id" :value="j.id">
-                {{ j.tier ? `${j.name} (Tier ${j.tier})` : j.name }}
-              </option>
+              <optgroup
+                v-for="group in groupedJobs"
+                :key="group.tier"
+                :label="group.label"
+              >
+                <option
+                  v-for="j in group.jobs"
+                  :key="j.id"
+                  :value="j.id"
+                  :disabled="j.takenBy !== null"
+                >
+                  {{ j.takenBy ? `${j.name} — taken by ${j.takenBy}` : j.name }}
+                </option>
+              </optgroup>
             </select>
             <span class="room-participants-table__header-text">
               Job Title 
@@ -199,6 +210,9 @@
 
 <script setup>
 import { defineProps, defineEmits, computed } from 'vue'
+import { useIncome } from '@/composables/useIncome'
+
+const { computeIncomeBreakdown, formatMinutes } = useIncome()
 
 const props = defineProps({
   activePlayers: {
@@ -260,35 +274,54 @@ const getPerkIcon = (participant) => {
   return props.perkIcon(participant)
 }
 
+// Jobs chunked by tier, alphabetical within each chunk.
+// Tier 3 jobs are unique per game, so any already held by another living
+// player is shown as taken and cannot be picked (the server enforces this
+// too — see _tier3_job_taken in sockets.py).
+const TIER_LABELS = {
+  0: 'Unemployed',
+  1: 'Tier 1',
+  2: 'Tier 2',
+  3: 'Tier 3 — one player each'
+}
+
+const groupedJobs = computed(() => {
+  const currentId = props.currentUserId
+  const byTier = new Map()
+
+  for (const j of props.jobs) {
+    const tier = j.tier || 0
+    let takenBy = null
+    if (tier === 3) {
+      const holder = props.activePlayers.find(p => {
+        const pid = p.user_id || p.userId || p.id
+        return p.job_name === j.name && pid !== currentId
+      })
+      if (holder) takenBy = holder.username
+    }
+    if (!byTier.has(tier)) byTier.set(tier, [])
+    byTier.get(tier).push({ ...j, takenBy })
+  }
+
+  return [...byTier.keys()]
+    .sort((a, b) => a - b)
+    .map(tier => ({
+      tier,
+      label: TIER_LABELS[tier] || `Tier ${tier}`,
+      jobs: byTier.get(tier).sort((a, b) => a.name.localeCompare(b.name))
+    }))
+})
+
 const playerIncomeMap = computed(() => {
   const map = {}
   for (const p of props.activePlayers) {
     const id = p.user_id || p.userId || p.id
-    const job = props.jobs.find(j => j.name === p.job_name)
-    const jobIncome = (job?.tier || 0) * 10
-
-    let perkBonus = 0
-    if (p.perk === 'Manager') perkBonus = 10
-    else if (p.perk === 'Senior') perkBonus = 20
-    else if (p.perk === 'Executive') perkBonus = 30
-
-    let govBonus = 0
-    const gov = props.roomGovernment
-    if (gov?.type === 'Communism') {
-      const isMember = gov.members?.some(m => m.user_id === id)
-      govBonus = isMember ? 10 : -20
-    } else if (gov?.type === 'Dictatorship') {
-      const isDictator = gov.members?.some(m => m.user_id === id && m.role === 'dictator')
-      govBonus = isDictator ? 10 : 0
-    }
-
-    const bleedPenalty = (p.bleed || 0) * 10
-    const total = jobIncome + perkBonus + govBonus - bleedPenalty
-    const sign = total >= 0 ? '+' : '-'
-    const abs = Math.abs(total)
-    const h = String(Math.floor(abs / 60)).padStart(2, '0')
-    const m = String(abs % 60).padStart(2, '0')
-    map[id] = `${sign}${h}:${m}`
+    const { net } = computeIncomeBreakdown(p, {
+      jobs: props.jobs,
+      government: props.roomGovernment,
+      allPlayers: props.activePlayers
+    })
+    map[id] = formatMinutes(net)
   }
   return map
 })
@@ -349,18 +382,35 @@ const voteModel = computed({
   display: flex;
   justify-content: center;
   width: 100%;
-  margin-top: 30px;
-  margin-bottom: 30px;
+  margin-top: 10px;
+  margin-bottom: 12px;
+  padding: 0 16px;
+}
+
+/* Below ~900px the seven columns can no longer share the width without
+   crushing the bleed/heat controls, so scroll the table instead of
+   clipping it. */
+@media (max-width: 900px) {
+  .room-participants-table__wrapper {
+    display: block;
+    overflow-x: auto;
+    padding: 0 10px;
+  }
+
+  .room-participants-table__table {
+    min-width: 720px;
+  }
 }
 
 .room-participants-table__table {
-  width: 95%;
-  max-width: 1400px;
+  width: 100%;
+  /* Capped so the roster doesn't sprawl on very wide monitors and leave the
+     centred HUD looking lost above it. */
+  max-width: 1500px;
   background: #1A1F2E !important;
   border: 1px solid rgba(241, 245, 249, 0.3) !important;
   border-radius: 12px;
   overflow: hidden;
-  margin-top: 20px;
   table-layout: fixed;
 }
 
@@ -371,15 +421,19 @@ const voteModel = computed({
 }
 
 .room-participants-table__table thead tr {
-  height: 50px;
+  height: 40px;
   background: #0B0F19 !important;
   overflow: hidden;
-  max-height: 50px;
+  max-height: 40px;
 }
 
+/* NOTE: header height is 40px = 10px + 20px line-height + 10px.
+   The same sum is repeated on .room-participants-table__header-text,
+   because the three dropdown headers delegate their padding to that
+   inner span. Change one and you must change the other. */
 .room-participants-table__header {
   vertical-align: middle;
-  height: 50px;
+  height: 40px;
   border: 1px solid #22D3EE !important;
   color: #EAB308 !important;
   font-weight: 700 !important;
@@ -387,12 +441,12 @@ const voteModel = computed({
   letter-spacing: 0.5px;
   text-align: center !important;
   font-family: 'Barlow Condensed' !important;
-  font-size: 1.15em !important;
+  font-size: 1.05em !important;
   background: #1A1F2E !important;
-  padding: 4px 13px !important;
+  padding: 4px 10px !important;
   line-height: 20px;
   overflow: hidden;
-  max-height: 50px;
+  max-height: 40px;
 }
 
 .room-participants-table__header-select {
@@ -409,6 +463,7 @@ const voteModel = computed({
   z-index: 10;
 }
 
+/* 10 + 20 + 10 = the 40px header height above. Keep these in sync. */
 .room-participants-table__header-text {
   display: block;
   color: #EAB308 !important;
@@ -416,8 +471,8 @@ const voteModel = computed({
   text-transform: uppercase;
   letter-spacing: 0.5px;
   font-family: 'Barlow Condensed' !important;
-  font-size: 1.15em !important;
-  padding: 15px !important;
+  font-size: 1.05em !important;
+  padding: 10px !important;
   text-align: center !important;
   line-height: 20px;
 }
@@ -427,67 +482,56 @@ const voteModel = computed({
   font-size: 0.9em;
 }
 
-/* Header Specific */
+/* Header Specific.
+   The table is table-layout:fixed at width:100%, so these act as
+   proportions. Username and Job Title get the width freed by removing
+   the old 1400px cap; Bleed/Heat only need room for two 28px buttons. */
 .room-participants-table__header--username {
-  width: 100px;
-  min-width: 100px;
-  max-width: 100px;
+  width: 18%;
 }
 
 .room-participants-table__header--income {
-  width: 80px;
-  min-width: 80px;
-  max-width: 80px;
+  width: 11%;
 }
 
 .room-participants-table__header--job-title {
-  width: 130px;
-  min-width: 130px;
-  max-width: 130px;
+  width: 21%;
   position: relative;
   padding: 0 !important;
   cursor: pointer;
   overflow: hidden;
-  max-height: 50px;
+  max-height: 40px;
 }
 
 .room-participants-table__header--perk-title {
-  width: 100px;
-  min-width: 100px;
-  max-width: 100px;
+  width: 11%;
   position: relative;
   padding: 0 !important;
   cursor: pointer;
   overflow: hidden;
-  max-height: 50px;
+  max-height: 40px;
 }
 
 .room-participants-table__header--approval-title {
-  width: 100px;
-  min-width: 100px;
-  max-width: 100px;
+  width: 14%;
   position: relative;
   padding: 0 !important;
   cursor: pointer;
   overflow: hidden;
-  max-height: 50px;
+  max-height: 40px;
 }
 
 .room-participants-table__header--vote-title {
-  width: 100px;
-  min-width: 100px;
-  max-width: 100px;
+  width: 11%;
   position: relative;
   padding: 0 !important;
   cursor: pointer;
   overflow: hidden;
-  max-height: 50px;
+  max-height: 40px;
 }
 
 .room-participants-table__header--bleed {
-  width: 110px;
-  min-width: 110px;
-  max-width: 110px;
+  width: 12%;
   text-align: center;
   vertical-align: middle;
   overflow: visible !important;
@@ -495,9 +539,7 @@ const voteModel = computed({
 }
 
 .room-participants-table__header--heat {
-  width: 110px;
-  min-width: 110px;
-  max-width: 110px;
+  width: 12%;
   text-align: center;
   vertical-align: middle;
   overflow: visible !important;
@@ -553,27 +595,28 @@ const voteModel = computed({
   background: #1A1F2E !important;
 }
 
+/* Rows are 44px. The floor is the perk icon (32px) plus padding. */
 .room-participants-table__cell {
   border-color: rgba(241, 245, 249, 0.15) !important;
-  padding: 15px !important;
+  padding: 6px 10px !important;
   vertical-align: middle;
   color: #F1F5F9 !important;
   font-weight: 500;
   text-align: center !important;
-  font-size: 1.1em !important;
+  font-size: 1em !important;
   background: #1A1F2E !important;
-  height: 60px !important;
-  min-height: 60px !important;
-  max-height: 60px !important;
+  height: 44px !important;
+  min-height: 44px !important;
+  max-height: 44px !important;
   overflow: hidden !important;
 }
 
 .room-participants-table__table tbody tr {
   transition: background-color 0.2s ease;
   background: #1A1F2E !important;
-  height: 60px !important;
-  min-height: 60px !important;
-  max-height: 60px !important;
+  height: 44px !important;
+  min-height: 44px !important;
+  max-height: 44px !important;
   overflow: hidden !important;
 }
 
@@ -597,24 +640,14 @@ const voteModel = computed({
   margin-right: 2px;
 }
 
+/* Column widths come from the <th> rules above (table-layout: fixed uses
+   the first row), so cells only carry appearance, not sizing. */
 .room-participants-table__cell--income {
-  width: 80px;
-  min-width: 80px;
-  max-width: 80px;
   font-family: 'Courier New', monospace;
   font-weight: 600;
 }
 
-.room-participants-table__cell--job-title {
-  width: 130px;
-  min-width: 130px;
-  max-width: 130px;
-}
-
 .room-participants-table__cell--perk {
-  width: 100px;
-  min-width: 100px;
-  max-width: 100px;
   padding: 0 !important;
   background: transparent !important;
   border: none !important;
@@ -622,29 +655,11 @@ const voteModel = computed({
 }
 
 .room-participants-table__cell--approval {
-  width: 100px;
-  min-width: 100px;
-  max-width: 100px;
-  padding: 5px 12px !important;
+  padding: 4px 10px !important;
 }
 
 .room-participants-table__cell--vote {
-  width: 100px;
-  min-width: 100px;
-  max-width: 100px;
-  padding: 5px 12px !important;
-}
-
-.room-participants-table__cell--bleed {
-  width: 110px;
-  min-width: 110px;
-  max-width: 110px;
-}
-
-.room-participants-table__cell--heat {
-  width: 110px;
-  min-width: 110px;
-  max-width: 110px;
+  padding: 4px 10px !important;
 }
 
 .room-participants-table__cell--empty {
@@ -652,9 +667,9 @@ const voteModel = computed({
   column-span: 7;
 }
 
-/* Icons */
+/* Icons — sized to fit a 44px row (was 40px, which forced 60px rows) */
 .room-participants-table__gov-icon {
-  height: 28px;
+  height: 26px;
   width: auto;
   margin-left: 6px;
   vertical-align: middle;
@@ -663,13 +678,13 @@ const voteModel = computed({
 
 @media (min-width: 1200px) {
   .room-participants-table__gov-icon {
-    height: 40px;
+    height: 32px;
   }
 }
 
 .room-participants-table__perk-icon {
-  height: 40px;
-  width: 40px;
+  height: 32px;
+  width: 32px;
   object-fit: contain;
   position: absolute !important;
   top: 50% !important;

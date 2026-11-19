@@ -126,14 +126,20 @@ export function useVoting() {
 
     for (const [userId, data] of Object.entries(voteResults.value)) {
       summary.total++
-      if (data.vote === 'yes') summary.yes++
-      else if (data.vote === 'no') summary.no++
-      else if (data.vote === 'abstain') summary.abstain++
-      
+      // The Chancellor carries two votes, but only in favour of change.
+      // The server sends the weight it applied; mirror it exactly so the
+      // results modal cannot disagree with the recorded outcome.
+      const weight = data.weight ?? 1
+      if (data.vote === 'yes') summary.yes += weight
+      else if (data.vote === 'no') summary.no += weight
+      else if (data.vote === 'abstain') summary.abstain += weight
+
       summary.votes.push({
         userId: parseInt(userId),
         username: data.username,
-        vote: data.vote
+        vote: data.vote,
+        weight,
+        isChancellor: Boolean(data.is_chancellor)
       })
     }
 
