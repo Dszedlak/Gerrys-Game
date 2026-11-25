@@ -1,0 +1,318 @@
+{
+  "key": "4.27-example",
+  "name": "v4.27 (example cards)",
+  "default": false,
+  "notes": "Rules v4.27 with placeholder example cards. Replace with the real Scenario, Assignment and Collectable lists. Job Opportunity, Promotion and Bandage texts come from the rules; their copy counts are guesses.",
+  "scenario": [
+    {
+      "id": "sc-example-tax",
+      "example": true,
+      "title": "Tax Audit",
+      "text": "The taxman calls on everyone. Every player loses 30 minutes.",
+      "effects": [
+        {
+          "type": "time",
+          "who": "all",
+          "minutes": -30
+        }
+      ]
+    },
+    {
+      "id": "sc-example-windfall",
+      "example": true,
+      "title": "Windfall",
+      "text": "You find an unclaimed bank account. Gain 1 hour.",
+      "effects": [
+        {
+          "type": "time",
+          "who": "self",
+          "minutes": 60
+        }
+      ]
+    },
+    {
+      "id": "sc-example-pickpocket",
+      "example": true,
+      "title": "Pickpocket",
+      "text": "Choose a player and take 30 minutes from them.",
+      "effects": [
+        {
+          "type": "steal",
+          "who": "choose",
+          "minutes": 30
+        }
+      ]
+    },
+    {
+      "id": "sc-example-outbreak",
+      "example": true,
+      "title": "Outbreak",
+      "text": "Roll the die. Every other player loses 10 minutes per pip.",
+      "effects": [
+        {
+          "type": "time_roll",
+          "who": "others",
+          "per_pip": -10,
+          "dice": 1
+        }
+      ]
+    },
+    {
+      "id": "sc-example-raid",
+      "example": true,
+      "title": "Police Raid",
+      "text": "Everyone gains 1 heat. The richest player gains another.",
+      "effects": [
+        {
+          "type": "heat",
+          "who": "all",
+          "amount": 1
+        },
+        {
+          "type": "heat",
+          "who": "richest",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "sc-example-commute",
+      "example": true,
+      "title": "Missed the Bus",
+      "text": "Walk back to Start (you don't pass it, so no heat is removed).",
+      "effects": [
+        {
+          "type": "move",
+          "to": "start"
+        }
+      ]
+    },
+    {
+      "id": "sc-example-coup",
+      "example": true,
+      "title": "Coup d'État",
+      "text": "The government falls into Anarchy until a new vote is held.",
+      "effects": [
+        {
+          "type": "note",
+          "text": "Admin: set the government to Anarchy."
+        }
+      ]
+    }
+  ],
+  "assignment": [
+    {
+      "id": "as-example-sabotage",
+      "example": true,
+      "title": "Sabotage",
+      "text": "Make your target lose a job or a title.",
+      "reward": [
+        {
+          "type": "time",
+          "who": "self",
+          "minutes": 60
+        }
+      ]
+    },
+    {
+      "id": "as-example-bankrupt",
+      "example": true,
+      "title": "Bankrupt",
+      "text": "Take at least 1 hour from your target in a single turn.",
+      "reward": [
+        {
+          "type": "time",
+          "who": "self",
+          "minutes": 90
+        }
+      ]
+    },
+    {
+      "id": "as-example-snitch",
+      "example": true,
+      "title": "Snitch",
+      "text": "Get your target sent to Jail.",
+      "reward": [
+        {
+          "type": "time",
+          "who": "self",
+          "minutes": 60
+        },
+        {
+          "type": "draw",
+          "deck": "collectable",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "as-example-plague",
+      "example": true,
+      "title": "Patient Zero",
+      "text": "Hit your target with the Time Virus.",
+      "reward": [
+        {
+          "type": "time",
+          "who": "self",
+          "minutes": 45
+        }
+      ]
+    }
+  ],
+  "collectable": [
+    {
+      "id": "co-example-coffee",
+      "example": true,
+      "copies": 3,
+      "title": "Strong Coffee",
+      "text": "Use: gain 20 minutes.",
+      "effects": [
+        {
+          "type": "time",
+          "who": "self",
+          "minutes": 20
+        }
+      ]
+    },
+    {
+      "id": "co-example-bandage",
+      "example": true,
+      "copies": 3,
+      "title": "Bandage",
+      "text": "Use: remove one bleeding effect.",
+      "effects": [
+        {
+          "type": "bleed",
+          "who": "self",
+          "amount": -1
+        }
+      ]
+    },
+    {
+      "id": "co-example-alibi",
+      "example": true,
+      "copies": 2,
+      "title": "Alibi",
+      "text": "Use: remove 1 heat.",
+      "effects": [
+        {
+          "type": "heat",
+          "who": "self",
+          "amount": -1
+        }
+      ]
+    },
+    {
+      "id": "co-example-knife",
+      "example": true,
+      "copies": 2,
+      "title": "Rusty Knife",
+      "text": "Use on a player: they start bleeding (lose 10 more minutes a turn).",
+      "effects": [
+        {
+          "type": "bleed",
+          "who": "choose",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "co-example-lockpick",
+      "example": true,
+      "copies": 2,
+      "title": "Lockpick",
+      "text": "Use on a player: steal 20 minutes from them.",
+      "effects": [
+        {
+          "type": "steal",
+          "who": "choose",
+          "minutes": 20
+        }
+      ]
+    },
+    {
+      "id": "co-example-armour",
+      "example": true,
+      "copies": 2,
+      "equip": true,
+      "title": "Body Armour",
+      "text": "Equip. Counts as an item for War; +1 to your die against War.",
+      "effects": [
+        {
+          "type": "note",
+          "text": "Discard when you lose to War."
+        }
+      ]
+    },
+    {
+      "id": "co-example-scavenger",
+      "example": true,
+      "copies": 2,
+      "title": "Scavenger",
+      "text": "Use: take any card of your choice from the collectable discard pile.",
+      "effects": [
+        {
+          "type": "take_discard",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "co-revolution-token",
+      "example": true,
+      "copies": 1,
+      "start_in_discard": true,
+      "title": "Revolution Token",
+      "text": "Starts the game on the discard pile and can be bought at the Black Market. Use: start a revolution against the government.",
+      "effects": [
+        {
+          "type": "note",
+          "text": "A revolution: the admin starts a government vote."
+        }
+      ]
+    }
+  ],
+  "job": [
+    {
+      "id": "job-opportunity",
+      "copies": 12,
+      "title": "Job Opportunity",
+      "text": "Take any available Tier 1 job. If you are already employed, resign from your post first.",
+      "effects": [
+        {
+          "type": "note",
+          "text": "Pick your new Tier 1 job in the You panel."
+        }
+      ]
+    }
+  ],
+  "promotion": [
+    {
+      "id": "promotion",
+      "copies": 12,
+      "title": "Promotion",
+      "text": "Promote yourself in your job by one tier, or increase your title by one level.",
+      "effects": [
+        {
+          "type": "note",
+          "text": "Change your job or title in the You panel."
+        }
+      ]
+    }
+  ],
+  "hospital": [
+    {
+      "id": "bandage",
+      "copies": 30,
+      "title": "Bandage",
+      "text": "Heals 10 minutes of bleeding effect.",
+      "effects": [
+        {
+          "type": "bleed",
+          "who": "self",
+          "amount": -1
+        }
+      ]
+    }
+  ]
+}

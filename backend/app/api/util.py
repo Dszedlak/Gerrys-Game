@@ -20,6 +20,7 @@ ROOMS_FIELDS = {
         attribute=lambda x: x.government.type if hasattr(x, 'government') and x.government else None
     ),
     "owner_id": fields.Integer(attribute="id"),
+    "game_version": fields.String,
     "owner_name": fields.String(
         attribute=lambda x: next((p.user.username for p in x.participants if p.userId == x.id and p.user), None)
     ),
@@ -37,6 +38,7 @@ ROOM_WAITING_FIELDS = {"user_id"}
 
 roomParser = reqparse.RequestParser()
 roomParser.add_argument("name", type=str, required=True)
+roomParser.add_argument("game_version", type=str, required=False)
 
 joinRoomParser = reqparse.RequestParser()
 joinRoomParser.add_argument("roomId", type=int, required=True)

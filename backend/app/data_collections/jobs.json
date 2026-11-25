@@ -21,31 +21,36 @@
     "id": 15,
     "tier": 3,
     "name": "CFO",
-    "type": "Finance"
+    "type": "Finance",
+    "note": "Sanction up to three players of your choice who possess 6 or more items with 20 minutes each."
   },
   {
     "id": 22,
     "tier": 3,
     "name": "Chancellor",
-    "type": "Finance"
+    "type": "Public Service",
+    "note": "Remote access to the Senate per turn, but all costs are increased by 30 minutes. Two votes when trying to change government, a single vote when voting remain."
   },
   {
     "id": 17,
     "tier": 3,
     "name": "Time Keeper",
-    "type": "Finance"
+    "type": "Finance",
+    "note": "Every turn, siphon 20 minutes from one player of your choice and/or 20 minutes from a second player of your choice."
   },
   {
     "id": 18,
     "tier": 3,
     "name": "Real Estate Officer",
-    "type": "Finance"
+    "type": "Finance",
+    "note": "Every time a player visits the Job Centre, Hospital or Senate you can demand 20 minutes."
   },
   {
     "id": 20,
     "tier": 3,
     "name": "Stock Broker",
-    "type": "Finance"
+    "type": "Finance",
+    "note": "Once per turn, steal 30 minutes from a player of your choice and gamble it on your movement roll: 1: -30 mins; 2: -10; 3: +10; 4: +20; 5: +30; 6: +40."
   },
   {
     "id": 1,
@@ -64,25 +69,28 @@
     "tier": 3,
     "name": "Chaos Creator",
     "type": "Illicit",
-    "note": "Option 2 is time virus to all alive players including themselves"
+    "note": "Roll the black die: 1. +5 to Horseman counter; 2. Time Virus EVERYONE; 3. Draw a Scenario Card; 4. Time Virus a player; 5. +1 heat to a player; 6. Steal 30 mins from players. The roll for the ability is also your movement roll."
   },
   {
     "id": 4,
     "tier": 3,
     "name": "Assassin",
-    "type": "Illicit"
+    "type": "Illicit",
+    "note": "Once per turn, inflict 20 minutes bleeding effect on one player and 10 minutes on a different player of your choice."
   },
   {
     "id": 5,
     "tier": 3,
     "name": "Syndicate Leader",
-    "type": "Illicit"
+    "type": "Illicit",
+    "note": "Sanction a player of your choice with +1 heat by rolling 4 or higher for movement (not affected by charms) on your turn."
   },
   {
     "id": 6,
     "tier": 3,
     "name": "Pimp",
-    "type": "Illicit"
+    "type": "Illicit",
+    "note": "Steal a collectable from another player (of their choice) on your turn."
   },
   {
     "id": 7,
@@ -101,19 +109,20 @@
     "tier": 3,
     "name": "Doctor",
     "type": "Public Service",
-    "note": "Forces player to pay 1.5 hours to heal bleeding effect on other players"
+    "note": "The costs at the Hospital are doubled whilst you are in post for all opposition players. Draw three Hospital Items per turn."
   },
   {
     "id": 10,
     "tier": 3,
     "name": "Charity Commissioner",
     "type": "Public Service",
-    "note": "Forces player to sacrifice item so another player gets +1 heat removed (usable twice)"
+    "note": "All opposition players pay 20 minutes per turn whilst you are in post. Once per turn, forgive +1 heat from a player of your choice at an agreed price."
   },
   {
     "id": 12,
     "tier": 3,
     "name": "Judge",
-    "type": "Public Service"
+    "type": "Public Service",
+    "note": "You can overrule and decide any court case. Can accept bribes/make deals for a favourable outcome at an agreed price."
   }
 ]

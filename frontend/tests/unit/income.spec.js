@@ -68,21 +68,21 @@ describe('useIncome - government', () => {
     ]
   };
 
-  it('gives politburo members +10', () => {
-    expect(net(player({ user_id: 1, job_name: 'CFO' }), { government: communism })).toBe(40);
+  it('gives politburo members +20', () => {
+    expect(net(player({ user_id: 1, job_name: 'CFO' }), { government: communism })).toBe(50);
   });
 
   it('charges peasants -20', () => {
     expect(net(player({ user_id: 3, job_name: 'CFO' }), { government: communism })).toBe(10);
   });
 
-  it('gives the dictator +10 and nobody else a bonus', () => {
+  it('gives the dictator +30 and nobody else a bonus', () => {
     const dictatorship = { type: 'Dictatorship', members: [{ user_id: 2, role: 'dictator' }] };
-    expect(net(player({ user_id: 2, job_name: 'CFO' }), { government: dictatorship })).toBe(40);
+    expect(net(player({ user_id: 2, job_name: 'CFO' }), { government: dictatorship })).toBe(60);
     expect(net(player({ user_id: 3, job_name: 'CFO' }), { government: dictatorship })).toBe(30);
   });
 
-  it('applies no income effect under Democracy or Republic', () => {
+  it('pays the Head of State +20 and advisors +10 under a Republic, nobody under Democracy', () => {
     const republic = {
       type: 'Republic',
       members: [
@@ -90,7 +90,9 @@ describe('useIncome - government', () => {
         { user_id: 2, role: 'advisor' }
       ]
     };
-    expect(net(player({ user_id: 1, job_name: 'CFO' }), { government: republic })).toBe(30);
+    expect(net(player({ user_id: 1, job_name: 'CFO' }), { government: republic })).toBe(50);
+    expect(net(player({ user_id: 2, job_name: 'CFO' }), { government: republic })).toBe(40);
+    expect(net(player({ user_id: 3, job_name: 'CFO' }), { government: republic })).toBe(30);
     expect(net(player({ user_id: 1, job_name: 'CFO' }), { government: { type: 'Democracy' } })).toBe(30);
   });
 });

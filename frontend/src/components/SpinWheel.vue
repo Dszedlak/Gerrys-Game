@@ -16,7 +16,15 @@
           </svg>
         </div>
         <div class="spin-controls mt-4">
-          <b-button variant="primary" size="lg" :disabled="isSpinning" @click="spinWheel" class="spin-button">{{ isSpinning ? 'Spinning...' : 'SPIN!' }}</b-button>
+          <!-- Synced mode: the admin asks the server to spin and everyone watches -->
+          <template v-if="synced">
+            <b-button v-if="isAdmin" variant="primary" size="lg" :disabled="isSpinning" @click="emit('spin-request')" class="spin-button">
+              {{ isSpinning ? 'Spinning...' : 'SPIN!' }}
+            </b-button>
+            <p v-else-if="isSpinning" class="spin-by">{{ spunBy ? `${spunBy} spun the wheel…` : 'The wheel is spinning…' }}</p>
+            <p v-else-if="!winner" class="spin-by">Waiting for the admin to spin…</p>
+          </template>
+          <b-button v-else variant="primary" size="lg" :disabled="isSpinning" @click="spinWheel" class="spin-button">{{ isSpinning ? 'Spinning...' : 'SPIN!' }}</b-button>
         </div>
         <div v-if="winner" class="winner-result mt-4">
           <h3>🎉 Winner: <span class="winner-name">{{ winner.text || winner }}</span> 🎉</h3>
@@ -66,14 +74,16 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 
 const props = defineProps({
   participants: { type: Array, required: true, default: () => [] },
   showCustomActions: { type: Boolean, default: false },
   inline: { type: Boolean, default: false },
   isAdmin: { type: Boolean, default: false },
-  showSpinButton: { type: Boolean, default: true }
+  showSpinButton: { type: Boolean, default: true },
+  // Modal mode: spins come from the server (playSpin) so every player sees the same one
+  synced: { type: Boolean, default: false }
 })
 
 const emit = defineEmits(['spin-request'])
@@ -88,6 +98,7 @@ const wheelSvg = ref(null)
 const isSpinning = ref(false)
 const currentRotation = ref(0)
 const winner = ref(null)
+const spunBy = ref('')
 
 const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E2', '#F8B739', '#52B788', '#E74C3C', '#3498DB', '#9B59B6', '#1ABC9C', '#F39C12']
 
@@ -138,17 +149,35 @@ function getTextTransform(index) {
 }
 
 function open() {
-  winner.value = null
+  if (!isSpinning.value) winner.value = null
   wheelModal.value?.show()
 }
 
+const modalOpen = ref(false)
+let shownWaiters = []
+
 function onModalShown() {
-  winner.value = null
+  modalOpen.value = true
+  shownWaiters.forEach(resolve => resolve())
+  shownWaiters = []
+  // Keep a spin that is about to play (it may have opened this modal)
+  if (!isSpinning.value && !pendingSpin) winner.value = null
 }
 
 function onModalHidden() {
+  modalOpen.value = false
   isSpinning.value = false
 }
+
+function waitUntilShown(timeoutMs = 1500) {
+  if (props.inline || modalOpen.value) return Promise.resolve()
+  return new Promise(resolve => {
+    shownWaiters.push(resolve)
+    setTimeout(resolve, timeoutMs)
+  })
+}
+
+let pendingSpin = false
 
 // Generate spin data (rotation and winner) without executing - for synced spins
 function generateSpinData() {
@@ -200,6 +229,38 @@ function spinToRotation(targetRotation, spinDuration = 5000) {
   }, spinDuration)
 }
 
+/**
+ * Play a spin decided by the server: { entries, winner_index, rotation, duration_ms, by }.
+ * The parent sets `participants` to spin.entries first so every screen has the same slices.
+ */
+async function playSpin(spin) {
+  if (!spin) return
+  pendingSpin = true
+  if (!props.inline) {
+    wheelModal.value?.show()
+    await waitUntilShown()
+  }
+  pendingSpin = false
+  // Start from 0 without animating, then spin on the next frames
+  isSpinning.value = false
+  winner.value = null
+  currentRotation.value = 0
+  spunBy.value = spin.by || ''
+  await nextTick()
+  await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+  isSpinning.value = true
+  await nextTick()
+  currentRotation.value = spin.rotation
+  clearTimeout(spinTimer)
+  spinTimer = setTimeout(() => {
+    const w = spin.entries?.[spin.winner_index]
+    winner.value = w ? { text: w.username, value: w.user_id } : null
+    isSpinning.value = false
+  }, spin.duration_ms || 5000)
+}
+
+let spinTimer = null
+
 function spinWheel() {
   // Local spin - generates and executes immediately
   const spinData = generateSpinData()
@@ -215,7 +276,7 @@ function clearWinner() {
 
 function onSpinEnd() {}
 
-defineExpose({ open, winner, spinWheel, spinToRotation, generateSpinData, clearWinner, wheelModal })
+defineExpose({ open, winner, spinWheel, spinToRotation, generateSpinData, clearWinner, playSpin, wheelModal })
 </script>
 
 <style scoped>
@@ -231,6 +292,7 @@ defineExpose({ open, winner, spinWheel, spinToRotation, generateSpinData, clearW
 .wheel-svg.spinning { transition: transform 5s cubic-bezier(0.25, 0.1, 0.25, 1); }
 .wheel-text { font-size: 16px; font-weight: bold;; pointer-events: none; }
 .spin-controls { text-align: center; }
+.spin-by { margin: 0; font-size: 1.2em; color: #CBD5E1; }
 .spin-controls-inline { text-align: center; }
 .spin-button { min-width: 200px; font-size: 1.5em; font-weight: bold; padding: 12px 40px; border-radius: 50px; transition: all 0.3s ease; background: #1A1F2E !important; border: 2px solid #EAB308 !important; color: #EAB308 !important; }
 .spin-button-inline { min-width: 180px; font-size: 1.1em; font-weight: bold; padding: 10px 24px; border-radius: 50px; transition: all 0.3s ease; }

@@ -26,6 +26,11 @@ class RoomListService {
     return ApiService.get(`rooms/history?roomId=${roomId}`);
   }
 
+  // Card sets ("game versions") a new room can be played with
+  getGameVersions() {
+    return ApiService.get("game-versions");
+  }
+
   setWinner(data) {
     return ApiService.post("rooms/winner", data);
   }

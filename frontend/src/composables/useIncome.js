@@ -17,9 +17,12 @@ const PERK_BONUS = { Manager: 10, Senior: 20, Executive: 30 }
 const CHARITY_COMMISSIONER = 'Charity Commissioner'
 const CHARITY_COMMISSIONER_PENALTY = -20
 
-const COMMUNISM_POLITBURO_BONUS = 10
+// Government cards (v4.27)
+const COMMUNISM_POLITBURO_BONUS = 20
 const COMMUNISM_PEASANT_PENALTY = -20
-const DICTATOR_BONUS = 10
+const DICTATOR_BONUS = 30
+const HEAD_OF_STATE_BONUS = 20
+const ADVISOR_BONUS = 10
 
 /**
  * Resolve a participant's user id across the several shapes the
@@ -81,6 +84,10 @@ export function useIncome() {
       })
     } else if (type === 'dictatorship' && g.dictator === uid) {
       lines.push({ label: 'Government — Dictatorship (dictator)', minutes: DICTATOR_BONUS })
+    } else if (type === 'republic' && g.head_of_state === uid) {
+      lines.push({ label: 'Government — Republic (head of state)', minutes: HEAD_OF_STATE_BONUS })
+    } else if (type === 'republic' && g.advisors.has(uid)) {
+      lines.push({ label: 'Government — Republic (advisor)', minutes: ADVISOR_BONUS })
     }
 
     // --- Charity Commissioner: -20 to every player except the Commissioner.

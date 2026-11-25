@@ -2,53 +2,59 @@
   <div class="room-list-page">
     <div class="room-list-container">
       <!-- Header -->
-      <div class="room-list-header">
-        <h1 class="room-list-title">Active Games</h1>
-        <BButton v-if="username" class="create-room-btn" @click="showCreateRoomModal">
-          <span class="btn-icon">+</span> Create Room
-        </BButton>
-      </div>
-      
-      <div v-if="!username" class="empty-state">
-        <div class="empty-state-icon">🔒</div>
-        <p>Please log in to see available rooms.</p>
-      </div>
-      
-      <div v-else-if="rooms.length === 0" class="empty-state">
-        <div class="empty-state-icon">🎮</div>
-        <p>No rooms available. Create one to get started!</p>
-      </div>
-      
-      <!-- Room Cards Grid -->
-      <div v-else class="rooms-grid">
-        <div v-for="(room, index) in rooms" :key="index" class="room-card">
-          <div class="room-card-header">
-            <h3 class="room-card-title">{{ room.name }}</h3>
-            <span class="room-card-owner">by {{ room.owner_name || 'Unknown' }}</span>
-          </div>
-          <div class="room-card-body">
-            <div class="room-card-stats">
-              <div class="stat">
-                <span class="stat-icon">👥</span>
-                <span class="stat-value">{{ room.participant_count || 0 }}</span>
-                <span class="stat-label">Players</span>
-              </div>
-              <div class="stat">
-                <span class="stat-icon">⏱️</span>
-                <span class="stat-value">{{ formatDuration(room.startedAt) }}</span>
-                <span class="stat-label">Open</span>
-              </div>
-            </div>
-          </div>
-          <div class="room-card-actions">
-            <BButton class="btn-details" @click.prevent="showDetailsModal(room)">
-              Details
-            </BButton>
-            <BButton class="btn-join" @click.prevent="quickJoin(room)">
-              Join
-            </BButton>
-          </div>
+      <header class="rl-head">
+        <div>
+          <div class="rl-eyebrow">Gerry's Game</div>
+          <h1 class="rl-title">
+            Active games
+            <span v-if="username && rooms.length" class="rl-count">{{ rooms.length }} open</span>
+          </h1>
+          <p class="rl-sub">Join a room with your friends, or start your own.</p>
         </div>
+        <button v-if="username" type="button" class="rl-create" @click="showCreateRoomModal">
+          <span class="rl-create__plus" aria-hidden="true">+</span>
+          Create room
+        </button>
+      </header>
+
+      <div v-if="!username" class="rl-empty">
+        <div class="rl-empty__art" aria-hidden="true">🔒</div>
+        <h2 class="rl-empty__title">Sign in to play</h2>
+        <p class="rl-empty__text">Log in to see the games that are running and join one.</p>
+        <router-link to="/login" class="rl-create rl-create--link">Sign in</router-link>
+      </div>
+
+      <div v-else-if="rooms.length === 0" class="rl-empty">
+        <div class="rl-empty__art" aria-hidden="true">🎲</div>
+        <h2 class="rl-empty__title">No games running yet</h2>
+        <p class="rl-empty__text">Create a room, share its name with your friends, and start once everyone's in the lobby.</p>
+        <button type="button" class="rl-create" @click="showCreateRoomModal">
+          <span class="rl-create__plus" aria-hidden="true">+</span>
+          Create the first room
+        </button>
+      </div>
+
+      <!-- Room Cards Grid -->
+      <div v-else class="rl-grid">
+        <article v-for="(room, index) in rooms" :key="index" class="rl-card">
+          <div class="rl-card__top">
+            <h3 class="rl-card__name" :title="room.name">{{ room.name }}</h3>
+            <span v-if="room.game_version" class="rl-card__version">v{{ room.game_version }}</span>
+          </div>
+          <div class="rl-card__host">
+            <span class="rl-card__avatar">{{ (room.owner_name || '?').charAt(0).toUpperCase() }}</span>
+            <span>Hosted by <strong>{{ room.owner_name || 'Unknown' }}</strong></span>
+          </div>
+          <div class="rl-card__stats">
+            <span class="rl-chip">👥 {{ room.participant_count || 0 }} {{ (room.participant_count || 0) === 1 ? 'player' : 'players' }}</span>
+            <span class="rl-chip">⏱️ Open {{ formatDuration(room.startedAt) }}</span>
+            <span v-if="room.governmentType" class="rl-chip">🏛️ {{ room.governmentType }}</span>
+          </div>
+          <div class="rl-card__actions">
+            <button type="button" class="rl-btn rl-btn--ghost" @click.prevent="showDetailsModal(room)">Details</button>
+            <button type="button" class="rl-btn rl-btn--join" @click.prevent="quickJoin(room)">Join game →</button>
+          </div>
+        </article>
       </div>
     </div>
 
@@ -79,6 +85,21 @@
               required
             />
             <small v-if="localError" class="form-error">{{ localError }}</small>
+          </div>
+          <div v-if="gameVersions.length" class="form-group">
+            <label for="game-version-select">Game version</label>
+            <select id="game-version-select" v-model="newRoom.gameVersion" class="form-input">
+              <option v-for="v in gameVersions" :key="v.key" :value="v.key">
+                {{ v.name }}{{ v.is_default ? ' (latest)' : '' }}
+              </option>
+            </select>
+            <small v-if="selectedVersion" class="form-hint">
+              {{ selectedVersion.counts.scenario }} scenario cards ·
+              {{ selectedVersion.counts.assignment }} assignment slips ·
+              {{ selectedVersion.counts.collectable }} collectables
+              <template v-if="selectedVersion.examples"> · contains example cards</template>
+            </small>
+            <small v-if="selectedVersion?.notes" class="form-hint form-hint--notes">{{ selectedVersion.notes }}</small>
           </div>
         </form>
         <div class="modal-actions">
@@ -115,6 +136,10 @@
             <div class="info-row">
               <span class="info-label">Open for:</span>
               <span class="info-value">{{ formatDuration(selectedRoom.startedAt) }}</span>
+            </div>
+            <div v-if="selectedRoom.game_version" class="info-row">
+              <span class="info-label">Game version:</span>
+              <span class="info-value">{{ versionName(selectedRoom.game_version) }}</span>
             </div>
             <div class="info-row">
               <span class="info-label">Government:</span>
@@ -165,17 +190,40 @@ export default {
       selectedRoom: null,
       newRoom: {
         name: "",
+        gameVersion: null,
       },
+      gameVersions: [],
       localError: '',
       creatingRoom: false,
       joiningRoom: false
+    }
+  },
+  computed: {
+    selectedVersion() {
+      return this.gameVersions.find(v => v.key === this.newRoom.gameVersion) || null
     }
   },
   methods: {
     showCreateRoomModal() {
       this.localError = '';
       this.newRoom.name = '';
+      this.loadGameVersions();
       this.$refs.createRoomModal.show();
+    },
+    async loadGameVersions() {
+      try {
+        const { data } = await RoomListService.getGameVersions()
+        this.gameVersions = data?.versions || []
+        if (!this.gameVersions.some(v => v.key === this.newRoom.gameVersion)) {
+          this.newRoom.gameVersion = data?.default || this.gameVersions[0]?.key || null
+        }
+      } catch (e) {
+        // Older server without versions: create the room without one
+        this.gameVersions = []
+      }
+    },
+    versionName(key) {
+      return this.gameVersions.find(v => v.key === key)?.name || key
     },
     showDetailsModal(room) {
       this.selectedRoom = room;
@@ -235,7 +283,9 @@ export default {
       }
       this.creatingRoom = true;
       try {
-        const response = await RoomListService.createRoom({ name: this.newRoom.name });
+        const payload = { name: this.newRoom.name }
+        if (this.newRoom.gameVersion) payload.game_version = this.newRoom.gameVersion
+        await RoomListService.createRoom(payload);
         this.$refs.createRoomModal.hide();
         this.$router.push({ name: 'Room' });
       } catch (e) {
@@ -270,199 +320,280 @@ export default {
   },
   mounted() {
     this.retrieveRooms();
+    this.loadGameVersions();
   },
 }
 </script>
 
 <style scoped>
+.form-hint {
+  display: block;
+  margin-top: 6px;
+  color: #94A3B8;
+  font-size: 0.8rem;
+}
+
+.form-hint--notes {
+  max-height: 90px;
+  overflow-y: auto;
+  white-space: pre-line;
+  color: #CBD5E1;
+}
+
 .room-list-page {
-  background: #0B0F19;
-  min-height: 100vh;
-  padding: 30px 20px;
-  color: #F1F5F9;
+  min-height: calc(100vh - 65px);
+  padding: 40px 24px 60px;
+  background:
+    radial-gradient(900px 420px at 50% -10%, rgba(234, 179, 8, 0.08), transparent 70%),
+    radial-gradient(700px 400px at 90% 20%, rgba(34, 211, 238, 0.05), transparent 70%),
+    #0B0F19;
 }
 
 .room-list-container {
-  max-width: 900px;
+  max-width: 1040px;
   margin: 0 auto;
 }
 
 /* Header */
-.room-list-header {
+.rl-head {
   display: flex;
+  align-items: flex-end;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 30px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid #22D3EE33;
-}
-
-.room-list-title {
-  font-size: 2em;
-  font-weight: 700;
-  color: #EAB308;
-  margin: 0;
-}
-
-.create-room-btn {
-  background: linear-gradient(135deg, #1A1F2E 0%, #0B0F19 100%) !important;
-  border: 2px solid #EAB308 !important;
-  border-radius: 12px !important;
-  padding: 12px 24px !important;
-  font-weight: 700 !important;
-  font-size: 1em !important;
-  color: #EAB308 !important;
-  transition: all 0.3s ease !important;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.create-room-btn:hover {
-  transform: translateY(-2px) !important;
-  box-shadow: 0 4px 20px rgba(234, 179, 8, 0.3) !important;
-}
-
-.btn-icon {
-  font-size: 1.3em;
-  font-weight: 300;
-}
-
-/* Empty State */
-.empty-state {
-  background: #1A1F2E;
-  border-radius: 16px;
-  padding: 60px 40px;
-  text-align: center;
-  border: 1px solid #22D3EE44;
-}
-
-.empty-state-icon {
-  font-size: 3em;
-  margin-bottom: 16px;
-}
-
-.empty-state p {
-  color: #94A3B8;
-  font-size: 1.1em;
-  margin: 0;
-}
-
-/* Room Cards Grid */
-.rooms-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 28px;
 }
 
-.room-card {
-  background: #1A1F2E;
-  border-radius: 12px;
-  overflow: hidden;
-  border: 1px solid #22D3EE44;
-  transition: all 0.3s ease;
-  display: flex;
-  flex-direction: column;
-}
-
-.room-card:hover {
-  transform: translateY(-4px);
-  border-color: #EAB308;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
-}
-
-.room-card-header {
-  background: linear-gradient(135deg, #0B0F19 0%, #1A1F2E 100%);
-  padding: 20px;
-  border-bottom: 1px solid #22D3EE33;
-}
-
-.room-card-title {
-  font-size: 1.2em;
-  font-weight: 700;
-  color: #EAB308;
-  margin: 0 0 4px 0;
-}
-
-.room-card-owner {
-  font-size: 0.85em;
-  color: #64748B;
-}
-
-.room-card-body {
-  padding: 16px 20px;
-  flex-grow: 1;
-}
-
-.room-card-stats {
-  display: flex;
-  gap: 24px;
-}
-
-.stat {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-}
-
-.stat-icon {
-  font-size: 1.2em;
-}
-
-.stat-value {
-  font-size: 1.1em;
-  font-weight: 700;
+.rl-eyebrow {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.9rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
   color: #22D3EE;
 }
 
-.stat-label {
-  font-size: 0.75em;
-  color: #64748B;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.room-card-actions {
+.rl-title {
   display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 2px 0 6px;
+  font-size: 2.3rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #F8FAFC;
+}
+
+.rl-count {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(34, 197, 94, 0.14);
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  color: #86EFAC;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.rl-sub {
+  margin: 0;
+  font-size: 1rem;
+  color: #94A3B8;
+}
+
+/* The main button */
+.rl-create {
+  display: inline-flex;
+  align-items: center;
   gap: 10px;
-  padding: 16px 20px;
-  border-top: 1px solid #22D3EE22;
+  padding: 12px 22px 12px 14px;
+  border: 0;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #FACC15, #EAB308 55%, #CA8A04);
+  color: #1c1917 !important;
+  font-size: 1rem;
+  font-weight: 800;
+  text-decoration: none !important;
+  box-shadow: 0 10px 24px rgba(234, 179, 8, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-.btn-details,
-.btn-join {
+.rl-create:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px rgba(234, 179, 8, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.rl-create__plus {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.85);
+  color: #A16207;
+  font-size: 1.25rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.rl-create--link { padding: 12px 26px; }
+
+/* Nothing to show */
+.rl-empty {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 56px 24px 52px;
+  border-radius: 20px;
+  border: 1px dashed rgba(148, 163, 184, 0.3);
+  background: linear-gradient(180deg, rgba(26, 31, 46, 0.75), rgba(18, 23, 38, 0.75));
+  text-align: center;
+}
+
+.rl-empty__art {
+  display: grid;
+  place-items: center;
+  width: 84px;
+  height: 84px;
+  margin-bottom: 6px;
+  border-radius: 24px;
+  background: radial-gradient(circle at 35% 30%, rgba(234, 179, 8, 0.25), rgba(234, 179, 8, 0.05));
+  border: 1px solid rgba(234, 179, 8, 0.35);
+  font-size: 2.6rem;
+}
+
+.rl-empty__title {
+  margin: 0;
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: #F1F5F9;
+}
+
+.rl-empty__text {
+  max-width: 420px;
+  margin: 0 0 10px;
+  color: #94A3B8;
+  line-height: 1.5;
+}
+
+/* Room cards */
+.rl-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 18px;
+}
+
+.rl-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px 20px 18px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #1A1F2E, #141927);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  overflow: hidden;
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.rl-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: linear-gradient(90deg, #EAB308, #22D3EE);
+}
+
+.rl-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(234, 179, 8, 0.45);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
+}
+
+.rl-card__top { display: flex; align-items: center; gap: 10px; }
+
+.rl-card__name {
   flex: 1;
-  padding: 10px 16px !important;
-  font-weight: 600 !important;
-  font-size: 0.9em !important;
-  border-radius: 8px !important;
-  transition: all 0.2s ease !important;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: #F8FAFC;
 }
 
-.btn-details {
-  background: transparent !important;
-  border: 1px solid #64748B !important;
-  color: #94A3B8 !important;
+.rl-card__version {
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(34, 211, 238, 0.12);
+  border: 1px solid rgba(34, 211, 238, 0.35);
+  color: #67E8F9;
+  font-size: 0.75rem;
+  font-weight: 700;
 }
 
-.btn-details:hover {
-  border-color: #22D3EE !important;
-  color: #22D3EE !important;
+.rl-card__host { display: flex; align-items: center; gap: 8px; color: #94A3B8; font-size: 0.9rem; }
+.rl-card__host strong { color: #E2E8F0; }
+
+.rl-card__avatar {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #22D3EE, #0891B2);
+  color: #0B0F19;
+  font-size: 0.8rem;
+  font-weight: 800;
 }
 
-.btn-join {
-  background: linear-gradient(135deg, #EAB308 0%, #CA8A04 100%) !important;
-  border: none !important;
-  color: #0B0F19 !important;
+.rl-card__stats { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.rl-chip {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.1);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  color: #CBD5E1;
+  font-size: 0.8rem;
+  font-weight: 600;
 }
 
-.btn-join:hover {
-  transform: translateY(-2px) !important;
-  box-shadow: 0 4px 15px rgba(234, 179, 8, 0.4) !important;
+.rl-card__actions { display: flex; gap: 8px; margin-top: auto; padding-top: 4px; }
+
+.rl-btn {
+  padding: 9px 14px;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
 }
 
-/* Modal inner content styling */
+.rl-btn--ghost {
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: transparent;
+  color: #CBD5E1;
+}
+
+.rl-btn--ghost:hover { border-color: #94A3B8; background: rgba(148, 163, 184, 0.1); }
+
+.rl-btn--join {
+  flex: 1;
+  border: 1px solid #EAB308;
+  background: linear-gradient(180deg, #EAB308, #CA8A04);
+  color: #1c1917;
+}
+
+.rl-btn--join:hover { transform: translateY(-1px); background: linear-gradient(180deg, #FACC15, #EAB308); }
+
+@media (max-width: 600px) {
+  .room-list-page { padding: 24px 16px 40px; }
+  .rl-title { font-size: 1.8rem; }
+  .rl-create { width: 100%; justify-content: center; }
+}
 
 .modal-custom-content {
   background: #1A1F2E;

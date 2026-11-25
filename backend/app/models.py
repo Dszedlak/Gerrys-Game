@@ -50,6 +50,31 @@ class Room(db.Model):
     government = db.relationship(
         "Government", backref="room", uselist=False, lazy="subquery"
     )
+    # JSON blob for the board view: pawn positions, turn order, the Reaper's
+    # counter and the public game log. See app/websocket/board.py.
+    board_state = db.Column(db.Text, nullable=True)
+    # Which card set (GameVersion.key) this room plays. Fixed when the room
+    # is created, so uploading a new version never changes a running game.
+    game_version = db.Column(db.String(32), nullable=True)
+
+
+class GameVersion(db.Model):
+    """
+    One complete set of cards (+ patch notes) that a room can be played with.
+    See app/game_versions.py and app/card_import.py.
+    """
+    __tablename__ = "game_version"
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(32), unique=True, nullable=False)
+    name = db.Column(db.String(80), nullable=False)
+    notes = db.Column(db.Text, default="")
+    # JSON: {"scenario": [...], "assignment": [...], "collectable": [...]}
+    cards = db.Column(db.Text, nullable=False)
+    # "bundled" (shipped in data_collections/game_versions) or "upload"
+    source = db.Column(db.String(16), default="upload")
+    is_default = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_by = db.Column(db.String(60), nullable=True)
 
 
 class RoomParticipants(db.Model):
@@ -137,6 +162,7 @@ def serialize_room(room):
             {
                 "user_id": rp.userId,
                 "username": (rp.user.username if hasattr(rp, "user") and rp.user else None),
+                "profile_pic": (rp.user.profilePic if hasattr(rp, "user") and rp.user else None),
                 "job_tier": rp.job.tier if rp.job else None,
                 "job_name": rp.job.name if rp.job else None,
                 "bleed": rp.bleed,

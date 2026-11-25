@@ -1,0 +1,184 @@
+{
+  "_readme": [
+    "What the game does automatically for each card, matched by card name (case and punctuation don't matter).",
+    "The card spreadsheet holds the wording and quantities; this file holds the automation, so a new spreadsheet keeps it.",
+    "Cards not listed here are still drawn and shown to everyone; the table resolves them by hand.",
+    "Effect types and player selectors are described in backend/app/websocket/board_cards.py.",
+    "'defaults.copies' is used for cards the spreadsheet gives no quantity for."
+  ],
+
+  "defaults": {
+    "copies": {
+      "job opportunity": 12,
+      "shortcut": 10,
+      "bandages": 20,
+      "painkillers": 10
+    }
+  },
+
+  "collectable": {
+    "promotion": { "effects": [{ "type": "note", "text": "Promote yourself: change your job tier or title in the You panel." }] },
+    "mission objective": { "effects": [{ "type": "note", "text": "Change the target of an assignment, or introduce a new one: the table updates the assignment board." }] },
+    "throwing knife": { "effects": [{ "type": "bleed", "who": "choose", "amount": 2 }] },
+    "advance": { "effects": [{ "type": "note", "text": "Move your pawn to another player's tile (not beyond the Black Market): click that tile on the board." }] },
+    "medical kit": { "effects": [{ "type": "bleed", "who": "self", "amount": -3 }] },
+    "remote access": { "effects": [{ "type": "note", "text": "Take a Senate action from wherever you are on the board." }] },
+    "strike": {
+      "effects": [
+        { "type": "steal", "who": "choose", "minutes": 90 },
+        { "type": "roll_check", "who": "self", "threshold": 5, "label": "Strike again",
+          "success": [{ "type": "steal", "who": "choose", "minutes": 90 }] }
+      ]
+    },
+    "snitch": { "effects": [{ "type": "fire", "who": "choose" }] },
+    "hell bent": { "equip": true, "effects": [{ "type": "note", "text": "During War, roll an extra time and add the numbers together." }] },
+    "charm": { "equip": true, "effects": [{ "type": "note", "text": "Your roll's success target is reduced by 1 (not against the Mafia)." }] },
+    "efficiency": { "equip": true, "effects": [{ "type": "note", "text": "Knives you throw and healing you use are 10 minutes more effective." }] },
+    "careers advisor": { "effects": [{ "type": "note", "text": "Choose any available job at any tier in the You panel." }] },
+    "drugs package": { "effects": [{ "type": "heat", "who": "choose", "amount": 1 }] },
+    "revolution token": {
+      "start_in_discard": 1,
+      "effects": [{ "type": "note", "text": "Call a vote on the government and change it to one of your choice: the admin starts the vote." }]
+    },
+    "job opportunity": { "effects": [{ "type": "note", "text": "Choose an available Tier 1 job in the You panel." }] },
+    "shortcut": { "effects": [{ "type": "note", "text": "Jump forward 5 tiles and action that tile (you can pass Start), or move to the Senate if it's within 5 tiles: click the tile on the board." }] },
+    "bandages": { "effects": [{ "type": "bleed", "who": "self", "amount": -1 }] },
+    "painkillers": { "effects": [{ "type": "bleed", "who": "self", "amount": -2 }] }
+  },
+
+  "scenario": {
+    "freedom of information": { "effects": [{ "type": "note", "text": "Everyone reveals their time or goes to court (lose: reveal and +2 heat; keep refusing: arrested)." }] },
+    "christmas crackers": { "effects": [{ "type": "note", "text": "Every alive player takes one item of their choice: a collectable, promotion, job opportunity, hospital item or shortcut (the admin hands them out)." }] },
+    "experimental drug": {
+      "effects": [
+        { "type": "roll_table", "who": "self", "outcomes": {
+          "1": [{ "type": "bleed", "who": "self", "amount": 2 }],
+          "2": [],
+          "3": [{ "type": "bleed", "who": "self", "amount": -2 }],
+          "4": [{ "type": "bleed", "who": "self", "amount": -4 }],
+          "5": [{ "type": "bleed", "who": "self", "amount": -6 }],
+          "6": [{ "type": "bleed", "who": "self", "amount": -64 }]
+        } },
+        { "type": "note", "text": "Charms add 1 to the roll. You can offer the drug to other players; they roll too." }
+      ]
+    },
+    "contraband": { "effects": [{ "type": "note", "text": "No Judge in play? Discard this card. Otherwise the Judge searches players: contraband (red cards) is discarded, the Judge takes 2 hours and the player gets +1 heat." }] },
+    "chief justice": { "effects": [{ "type": "note", "text": "No Judge or under Democracy: no effect. The Judge picks peasants to be paid 1 hour by government leaders and can remove up to 4 oppressions." }] },
+    "jury corruption": { "effects": [{ "type": "note", "text": "No Judge in play? Discard this card. The Judge picks players; each is jailed on the Judge's roll of 5+, with half the jail fee." }] },
+    "government over-spending": {
+      "effects": [
+        { "type": "fire", "who": "faction:Public Service" },
+        { "type": "time", "who": "all", "minutes": -180 }
+      ]
+    },
+    "secret police": {
+      "effects": [
+        { "type": "fire", "who": "faction:Illicit" },
+        { "type": "roll_check", "who": "all", "threshold": 5, "label": "Secret Police",
+          "failure": [{ "type": "heat", "who": "self", "amount": 1 }] }
+      ]
+    },
+    "time bank collapse": {
+      "effects": [
+        { "type": "fire", "who": "faction:Finance" },
+        { "type": "note", "text": "Every player discards two collectables." }
+      ]
+    },
+    "sexual misconduct": {
+      "effects": [
+        { "type": "fire", "who": "self" },
+        { "type": "roll_check", "who": "self", "threshold": 5, "court": true,
+          "success": [{ "type": "note", "text": "You become the SHAG officer: choose an available job in the You panel." }],
+          "failure": [{ "type": "time", "who": "self", "minutes": -240 }, { "type": "heat", "who": "self", "amount": 2 }] }
+      ]
+    },
+    "aids": { "effects": [{ "type": "bleed", "who": "all", "amount": 3 }] },
+    "child support": {
+      "effects": [
+        { "type": "roll_check", "who": "self", "threshold": 5, "court": true,
+          "failure": [{ "type": "time", "who": "self", "minutes": -240 }, { "type": "heat", "who": "self", "amount": 2 }] }
+      ]
+    },
+    "bank robbery": { "effects": [{ "type": "note", "text": "Willing players each try to roll 6 to rob the Time Bank; whoever does shares out 12 hours. If everyone fails, they all go to court." }] },
+    "murder": {
+      "effects": [
+        { "type": "roll_check", "who": "self", "threshold": 5, "court": true,
+          "failure": [{ "type": "heat", "who": "self", "amount": 2 }] }
+      ]
+    },
+    "bounty board": { "effects": [{ "type": "note", "text": "Fill all six assignment slots. The next two assignments can target anyone with a title: double reward, and the target is demoted. Keep this card out until two are completed." }] },
+    "divorce": {
+      "effects": [
+        { "type": "roll_check", "who": "self", "threshold": 5, "court": true,
+          "success": [{ "type": "draw", "deck": "collectable", "count": 2 }],
+          "failure": [{ "type": "time_percent", "who": "self", "percent": -50, "cap": 480 }, { "type": "heat", "who": "self", "amount": 2 }] }
+      ]
+    },
+    "gerrys slot machine": {
+      "effects": [
+        { "type": "roll_table", "who": "self", "outcomes": {
+          "6": [{ "type": "bleed", "who": "self", "amount": -64 }, { "type": "heat", "who": "self", "amount": -10 }],
+          "5": [{ "type": "note", "text": "Move directly to any tile: click it on the board." }],
+          "4": [{ "type": "draw", "deck": "collectable", "count": 2 }],
+          "3": [{ "type": "note", "text": "Draw another scenario card." }],
+          "2": [{ "type": "time", "who": "self", "minutes": -180 }],
+          "1": [{ "type": "jail", "who": "self" }]
+        } },
+        { "type": "note", "text": "Each charm adds 1: 7 = become Executive or +8 hours, 8 = you win the game." }
+      ]
+    },
+    "gambling addict": { "effects": [{ "type": "note", "text": "Pay 4 hours now, or gamble: roll 5+ to get +2 hours; otherwise the debt doubles and goes to court." }] },
+    "annual bonus": {
+      "effects": [
+        { "type": "time", "who": "faction:Finance:tier1", "minutes": 60 },
+        { "type": "time", "who": "faction:Finance:tier2", "minutes": 120 },
+        { "type": "time", "who": "faction:Finance:tier3", "minutes": 180 },
+        { "type": "time", "who": "faction:Finance:titled", "minutes": 240 }
+      ]
+    },
+    "loan sharks": { "effects": [{ "type": "note", "text": "Each Illicit job holder picks a non-Illicit victim: take 3 hours from them, or 2 collectables (their choice)." }] },
+    "fire sale": {
+      "effects": [
+        { "type": "draw", "who": "faction:Public Service", "deck": "promotion", "count": 1 },
+        { "type": "note", "text": "Public Service job holders may each buy two of: Job Opportunity 10 min, Hospital Item 20 min, Collectable or Shortcut 30 min (not doubled by Democracy)." }
+      ]
+    },
+    "curfew": {
+      "effects": [
+        { "type": "roll_check", "who": "all", "threshold": 5, "leader_threshold": 3, "label": "Curfew",
+          "success": [],
+          "failure": [{ "type": "bleed", "who": "self", "amount": 3 }, { "type": "heat", "who": "self", "amount": 1 }] },
+        { "type": "note", "text": "Everyone who made it inside moves to the next named building tile and actions it." }
+      ]
+    },
+    "reputation": { "effects": [{ "type": "note", "text": "Anonymous straw poll: every vote against a player costs them 1.5 hours." }] },
+    "insurance fraud": {
+      "effects": [
+        { "type": "time", "who": "self", "minutes": -120 },
+        { "type": "roll_check", "who": "self", "threshold": 5, "court": true,
+          "success": [{ "type": "time", "who": "self", "minutes": 360 }],
+          "failure": [{ "type": "time", "who": "self", "minutes": -240 }, { "type": "heat", "who": "self", "amount": 2 }] }
+      ]
+    },
+    "revolution": {
+      "effects": [
+        { "type": "heat", "who": "leaders", "amount": 1 },
+        { "type": "note", "text": "The government changes at random to one of the three others: the admin sets it." }
+      ]
+    },
+    "no confidence vote": { "effects": [{ "type": "note", "text": "Ignore under Democracy. Each government leader faces a vote; anyone removed can't be the next leader. A Judge can decide one leader's outcome." }] },
+    "time laundering": { "effects": [{ "type": "note", "text": "Launder 8 hours in 2-hour lots: to yourself roll 4+, to another player roll 3+. Failed attempts go to court for the failed amount." }] },
+    "rnli": {
+      "effects": [
+        { "type": "roll_check", "who": "self", "threshold": 5, "label": "RNLI",
+          "success": [{ "type": "note", "text": "Your RNLI bill is 3 hours." }],
+          "failure": [{ "type": "note", "text": "Your RNLI bill is 8 hours." }] },
+        { "type": "note", "text": "Pay 1–3 hours a turn; 30 minutes interest is added at the end of each turn. Keep the card until it's paid." }
+      ]
+    },
+    "mafia": { "effects": [{ "type": "roll_until", "who": "all", "face": 6, "per_roll": -30 }] },
+    "income tax": { "effects": [{ "type": "note", "text": "Ongoing: on Collectables Promotions tiles pay tax (no job 30m, Tier 1/2 1h, Tier 3 1.5h, title 2h) until 24 hours are donated to the state." }] }
+  },
+
+  "assignment": {}
+}

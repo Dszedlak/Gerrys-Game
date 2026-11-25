@@ -12,18 +12,24 @@ import { ref, readonly } from 'vue'
  */
 const inRoom = ref(false)
 const isRoomAdmin = ref(false)
+// 'board' or 'table'
+const roomView = ref('board')
 
-let handlers = { onLeaveRoom: null, onOpenAdminControls: null }
+let handlers = { onLeaveRoom: null, onOpenAdminControls: null, onSetView: null }
 
-export function registerRoomChrome({ onLeaveRoom, onOpenAdminControls }) {
-  handlers = { onLeaveRoom, onOpenAdminControls }
+export function registerRoomChrome({ onLeaveRoom, onOpenAdminControls, onSetView }) {
+  handlers = { onLeaveRoom, onOpenAdminControls, onSetView }
   inRoom.value = true
 }
 
 export function clearRoomChrome() {
-  handlers = { onLeaveRoom: null, onOpenAdminControls: null }
+  handlers = { onLeaveRoom: null, onOpenAdminControls: null, onSetView: null }
   inRoom.value = false
   isRoomAdmin.value = false
+}
+
+export function setRoomView(mode) {
+  roomView.value = mode === 'table' ? 'table' : 'board'
 }
 
 export function setRoomAdmin(value) {
@@ -34,6 +40,8 @@ export function useRoomChrome() {
   return {
     inRoom: readonly(inRoom),
     isRoomAdmin: readonly(isRoomAdmin),
+    roomView: readonly(roomView),
+    setView: (mode) => handlers.onSetView && handlers.onSetView(mode),
     leaveRoom: () => handlers.onLeaveRoom && handlers.onLeaveRoom(),
     openAdminControls: () => handlers.onOpenAdminControls && handlers.onOpenAdminControls()
   }

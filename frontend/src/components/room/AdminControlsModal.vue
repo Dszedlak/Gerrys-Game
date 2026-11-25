@@ -459,36 +459,31 @@ defineExpose({
 }
 
 /* Style modal headers */
-#adminControlsModal .modal-header,
-#govSelectModal .modal-header {
+#adminControlsModal .modal-header {
   background: #0f172a;
   border-bottom: 1px solid #1f2937;
   padding: 16px 20px;
 }
 
-#adminControlsModal .modal-title,
-#govSelectModal .modal-title {
+#adminControlsModal .modal-title {
   color: #f1f5f9;
   font-weight: 600;
   font-size: 1.1rem;
 }
 
 /* The default close icon is dark; invert it for the dark header */
-#adminControlsModal .btn-close,
-#govSelectModal .btn-close {
+#adminControlsModal .btn-close {
   filter: invert(1) grayscale(1) brightness(1.6);
 }
 
-#adminControlsModal .modal-content,
-#govSelectModal .modal-content {
+#adminControlsModal .modal-content {
   background: #0f172a;
   border: 1px solid #1f2937;
   border-radius: 12px;
   overflow: hidden;
 }
 
-#adminControlsModal .modal-body,
-#govSelectModal .modal-body {
+#adminControlsModal .modal-body {
   background: #0f172a;
   padding: 20px;
 }

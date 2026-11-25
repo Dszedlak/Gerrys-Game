@@ -40,7 +40,8 @@ class RoomListResource(Resource):
         if Room.query.filter_by(id=user).first():
             return {"errors": "Room already exists for this user. Please quit a room before making a new one."}, 400
 
-        room = Room(id=user, name=name)
+        from .. import game_versions
+        room = Room(id=user, name=name, game_version=game_versions.resolve_key(args.get("game_version")))
         db.session.add(room)
         db.session.commit()
 

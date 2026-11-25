@@ -57,6 +57,45 @@ def initDatabase(app):
                         conn.commit()
                     print("Added is_in_jail column to room_participants table")
 
+            if 'room' in inspector.get_table_names():
+                columns = [col['name'] for col in inspector.get_columns('room')]
+                if 'board_state' not in columns:
+                    # Via the session so this works on SQLAlchemy 1.x and 2.x
+                    db.session.execute(db.text('ALTER TABLE room ADD COLUMN board_state TEXT'))
+                    db.session.commit()
+                    print("Added board_state column to room table")
+                if 'game_version' not in columns:
+                    db.session.execute(db.text('ALTER TABLE room ADD COLUMN game_version VARCHAR(32)'))
+                    db.session.commit()
+                    print("Added game_version column to room table")
+
+            # New tables (e.g. game_version) on an existing database
+            db.create_all()
+
+    # Card sets shipped with the code -> the game_version table
+    with app.app_context():
+        from .game_versions import sync_bundled
+        sync_bundled()
+        sync_jobs()
+
+
+def sync_jobs():
+    """Keep the job table in line with data_collections/jobs.json (names, tiers, factions)."""
+    from . import models
+    from .data_collections.loader import load_jobs
+    changed = False
+    for job in load_jobs():
+        row = models.Job.query.filter_by(id=job["id"]).first()
+        if not row:
+            db.session.add(models.Job(id=job["id"], tier=job["tier"], name=job["name"], type=job.get("type", "")))
+            changed = True
+        elif (row.name, row.tier, row.type) != (job["name"], job["tier"], job.get("type", "")):
+            row.name, row.tier, row.type = job["name"], job["tier"], job.get("type", "")
+            changed = True
+    if changed:
+        db.session.commit()
+        print("[jobs] synced job table with jobs.json")
+
 
 def createApp(configName):
     # Get path to frontend dist directory (one level up from backend)
@@ -80,6 +119,7 @@ def createApp(configName):
     CORS(app, resources={r"/*": {"origins": "*"}})
     #Init websocket
     from .websocket.sockets import socketio
+    from .websocket import board  # noqa: F401 - registers the board's socket handlers
     socketio.init_app(app)
     #Init API blueprints
     from .api import api as apiBlueprint

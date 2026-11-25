@@ -7,7 +7,9 @@ const state = {
   username: localStorage.getItem('username') || '',
   errors: null,
   roomId: null, 
-  userId: null
+  userId: null,
+  // Set when a saved sign-in turned out to be expired, for the login page
+  sessionExpired: false
 }
 
 const getters = {
@@ -57,9 +59,9 @@ const actions = {
       .then(({ data }) => {
         console.log('[Register] Response data:', data)
         // Check if backend returned token and username (like login does)
-        if (data && data.token && data.username) {
+        if (data && data.token) {
           context.commit('setUser', {
-            username: data.username,
+            username: data.username || credentials.username,
             token: data.token
           });
           resolve(data);
@@ -79,22 +81,30 @@ const actions = {
       });
     });
   },
-  checkAuth(context) {
-    if(JwtService.getToken()) {
-      ApiService.setHeader();
-      AuthenticationService.verifyToken()
-      .then(({ data }) => {
-        context.commit("setUser", {
-          username: data.username, 
-          token: JwtService.getToken()
-        });
-      })
-      .catch(({ response }) => {
-        context.commit("setError", response.data.errors);
-      });
+  /**
+   * Check the saved sign-in with the server (on page load). Resolves true if
+   * it's still good. If the server rejects it (expired, or the account is
+   * gone) the stale sign-in is cleared and this resolves false. A network
+   * error leaves it alone - the server may just be starting up.
+   */
+  async checkAuth(context) {
+    const token = context.state.token || localStorage.getItem('token')
+    if (!token) {
+      context.commit('purgeAuth')
+      return false
     }
-    else {
-      context.commit("purgeAuth");
+    ApiService.setHeader(token)
+    try {
+      const { data } = await AuthenticationService.verifyToken()
+      context.commit('setUser', { username: data.username, token })
+      return true
+    } catch (error) {
+      const status = error?.response?.status
+      if (status === 401 || status === 422 || status === 404) {
+        context.commit('expireSession')
+        return false
+      }
+      return true
     }
   }
 };
@@ -104,6 +114,7 @@ const mutations = {
     state.errors = error;
   },
   setUser(state, { username, token }) {
+    state.sessionExpired = false;
     state.isAuthenticated = true;
     state.username = username;
     state.token = token;
@@ -121,6 +132,23 @@ const mutations = {
     localStorage.removeItem('token');
     localStorage.removeItem('username');
     JwtService.destroyToken();
+    ApiService.setHeader('');
+  },
+  // The server no longer accepts our sign-in: clear it and say why on the login page
+  expireSession(state) {
+    state.isAuthenticated = false;
+    state.username = null;
+    state.token = '';
+    state.roomId = null;
+    state.errors = "";
+    state.sessionExpired = true;
+    localStorage.removeItem('token');
+    localStorage.removeItem('username');
+    JwtService.destroyToken();
+    ApiService.setHeader('');
+  },
+  clearSessionExpired(state) {
+    state.sessionExpired = false;
   },
   setRoomId(state, {id}) {
     state.roomId = id;

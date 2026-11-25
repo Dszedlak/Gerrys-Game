@@ -8,7 +8,8 @@ export function usePolitburoWheel() {
   // Politburo selection state
   const politburoMembers = ref([])
   const isSpinningPolitburo = ref(false)
-  const balanceBooksOnSave = ref(false)
+  // On by default: balance the books once the Politburo is chosen
+  const balanceBooksOnSave = ref(true)
   const currentWheelWinner = ref(null)
   const showWheelResult = ref(false)
   const govError = ref('')
@@ -124,7 +125,7 @@ export function usePolitburoWheel() {
    */
   function resetSelection() {
     politburoMembers.value = []
-    balanceBooksOnSave.value = false
+    balanceBooksOnSave.value = true
     govError.value = ''
     showWheelResult.value = false
     currentWheelWinner.value = null

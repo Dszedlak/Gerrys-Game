@@ -11,6 +11,10 @@ from . import auth
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 
+# How long a sign-in lasts. Long enough to survive the site being restarted
+# between game nights; the frontend checks it on every page load.
+SESSION_LENGTH = datetime.timedelta(days=30)
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
@@ -38,10 +42,8 @@ def register():
     db.session.commit()
     print(f"[REGISTER] User '{username}' registered successfully.")
 
-    access_token = create_access_token(
-        identity=newUser, expires_delta=datetime.timedelta(hours=12)
-    )
-    return jsonify({"success": True, "token": access_token}), 200
+    access_token = create_access_token(identity=newUser, expires_delta=SESSION_LENGTH)
+    return jsonify({"success": True, "token": access_token, "username": newUser.username}), 200
 
 
 @auth.route("/login", methods=["POST"])
@@ -58,9 +60,7 @@ def login():
     user = User.query.filter_by(username=username).one_or_none()
     if user is not None and user.verifyPassword(password):
         print(f"[LOGIN] Success for username: {username}")
-        access_token = create_access_token(
-            identity=user, expires_delta=datetime.timedelta(hours=6)
-        )
+        access_token = create_access_token(identity=user, expires_delta=SESSION_LENGTH)
         return jsonify({
             "success": True,
             "token": access_token,
@@ -76,8 +76,9 @@ def login():
 def verify_token():
     userId = get_jwt_identity()
     user = User.query.filter_by(id=userId).one_or_none()
-    print(f"[VERIFY-TOKEN] Token verified for user ID: {userId}")
-    return jsonify({"username": user.username}), 200
+    if not user:
+        return jsonify({"errors": "This account no longer exists."}), 401
+    return jsonify({"username": user.username, "id": user.id}), 200
 
 
 @jwt.unauthorized_loader
@@ -95,7 +96,13 @@ def invalidTokenCallback(reason):
 @jwt.expired_token_loader
 def my_expired_token_callback(jwt_header, jwt_payload):
     print("[JWT] Expired token.")
-    return jsonify({"errors": "JWT Expired."}), 401
+    return jsonify({"errors": "Your session has expired. Please sign in again.", "session_expired": True}), 401
+
+
+@jwt.user_lookup_error_loader
+def user_lookup_error_callback(jwt_header, jwt_payload):
+    # A valid token for a user who isn't in the database (e.g. it was reset)
+    return jsonify({"errors": "Please sign in again.", "session_expired": True}), 401
 
 
 @auth.route("/me", methods=["GET"])

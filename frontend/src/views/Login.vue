@@ -7,6 +7,11 @@
         <h1 class="auth-title">Gerry's Game</h1>
       </div>
       
+      <!-- Shown when a saved sign-in was no longer accepted -->
+      <div v-if="sessionExpired" class="auth-expired" role="status">
+        Your session has expired. Please sign in again.
+      </div>
+
       <!-- Auth Card -->
       <div class="auth-card">
         <!-- Tab Buttons -->
@@ -56,6 +61,14 @@ export default {
     return {
       activeTab: 'login'
     }
+  },
+  computed: {
+    sessionExpired () {
+      return this.$store.state.auth.sessionExpired
+    }
+  },
+  beforeUnmount () {
+    this.$store.commit('auth/clearSessionExpired')
   }
 }
 </script>
@@ -133,6 +146,17 @@ export default {
 }
 
 /* Auth Card */
+.auth-expired {
+  margin-bottom: 14px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(234, 179, 8, 0.5);
+  background: rgba(234, 179, 8, 0.12);
+  color: #FDE68A;
+  font-weight: 600;
+  text-align: center;
+}
+
 .auth-card {
   background: #1A1F2E;
   border-radius: 20px;

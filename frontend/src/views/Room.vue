@@ -5,6 +5,38 @@
        scroll even when the content fitted. -->
   <div class="room-view">
     <b-container class="bv-example-row">
+      <!-- Board view (default): the board itself, a Civ 6-style player
+           ledger, the turn panel and the game log. -->
+      <BoardView
+        v-if="viewMode === 'board'"
+        :board="board"
+        :boardState="boardState"
+        :serverOffsetMs="boardServerOffsetMs"
+        :hand="boardHand"
+        :participants="participants"
+        :currentUserId="currentUserId"
+        :isAdmin="isAdmin"
+        :jobs="jobs"
+        :government="roomGovernment"
+        :governmentIcon="iconForParticipant"
+        :clock="clock"
+        :maxCollectables="maxCollectables"
+        :isDoctorInPlay="isDoctorInPlay"
+        :hostId="Number(store.state.auth.roomId) || roomOwnerId"
+        :roomName="roomname"
+        :stateEnemies="currentStateEnemies"
+        @switch-view="setViewMode('table')"
+        @adjust-clock="uClock"
+        @update-job="setMyJob"
+        @update-perk="setMyPerk"
+        @bleed-changed="changeBleed"
+        @heat-changed="changeHeat"
+        @get-out-of-jail="getOutOfJail"
+        @set-approval="setMyApproval"
+      />
+
+      <template v-else>
+
       <!-- Top HUD: clock, income, status chips and every personal action -->
       <RoomHud
         :clock="clock"
@@ -33,10 +65,11 @@
           class="state-enemies-announcement"
           :class="{
             'state-enemies-announcement--forgiven': announcement.kind === 'forgiven',
-            'state-enemies-announcement--error': announcement.kind === 'error'
+            'state-enemies-announcement--error': announcement.kind === 'error',
+            'state-enemies-announcement--board': announcement.kind === 'board'
           }"
         >
-          {{ announcement.icon }} {{ announcement.text }}
+          <template v-if="announcement.icon">{{ announcement.icon }} </template>{{ announcement.text }}
         </div>
       </div>
 
@@ -68,14 +101,16 @@
         :governmentIcon="iconForParticipant"
         :perkIcon="perkIconForParticipant"
       />
+      </template>
 
       <!-- Leave Room modal -->
       <b-modal
         id="LeaveRoomModal"
         ref="leaveRoomModal"
-        title="Leave Room:"
+        title="Leave room"
+        centered
       >
-        Are you sure you want to Leave room: {{ roomname }}
+        <p class="gg-confirm">Are you sure you want to leave <strong>{{ roomname }}</strong>?</p>
         <template #footer>
           <b-button size="sm" variant="secondary" :disabled="isLeaving" @click="leaveRoomModal?.hide()">
             No
@@ -556,9 +591,10 @@
       <b-modal
         id="removeRoomModal"
         ref="removeRoomModal"
-        title="End Game:"
+        title="End game"
+        centered
       >
-        Are you sure you want to end the game: {{ roomname }}
+        <p class="gg-confirm">Are you sure you want to end <strong>{{ roomname }}</strong> for everyone?</p>
         <template #footer>
           <b-button size="sm" variant="secondary" :disabled="isRemoving" @click="removeRoomModal?.hide()">
             No
@@ -573,10 +609,12 @@
       <b-modal
         id="historyGraphModal"
         ref="historyGraphModal"
-        title="Game History - Clock Tracking (includes Government, Job, Bleed, Heat, Perk)"
+        title="Game history"
         size="xl"
+        centered
         body-class="p-4"
       >
+        <p class="gg-history-sub">Everyone's clock over the game, including government, job, bleed, heat and title changes.</p>
         <div v-if="loadingHistory" class="text-center">
           <p>Loading game history...</p>
         </div>
@@ -631,7 +669,14 @@
       </b-modal>
 
       <!-- Wheel Spinner Component -->
-      <WheelSpinner ref="wheelSpinnerRef" :participants="participants" />
+      <!-- Admin's wheel: the server picks the result and every player watches the same spin -->
+      <WheelSpinner
+        ref="wheelSpinnerRef"
+        :participants="wheelEntries"
+        :isAdmin="isAdmin"
+        synced
+        @spin-request="requestWheelSpin"
+      />
 
       <!-- Politburo Wheel Selection Modal -->
       <b-modal
@@ -774,10 +819,12 @@ import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement
 
 // Import extracted room components
 import RoomHud from '@/components/room/RoomHud.vue'
-import { registerRoomChrome, clearRoomChrome, setRoomAdmin } from '@/composables/useRoomChrome'
+import { registerRoomChrome, clearRoomChrome, setRoomAdmin, setRoomView } from '@/composables/useRoomChrome'
 import RoomParticipantsTable from '@/components/room/RoomParticipantsTable.vue'
 import RoomDroppedPlayers from '@/components/room/RoomDroppedPlayers.vue'
 import AdminControlsModal from '@/components/room/AdminControlsModal.vue'
+import BoardView from '@/components/board/BoardView.vue'
+import { useBoard } from '@/composables/useBoard'
 
 // Import composables
 import { useRoomState } from '@/composables/useRoomState'
@@ -1043,6 +1090,39 @@ function pushToast({ icon, text, kind = 'enemy', ttl = 8000 }) {
   }, ttl)
 }
 
+// ---- Board view ----
+// The server owns the board and pushes `boardState`; public moments
+// (Time Virus hits, horsemen, jailings) are also shown as toasts.
+const board = useBoard(socket, {
+  onAnnounce: (entry) => pushToast({ icon: '', text: entry.text, kind: 'board', ttl: 7000 })
+})
+const { state: boardState, serverOffsetMs: boardServerOffsetMs, hand: boardHand } = board
+
+const VIEW_MODE_KEY = 'gg.roomView'
+function readViewMode() {
+  try { return localStorage.getItem(VIEW_MODE_KEY) === 'table' ? 'table' : 'board' } catch { return 'board' }
+}
+const viewMode = ref(readViewMode())
+function setViewMode(mode) {
+  viewMode.value = mode
+  setRoomView(mode)
+  try { localStorage.setItem(VIEW_MODE_KEY, mode) } catch { /* private mode */ }
+}
+
+function setMyApproval(status) {
+  socket.emit('setApprovalStatus', JSON.stringify({ status }))
+}
+
+// Board view: job and title are changed from the "You" panel
+function setMyJob(jobId) {
+  socket.emit('updateJob', JSON.stringify({ job_id: jobId }))
+}
+
+function setMyPerk(perk) {
+  // The selectedPerk watcher sends it to the server
+  selectedPerk.value = perk
+}
+
 function announceStateEnemyChanges(newlyDeclared, forgiven) {
   newlyDeclared.forEach(p => pushToast({
     icon: '⚔️', kind: 'enemy',
@@ -1226,7 +1306,8 @@ socket.on('UpdateUserStatus', (data) => {
           perk: updatedP.perk ?? existingP?.perk ?? null,
           approval_status: updatedP.approval_status ?? existingP?.approval_status ?? null,
           gov_vote: updatedP.gov_vote ?? existingP?.gov_vote ?? null,
-          is_in_jail: updatedP.is_in_jail ?? existingP?.is_in_jail ?? false
+          is_in_jail: updatedP.is_in_jail ?? existingP?.is_in_jail ?? false,
+          profile_pic: updatedP.profile_pic ?? existingP?.profile_pic ?? null
         }
       })
     : []
@@ -1292,7 +1373,8 @@ socket.on('room_state', (payload) => {
     perk: p.perk ?? null,
     approval_status: p.approval_status ?? null,
     gov_vote: p.gov_vote ?? null,
-    is_in_jail: p.is_in_jail ?? false
+    is_in_jail: p.is_in_jail ?? false,
+    profile_pic: p.profile_pic ?? null
   })) : []
   
   console.log('[room_state] Participants loaded:', participants.value.length, participants.value)
@@ -1526,8 +1608,10 @@ onMounted(async () => {
   // Hand the room's own controls to the navbar while we're in the room
   registerRoomChrome({
     onLeaveRoom: () => openLeaveModal(),
-    onOpenAdminControls: () => openAdminControlsModal()
+    onOpenAdminControls: () => openAdminControlsModal(),
+    onSetView: (mode) => setViewMode(mode)
   })
+  setRoomView(viewMode.value)
   watch(isAdmin, (v) => setRoomAdmin(v), { immediate: true })
 
   if (!store.state.auth.roomId) {
@@ -1588,9 +1672,29 @@ function openWheelSpinner(options) {
   if (options?.forCommunism) {
     politburoWheelModal.value?.show()
   } else {
+    lastWheelEntries.value = null
     wheelSpinnerRef.value?.open()
   }
 }
+
+// The room wheel. Before a spin it shows the alive players; during and after
+// a spin, exactly the players the server spun for (same order on every screen).
+const lastWheelEntries = ref(null)
+const wheelEntries = computed(() =>
+  lastWheelEntries.value ||
+  participants.value.filter(p => String(p.clock || '').trim() !== '00•00•00')
+)
+
+function requestWheelSpin() {
+  socket.emit('roomWheelSpin')
+}
+
+socket.on('roomWheelSpin', async (spin) => {
+  if (!spin?.entries?.length) return
+  lastWheelEntries.value = spin.entries.map(e => ({ user_id: e.user_id, username: e.username }))
+  await nextTick()
+  wheelSpinnerRef.value?.playSpin(spin)
+})
 
 // Replace custom buttons logic with OK handlers that keep the modal open during async
 function onLeaveOk(evt) {
@@ -1720,12 +1824,15 @@ async function confirmRemove() {
             position: 'top',
             labels: {
               usePointStyle: true,
-              padding: 15
+              padding: 15,
+              color: '#E2E8F0',
+              font: { size: 13, weight: '600' }
             }
           },
           title: {
             display: true,
-            text: 'Player Clocks Over Time',
+            text: 'Player clocks over time',
+            color: '#FDE68A',
             font: { size: 16, weight: 'bold' }
           },
           tooltip: {
@@ -1761,9 +1868,13 @@ async function confirmRemove() {
             beginAtZero: true,
             title: {
               display: true,
-              text: 'Time (DD•HH•MM)'
+              text: 'Time (DD•HH•MM)',
+              color: '#94A3B8'
             },
+            grid: { color: 'rgba(148, 163, 184, 0.12)' },
+            border: { color: 'rgba(148, 163, 184, 0.3)' },
             ticks: {
+              color: '#94A3B8',
               callback: function(value) {
                 return formatClock(value)
               }
@@ -1772,9 +1883,13 @@ async function confirmRemove() {
           x: {
             title: {
               display: true,
-              text: 'Game Time'
+              text: 'Game time',
+              color: '#94A3B8'
             },
+            grid: { color: 'rgba(148, 163, 184, 0.08)' },
+            border: { color: 'rgba(148, 163, 184, 0.3)' },
             ticks: {
+              color: '#94A3B8',
               maxRotation: 45,
               minRotation: 0
             }
@@ -2245,7 +2360,7 @@ function spinAgain() {
 
 function resetPolitburoSelection() {
   politburoMembers.value = []
-  balanceBooksOnSave.value = false
+  balanceBooksOnSave.value = true  // on by default
   govError.value = ''
   showWheelResult.value = false
   currentWheelWinner.value = null
@@ -3281,6 +3396,483 @@ ul {
 </style>
 
 <style>
+/* ===== Government & vote pop-ups: the same dark, gold-edged panels as the rest of the game ===== */
+#govVoteModal .modal-content,
+#voteResultsModal .modal-content,
+#republicVotingModal .modal-content,
+#republicResultsModal .modal-content,
+#dictatorBiddingModal .modal-content,
+#dictatorBiddingWinnerModal .modal-content,
+#politburoWheelModal .modal-content,
+#wheelSpinnerModal .modal-content,
+#approvalStatusModal .modal-content,
+#govSelectModal .modal-content {
+  background: linear-gradient(180deg, #1A1F2E, #121726) !important;
+  border: 1px solid rgba(234, 179, 8, 0.55) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+  color: #E2E8F0;
+  overflow: hidden;
+}
+
+#govVoteModal .modal-header,
+#voteResultsModal .modal-header,
+#republicVotingModal .modal-header,
+#republicResultsModal .modal-header,
+#dictatorBiddingModal .modal-header,
+#dictatorBiddingWinnerModal .modal-header,
+#politburoWheelModal .modal-header,
+#wheelSpinnerModal .modal-header,
+#approvalStatusModal .modal-header,
+#govSelectModal .modal-header {
+  background: transparent !important;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.16) !important;
+  padding: 14px 20px !important;
+}
+
+#govVoteModal .modal-title,
+#voteResultsModal .modal-title,
+#republicVotingModal .modal-title,
+#republicResultsModal .modal-title,
+#dictatorBiddingModal .modal-title,
+#dictatorBiddingWinnerModal .modal-title,
+#politburoWheelModal .modal-title,
+#wheelSpinnerModal .modal-title,
+#approvalStatusModal .modal-title,
+#govSelectModal .modal-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.55rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.03em;
+  color: #FDE68A !important;
+}
+
+#govVoteModal .btn-close,
+#voteResultsModal .btn-close,
+#republicVotingModal .btn-close,
+#republicResultsModal .btn-close,
+#dictatorBiddingModal .btn-close,
+#dictatorBiddingWinnerModal .btn-close,
+#politburoWheelModal .btn-close,
+#wheelSpinnerModal .btn-close,
+#approvalStatusModal .btn-close,
+#govSelectModal .btn-close { filter: invert(1) grayscale(1) brightness(1.6); }
+
+#govVoteModal .modal-body,
+#voteResultsModal .modal-body,
+#republicVotingModal .modal-body,
+#republicResultsModal .modal-body,
+#dictatorBiddingModal .modal-body,
+#dictatorBiddingWinnerModal .modal-body,
+#politburoWheelModal .modal-body,
+#wheelSpinnerModal .modal-body,
+#approvalStatusModal .modal-body,
+#govSelectModal .modal-body {
+  background: transparent !important;
+  color: #CBD5E1;
+}
+
+#govVoteModal .modal-footer,
+#voteResultsModal .modal-footer,
+#republicVotingModal .modal-footer,
+#republicResultsModal .modal-footer,
+#dictatorBiddingModal .modal-footer,
+#dictatorBiddingWinnerModal .modal-footer,
+#politburoWheelModal .modal-footer,
+#wheelSpinnerModal .modal-footer,
+#approvalStatusModal .modal-footer,
+#govSelectModal .modal-footer {
+  background: rgba(11, 15, 25, 0.5) !important;
+  border-top: 1px solid rgba(148, 163, 184, 0.16) !important;
+  gap: 8px;
+}
+
+/* Buttons */
+#govVoteModal .btn,
+#voteResultsModal .btn,
+#republicVotingModal .btn,
+#republicResultsModal .btn,
+#dictatorBiddingModal .btn,
+#dictatorBiddingWinnerModal .btn,
+#politburoWheelModal .btn,
+#wheelSpinnerModal .btn,
+#approvalStatusModal .btn,
+#govSelectModal .btn {
+  border-radius: 10px !important;
+  font-weight: 700 !important;
+  box-shadow: none !important;
+  transition: transform 0.12s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+#govVoteModal .btn:hover:not(:disabled),
+#voteResultsModal .btn:hover:not(:disabled),
+#republicVotingModal .btn:hover:not(:disabled),
+#republicResultsModal .btn:hover:not(:disabled),
+#dictatorBiddingModal .btn:hover:not(:disabled),
+#dictatorBiddingWinnerModal .btn:hover:not(:disabled),
+#politburoWheelModal .btn:hover:not(:disabled),
+#wheelSpinnerModal .btn:hover:not(:disabled),
+#approvalStatusModal .btn:hover:not(:disabled),
+#govSelectModal .btn:hover:not(:disabled) { transform: translateY(-1px); }
+
+#govVoteModal .btn-primary,
+#voteResultsModal .btn-primary,
+#republicVotingModal .btn-primary,
+#republicResultsModal .btn-primary,
+#dictatorBiddingModal .btn-primary,
+#dictatorBiddingWinnerModal .btn-primary,
+#politburoWheelModal .btn-primary,
+#wheelSpinnerModal .btn-primary,
+#approvalStatusModal .btn-primary,
+#govSelectModal .btn-primary,
+#govVoteModal .btn-warning,
+#voteResultsModal .btn-warning,
+#republicVotingModal .btn-warning,
+#republicResultsModal .btn-warning,
+#dictatorBiddingModal .btn-warning,
+#dictatorBiddingWinnerModal .btn-warning,
+#politburoWheelModal .btn-warning,
+#wheelSpinnerModal .btn-warning,
+#approvalStatusModal .btn-warning,
+#govSelectModal .btn-warning {
+  background: linear-gradient(180deg, #FACC15, #EAB308 55%, #CA8A04) !important;
+  border: 1px solid #EAB308 !important;
+  color: #1c1917 !important;
+}
+
+#govVoteModal .btn-secondary,
+#voteResultsModal .btn-secondary,
+#republicVotingModal .btn-secondary,
+#republicResultsModal .btn-secondary,
+#dictatorBiddingModal .btn-secondary,
+#dictatorBiddingWinnerModal .btn-secondary,
+#politburoWheelModal .btn-secondary,
+#wheelSpinnerModal .btn-secondary,
+#approvalStatusModal .btn-secondary,
+#govSelectModal .btn-secondary {
+  background: rgba(148, 163, 184, 0.1) !important;
+  border: 1px solid rgba(148, 163, 184, 0.45) !important;
+  color: #E2E8F0 !important;
+}
+
+#govVoteModal .btn-success,
+#voteResultsModal .btn-success,
+#republicVotingModal .btn-success,
+#republicResultsModal .btn-success,
+#dictatorBiddingModal .btn-success,
+#dictatorBiddingWinnerModal .btn-success,
+#politburoWheelModal .btn-success,
+#wheelSpinnerModal .btn-success,
+#approvalStatusModal .btn-success,
+#govSelectModal .btn-success {
+  background: linear-gradient(180deg, #22C55E, #15803D) !important;
+  border: 1px solid #22C55E !important;
+  color: #F0FDF4 !important;
+}
+
+#govVoteModal .btn-danger,
+#voteResultsModal .btn-danger,
+#republicVotingModal .btn-danger,
+#republicResultsModal .btn-danger,
+#dictatorBiddingModal .btn-danger,
+#dictatorBiddingWinnerModal .btn-danger,
+#politburoWheelModal .btn-danger,
+#wheelSpinnerModal .btn-danger,
+#approvalStatusModal .btn-danger,
+#govSelectModal .btn-danger {
+  background: rgba(239, 68, 68, 0.2) !important;
+  border: 1px solid #EF4444 !important;
+  color: #FECACA !important;
+}
+
+#govVoteModal .btn-outline-primary,
+#voteResultsModal .btn-outline-primary,
+#republicVotingModal .btn-outline-primary,
+#republicResultsModal .btn-outline-primary,
+#dictatorBiddingModal .btn-outline-primary,
+#dictatorBiddingWinnerModal .btn-outline-primary,
+#politburoWheelModal .btn-outline-primary,
+#wheelSpinnerModal .btn-outline-primary,
+#approvalStatusModal .btn-outline-primary,
+#govSelectModal .btn-outline-primary,
+#govVoteModal .btn-outline-warning,
+#voteResultsModal .btn-outline-warning,
+#republicVotingModal .btn-outline-warning,
+#republicResultsModal .btn-outline-warning,
+#dictatorBiddingModal .btn-outline-warning,
+#dictatorBiddingWinnerModal .btn-outline-warning,
+#politburoWheelModal .btn-outline-warning,
+#wheelSpinnerModal .btn-outline-warning,
+#approvalStatusModal .btn-outline-warning,
+#govSelectModal .btn-outline-warning,
+#govVoteModal .republic-candidate-btn,
+#voteResultsModal .republic-candidate-btn,
+#republicVotingModal .republic-candidate-btn,
+#republicResultsModal .republic-candidate-btn,
+#dictatorBiddingModal .republic-candidate-btn,
+#dictatorBiddingWinnerModal .republic-candidate-btn,
+#politburoWheelModal .republic-candidate-btn,
+#wheelSpinnerModal .republic-candidate-btn,
+#approvalStatusModal .republic-candidate-btn,
+#govSelectModal .republic-candidate-btn {
+  background: rgba(15, 23, 42, 0.7) !important;
+  border: 1px solid rgba(234, 179, 8, 0.5) !important;
+  color: #FDE68A !important;
+}
+
+#govVoteModal .btn-outline-primary:hover,
+#voteResultsModal .btn-outline-primary:hover,
+#republicVotingModal .btn-outline-primary:hover,
+#republicResultsModal .btn-outline-primary:hover,
+#dictatorBiddingModal .btn-outline-primary:hover,
+#dictatorBiddingWinnerModal .btn-outline-primary:hover,
+#politburoWheelModal .btn-outline-primary:hover,
+#wheelSpinnerModal .btn-outline-primary:hover,
+#approvalStatusModal .btn-outline-primary:hover,
+#govSelectModal .btn-outline-primary:hover,
+#govVoteModal .btn-outline-warning:hover,
+#voteResultsModal .btn-outline-warning:hover,
+#republicVotingModal .btn-outline-warning:hover,
+#republicResultsModal .btn-outline-warning:hover,
+#dictatorBiddingModal .btn-outline-warning:hover,
+#dictatorBiddingWinnerModal .btn-outline-warning:hover,
+#politburoWheelModal .btn-outline-warning:hover,
+#wheelSpinnerModal .btn-outline-warning:hover,
+#approvalStatusModal .btn-outline-warning:hover,
+#govSelectModal .btn-outline-warning:hover,
+#govVoteModal .republic-candidate-btn:hover,
+#voteResultsModal .republic-candidate-btn:hover,
+#republicVotingModal .republic-candidate-btn:hover,
+#republicResultsModal .republic-candidate-btn:hover,
+#dictatorBiddingModal .republic-candidate-btn:hover,
+#dictatorBiddingWinnerModal .republic-candidate-btn:hover,
+#politburoWheelModal .republic-candidate-btn:hover,
+#wheelSpinnerModal .republic-candidate-btn:hover,
+#approvalStatusModal .republic-candidate-btn:hover,
+#govSelectModal .republic-candidate-btn:hover,
+#govVoteModal .republic-candidate-btn.active,
+#voteResultsModal .republic-candidate-btn.active,
+#republicVotingModal .republic-candidate-btn.active,
+#republicResultsModal .republic-candidate-btn.active,
+#dictatorBiddingModal .republic-candidate-btn.active,
+#dictatorBiddingWinnerModal .republic-candidate-btn.active,
+#politburoWheelModal .republic-candidate-btn.active,
+#wheelSpinnerModal .republic-candidate-btn.active,
+#approvalStatusModal .republic-candidate-btn.active,
+#govSelectModal .republic-candidate-btn.active {
+  background: rgba(234, 179, 8, 0.2) !important;
+  border-color: #EAB308 !important;
+  color: #FFF7D6 !important;
+}
+
+#govVoteModal .btn-outline-success,
+#voteResultsModal .btn-outline-success,
+#republicVotingModal .btn-outline-success,
+#republicResultsModal .btn-outline-success,
+#dictatorBiddingModal .btn-outline-success,
+#dictatorBiddingWinnerModal .btn-outline-success,
+#politburoWheelModal .btn-outline-success,
+#wheelSpinnerModal .btn-outline-success,
+#approvalStatusModal .btn-outline-success,
+#govSelectModal .btn-outline-success {
+  background: rgba(34, 197, 94, 0.1) !important;
+  border: 1px solid rgba(34, 197, 94, 0.6) !important;
+  color: #BBF7D0 !important;
+}
+
+#govVoteModal .btn-outline-danger,
+#voteResultsModal .btn-outline-danger,
+#republicVotingModal .btn-outline-danger,
+#republicResultsModal .btn-outline-danger,
+#dictatorBiddingModal .btn-outline-danger,
+#dictatorBiddingWinnerModal .btn-outline-danger,
+#politburoWheelModal .btn-outline-danger,
+#wheelSpinnerModal .btn-outline-danger,
+#approvalStatusModal .btn-outline-danger,
+#govSelectModal .btn-outline-danger {
+  background: rgba(239, 68, 68, 0.1) !important;
+  border: 1px solid rgba(239, 68, 68, 0.6) !important;
+  color: #FECACA !important;
+}
+
+#govVoteModal .btn:disabled,
+#voteResultsModal .btn:disabled,
+#republicVotingModal .btn:disabled,
+#republicResultsModal .btn:disabled,
+#dictatorBiddingModal .btn:disabled,
+#dictatorBiddingWinnerModal .btn:disabled,
+#politburoWheelModal .btn:disabled,
+#wheelSpinnerModal .btn:disabled,
+#approvalStatusModal .btn:disabled,
+#govSelectModal .btn:disabled {
+  opacity: 0.45 !important;
+}
+
+#govVoteModal .form-select,
+#voteResultsModal .form-select,
+#republicVotingModal .form-select,
+#republicResultsModal .form-select,
+#dictatorBiddingModal .form-select,
+#dictatorBiddingWinnerModal .form-select,
+#politburoWheelModal .form-select,
+#wheelSpinnerModal .form-select,
+#approvalStatusModal .form-select,
+#govSelectModal .form-select,
+#govVoteModal select,
+#voteResultsModal select,
+#republicVotingModal select,
+#republicResultsModal select,
+#dictatorBiddingModal select,
+#dictatorBiddingWinnerModal select,
+#politburoWheelModal select,
+#wheelSpinnerModal select,
+#approvalStatusModal select,
+#govSelectModal select {
+  background-color: #0B0F19 !important;
+  border: 1px solid rgba(148, 163, 184, 0.35) !important;
+  border-radius: 10px !important;
+  color: #F1F5F9 !important;
+}
+
+/* Spin the wheel: dark around the wheel, a gold Spin button */
+#wheelSpinnerModal .spin-button,
+#wheelSpinnerModal .spin-button-inline {
+  min-width: 200px;
+  padding: 12px 28px !important;
+  border-radius: 999px !important;
+  background: linear-gradient(180deg, #FACC15, #EAB308 55%, #CA8A04) !important;
+  border: 0 !important;
+  color: #1c1917 !important;
+  font-size: 1.25rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.06em;
+  box-shadow: 0 10px 24px rgba(234, 179, 8, 0.3) !important;
+}
+
+/* Leave room / End game / Game history: the dark, gold-edged panels of the board */
+#LeaveRoomModal .modal-content,
+#removeRoomModal .modal-content,
+#historyGraphModal .modal-content {
+  background: linear-gradient(180deg, #1A1F2E, #121726);
+  border: 1px solid rgba(234, 179, 8, 0.55);
+  border-radius: 16px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+  color: #E2E8F0;
+  overflow: hidden;
+}
+
+#LeaveRoomModal .modal-header,
+#removeRoomModal .modal-header,
+#historyGraphModal .modal-header {
+  background: transparent;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+  padding: 14px 20px;
+}
+
+#LeaveRoomModal .modal-title,
+#removeRoomModal .modal-title,
+#historyGraphModal .modal-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  color: #FDE68A;
+}
+
+#LeaveRoomModal .btn-close,
+#removeRoomModal .btn-close,
+#historyGraphModal .btn-close {
+  filter: invert(1) grayscale(1) brightness(1.6);
+}
+
+#LeaveRoomModal .modal-body,
+#removeRoomModal .modal-body,
+#historyGraphModal .modal-body {
+  background: transparent;
+  color: #CBD5E1;
+}
+
+#LeaveRoomModal .modal-footer,
+#removeRoomModal .modal-footer,
+#historyGraphModal .modal-footer {
+  background: rgba(11, 15, 25, 0.5);
+  border-top: 1px solid rgba(148, 163, 184, 0.16);
+  gap: 8px;
+}
+
+#LeaveRoomModal .modal-footer .btn,
+#removeRoomModal .modal-footer .btn,
+#historyGraphModal .modal-footer .btn,
+#historyGraphModal .winner-form .btn {
+  padding: 7px 18px;
+  border-radius: 9px;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+#LeaveRoomModal .modal-footer .btn-secondary,
+#removeRoomModal .modal-footer .btn-secondary,
+#historyGraphModal .modal-footer .btn-secondary {
+  background: rgba(148, 163, 184, 0.1);
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  color: #E2E8F0;
+}
+
+#LeaveRoomModal .modal-footer .btn-secondary:hover,
+#removeRoomModal .modal-footer .btn-secondary:hover,
+#historyGraphModal .modal-footer .btn-secondary:hover {
+  background: rgba(148, 163, 184, 0.2);
+  border-color: #EAB308;
+}
+
+#LeaveRoomModal .modal-footer .btn-danger,
+#removeRoomModal .modal-footer .btn-danger,
+#historyGraphModal .modal-footer .btn-danger {
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid #EF4444;
+  color: #FECACA;
+}
+
+#LeaveRoomModal .modal-footer .btn-danger:hover,
+#removeRoomModal .modal-footer .btn-danger:hover,
+#historyGraphModal .modal-footer .btn-danger:hover {
+  background: rgba(239, 68, 68, 0.35);
+  color: #fff;
+}
+
+#historyGraphModal .winner-form .btn-success {
+  background: linear-gradient(180deg, #EAB308, #CA8A04);
+  border: 1px solid #EAB308;
+  color: #1c1917;
+  white-space: nowrap;
+}
+
+#historyGraphModal .winner-form .btn-success:disabled {
+  opacity: 0.45;
+  color: #1c1917;
+}
+
+.gg-confirm {
+  margin: 4px 0;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: #CBD5E1;
+}
+
+.gg-confirm strong { color: #F8FAFC; }
+
+.gg-history-sub {
+  margin: -6px 0 12px;
+  font-size: 0.88rem;
+  color: #94A3B8;
+}
+
+#historyGraphModal .alert-danger {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.45);
+  color: #FECACA;
+}
+
 /* Hide default modal footer for modals that don't need it */
 #govVoteModal .modal-footer,
 #dictatorBiddingModal .modal-footer,
@@ -4078,6 +4670,12 @@ ul {
   background: linear-gradient(90deg, rgba(22,101,52,0.95), rgba(20,83,45,0.95));
   border-color: rgba(74,222,128,0.6);
   color: #DCFCE7;
+}
+
+.state-enemies-announcement--board {
+  background: linear-gradient(90deg, rgba(30,27,75,0.96), rgba(15,23,42,0.96));
+  border-color: rgba(234,179,8,0.6);
+  color: #FEF3C7;
 }
 
 .state-enemies-announcement--error {

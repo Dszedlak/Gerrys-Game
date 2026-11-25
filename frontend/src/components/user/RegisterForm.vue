@@ -80,14 +80,8 @@ export default {
       console.log('[Register] Submitting registration for:', this.username)
       this.loading = true
       try {
+        // Registering signs you in (the server returns a token)
         await this.$store.dispatch('auth/register', credentials)
-        console.log('[Register] Registration successful, now logging in...')
-        // If registration didn't return a token, automatically login
-        await this.$store.dispatch('auth/login', {
-          username: this.username,
-          password: this.password
-        })
-        console.log('[Register] Auto-login successful, navigating to rooms')
         this.$router.push('/rooms')
       } catch (err) {
         console.error('[Register] Failed:', err)

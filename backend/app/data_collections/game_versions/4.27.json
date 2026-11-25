@@ -1,0 +1,1708 @@
+{
+  "key": "4.27",
+  "name": "v4.27",
+  "notes": "Gerry’s Game — card list (from Gerrys_Game_V4.27.odg)\nCategory · Distinct cards · Physical cards counted · Count stated in file · Notes\nJobs · 18 · n/a · 36 · Copies per job not stated\nTitles · 3 · 12 · 12\nCollectables · 14 · 91 · 90+1 · Rows with a quantity only; 4 other cards have no quantity\nGovernments · 4 · 4 · 4\nOppressions · 11 · 16 · 16\nAssignment Slips · 20 · 31 · 32 · One short of stated count — see tab notes\nScenario Cards · 30 · 30 · 30\n'Count stated in file' is typed in from each section's cover page; the other counts are formulas over the tabs.",
+  "scenario": [
+    {
+      "id": "scn-freedom-of-information",
+      "title": "Freedom of Information",
+      "text": "All players have been issues subpoenas to reveal their current time.\nAll players have the option to refuse and take the matter to court.\nIf you lose in court, you are compelled to reveal your time (+2 heat).\nIf you continue to refuse, you will be arrested.",
+      "copies": 1,
+      "kind": "Court",
+      "effects": [
+        {
+          "type": "note",
+          "text": "Everyone reveals their time or goes to court (lose: reveal and +2 heat; keep refusing: arrested)."
+        }
+      ]
+    },
+    {
+      "id": "scn-christmas-crackers",
+      "title": "Christmas Crackers",
+      "text": "All alive players are rewarded during the festive period with an item from the list below:\n* Collectable\n* Promotion\n* Job Opportunity\n* Hospital Item\n* Shortcut",
+      "copies": 1,
+      "kind": "All players",
+      "effects": [
+        {
+          "type": "note",
+          "text": "Every alive player takes one item of their choice: a collectable, promotion, job opportunity, hospital item or shortcut (the admin hands them out)."
+        }
+      ]
+    },
+    {
+      "id": "scn-experimental-drug",
+      "title": "Experimental Drug",
+      "text": "You have managed to be part of a drug trial.\nRoll the die (charms +1 to roll):\n1. +20 minutes bleeding\n2. No effect\n3. -20 minutes bleeding\n4. -40 minutes bleeding\n5. -60 minutes bleeding\n6. Remove all bleeding effect\nYou can also offer this drug to other players and they must roll also.",
+      "copies": 1,
+      "kind": "Roll",
+      "effects": [
+        {
+          "type": "roll_table",
+          "who": "self",
+          "outcomes": {
+            "1": [
+              {
+                "type": "bleed",
+                "who": "self",
+                "amount": 2
+              }
+            ],
+            "2": [],
+            "3": [
+              {
+                "type": "bleed",
+                "who": "self",
+                "amount": -2
+              }
+            ],
+            "4": [
+              {
+                "type": "bleed",
+                "who": "self",
+                "amount": -4
+              }
+            ],
+            "5": [
+              {
+                "type": "bleed",
+                "who": "self",
+                "amount": -6
+              }
+            ],
+            "6": [
+              {
+                "type": "bleed",
+                "who": "self",
+                "amount": -64
+              }
+            ]
+          }
+        },
+        {
+          "type": "note",
+          "text": "Charms add 1 to the roll. You can offer the drug to other players; they roll too."
+        }
+      ]
+    },
+    {
+      "id": "scn-contraband",
+      "title": "Contraband",
+      "text": "Contraband (collectables with red names) have been found in the city and the Judge has been called to enforce the law.\nThe Judge decides which players should be searched.\nIf a player is found to have contraband, all their contraband is discarded, the Judge takes 2 hours, and the player receives +1 heat.\n[IF NO JUDGE IS IN PLAY, DISCARD THIS SCENARIO CARD]",
+      "copies": 1,
+      "kind": "Judge",
+      "effects": [
+        {
+          "type": "note",
+          "text": "No Judge in play? Discard this card. Otherwise the Judge searches players: contraband (red cards) is discarded, the Judge takes 2 hours and the player gets +1 heat."
+        }
+      ]
+    },
+    {
+      "id": "scn-chief-justice",
+      "title": "Chief Justice",
+      "text": "The Supreme Court has raised concerns that the current government is not upholding the UDHR.\nThe Judge decides which peasants require compensation of 1 hour which is paid for by government leaders.\nThe Judge can remove up to 4 government oppressions.\n[NO EFFECT UNDER DEMOCRACY]\n[IF NO JUDGE IS IN PLAY, DISCARD THIS SCENARIO CARD]",
+      "copies": 1,
+      "kind": "Judge",
+      "effects": [
+        {
+          "type": "note",
+          "text": "No Judge or under Democracy: no effect. The Judge picks peasants to be paid 1 hour by government leaders and can remove up to 4 oppressions."
+        }
+      ]
+    },
+    {
+      "id": "scn-jury-corruption",
+      "title": "Jury Corruption",
+      "text": "The Judge has been called into hold jury members accountable for corruption. The Judge decides which alive players should be considered for a shorten jail sentence.\nFor each alive player they select, the Judge needs to roll 5 or higher for the alive player to be sent to Jail. The cost of Jail for the alive player is half the cost when they leave.\n[IF NO JUDGE IS IN PLAY, DISCARD THIS SCENARIO CARD]",
+      "copies": 1,
+      "kind": "Judge",
+      "effects": [
+        {
+          "type": "note",
+          "text": "No Judge in play? Discard this card. The Judge picks players; each is jailed on the Judge's roll of 5+, with half the jail fee."
+        }
+      ]
+    },
+    {
+      "id": "scn-government-over-spending",
+      "title": "Government Over-spending",
+      "text": "Government over-spending leads to increased living costs for all.\nAll Public Service jobs are removed from their posts.\nAll players must pay 3 hours to cover their costs through the winter months.",
+      "copies": 1,
+      "kind": "All players",
+      "effects": [
+        {
+          "type": "fire",
+          "who": "faction:Public Service"
+        },
+        {
+          "type": "time",
+          "who": "all",
+          "minutes": -180
+        }
+      ]
+    },
+    {
+      "id": "scn-secret-police",
+      "title": "Secret Police",
+      "text": "In order to cut down on illegal activities, the secret police have been deployed.\nAll Illicit jobs are removed from their posts.\nAll players roll the die one at a time to see if they are sanctioned with +1 heat (5+ to avoid the sanction).",
+      "copies": 1,
+      "kind": "All players",
+      "effects": [
+        {
+          "type": "fire",
+          "who": "faction:Illicit"
+        },
+        {
+          "type": "roll_check",
+          "who": "all",
+          "threshold": 5,
+          "label": "Secret Police",
+          "failure": [
+            {
+              "type": "heat",
+              "who": "self",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scn-time-bank-collapse",
+      "title": "Time Bank Collapse",
+      "text": "Due to giving out too many loans, the Time Bank collapses.\nAll Finance jobs are removed from their posts.\nAll players must discard two collectables.",
+      "copies": 1,
+      "kind": "All players",
+      "effects": [
+        {
+          "type": "fire",
+          "who": "faction:Finance"
+        },
+        {
+          "type": "note",
+          "text": "Every player discards two collectables."
+        }
+      ]
+    },
+    {
+      "id": "scn-sexual-misconduct",
+      "title": "Sexual Misconduct",
+      "text": "Whilst at work, the SHAG officer has called you in about a work party where you stripped in the office.\nLose your job.\nYou have the option to take your employer to court (roll 5 or higher for A):\nA) You become the SHAG officer yourself (choose an available job of your choice)\nB) The SHAG officer shafts you (-4 hours, +2 heat).",
+      "copies": 1,
+      "kind": "Court",
+      "effects": [
+        {
+          "type": "fire",
+          "who": "self"
+        },
+        {
+          "type": "roll_check",
+          "who": "self",
+          "threshold": 5,
+          "court": true,
+          "success": [
+            {
+              "type": "note",
+              "text": "You become the SHAG officer: choose an available job in the You panel."
+            }
+          ],
+          "failure": [
+            {
+              "type": "time",
+              "who": "self",
+              "minutes": -240
+            },
+            {
+              "type": "heat",
+              "who": "self",
+              "amount": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scn-aids",
+      "title": "AIDS",
+      "text": "All players are infected with contaminated blood with AIDS from the state hospital.\nAll players receive 30 minutes bleeding effect.",
+      "copies": 1,
+      "kind": "All players",
+      "effects": [
+        {
+          "type": "bleed",
+          "who": "all",
+          "amount": 3
+        }
+      ]
+    },
+    {
+      "id": "scn-child-support",
+      "title": "Child Support",
+      "text": "A former partner has demanded you pay child support and takes you to court (roll 5 or higher for A):\nA) A DNA test proves you are not the parent.\nB) You are sanctioned for not supporting your child(ren)’s upbringing (-4 hours, +2 heat).",
+      "copies": 1,
+      "kind": "Court",
+      "effects": [
+        {
+          "type": "roll_check",
+          "who": "self",
+          "threshold": 5,
+          "court": true,
+          "failure": [
+            {
+              "type": "time",
+              "who": "self",
+              "minutes": -240
+            },
+            {
+              "type": "heat",
+              "who": "self",
+              "amount": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scn-bank-robbery",
+      "title": "Bank Robbery",
+      "text": "You decide to rob the Time Bank. Ask if any other players would like to assist you robbing the Time Bank.\nEach willing player in turn attempts to rob the Time Bank by rolling a 6 or higher.\nThe player who rolls 6+ is in charge of distributing the loot of 12 hours between the contributing players, regardless if they drew this card or not.\nIf all players are unsuccessful, they are sent to court for attempted armed robbery.",
+      "copies": 1,
+      "kind": "Roll",
+      "effects": [
+        {
+          "type": "note",
+          "text": "Willing players each try to roll 6 to rob the Time Bank; whoever does shares out 12 hours. If everyone fails, they all go to court."
+        }
+      ]
+    },
+    {
+      "id": "scn-murder",
+      "title": "Murder",
+      "text": "You have been framed for a murder and you appear in court (roll 5 or higher for A):\nA) A good lawyer saves you from the situation.\nB) You are found guilty (+2 heat).",
+      "copies": 1,
+      "kind": "Court",
+      "effects": [
+        {
+          "type": "roll_check",
+          "who": "self",
+          "threshold": 5,
+          "court": true,
+          "failure": [
+            {
+              "type": "heat",
+              "who": "self",
+              "amount": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scn-bounty-board",
+      "title": "Bounty Board",
+      "text": "Bounties have been placed on big earners in the city.\nFill up all six assignment slots.\nThe next two assignments can be completed against any player with a title.\nThe assignment reward is doubled, and in addition any assignment completed against those with a title will be demoted.\n[KEEP CARD OUT UNTIL TWO ASSIGNMENTS HAVE BEEN COMPLETED]",
+      "copies": 1,
+      "kind": "Assignments",
+      "effects": [
+        {
+          "type": "note",
+          "text": "Fill all six assignment slots. The next two assignments can target anyone with a title: double reward, and the target is demoted. Keep this card out until two are completed."
+        }
+      ]
+    },
+    {
+      "id": "scn-divorce",
+      "title": "Divorce",
+      "text": "Your partner demands a divorce in court (roll 5 or higher for A):\nA) You take back your possessions your partner took from you (draw two collectables)\nB) Your cheating lifestyle is shown in court (lose half of your time (max loss 8 hours, +2 heat).",
+      "copies": 1,
+      "kind": "Court",
+      "effects": [
+        {
+          "type": "roll_check",
+          "who": "self",
+          "threshold": 5,
+          "court": true,
+          "success": [
+            {
+              "type": "draw",
+              "deck": "collectable",
+              "count": 2
+            }
+          ],
+          "failure": [
+            {
+              "type": "time_percent",
+              "who": "self",
+              "percent": -50,
+              "cap": 480
+            },
+            {
+              "type": "heat",
+              "who": "self",
+              "amount": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scn-gerry-s-slot-machine",
+      "title": "Gerry’s Slot Machine",
+      "text": "Roll the black die. Each charm adds 1 to the black die.\n8 - You win the game\n7 - Become Executive or +8 hours\n6 - Reset bleed & heat counters to 0.\n5 - Move directly to any tile\n4 - +2 collectables\n3 - Draw scenario card\n2 - -3 hours\n1 - Arrested",
+      "copies": 1,
+      "kind": "Roll",
+      "effects": [
+        {
+          "type": "roll_table",
+          "who": "self",
+          "outcomes": {
+            "6": [
+              {
+                "type": "bleed",
+                "who": "self",
+                "amount": -64
+              },
+              {
+                "type": "heat",
+                "who": "self",
+                "amount": -10
+              }
+            ],
+            "5": [
+              {
+                "type": "note",
+                "text": "Move directly to any tile: click it on the board."
+              }
+            ],
+            "4": [
+              {
+                "type": "draw",
+                "deck": "collectable",
+                "count": 2
+              }
+            ],
+            "3": [
+              {
+                "type": "note",
+                "text": "Draw another scenario card."
+              }
+            ],
+            "2": [
+              {
+                "type": "time",
+                "who": "self",
+                "minutes": -180
+              }
+            ],
+            "1": [
+              {
+                "type": "jail",
+                "who": "self"
+              }
+            ]
+          }
+        },
+        {
+          "type": "note",
+          "text": "Each charm adds 1: 7 = become Executive or +8 hours, 8 = you win the game."
+        }
+      ]
+    },
+    {
+      "id": "scn-gambling-addict",
+      "title": "Gambling Addict",
+      "text": "Your gambling debt catches up on you… and you owe 4 hours to state support.\nYou have the option to pay now, or gamble it (roll 5 or higher):\nA) You score big and clear your debt with some return (+2 hours)\nB) You lose further so the debt is now doubled. You are sent to court to decide the matter.",
+      "copies": 1,
+      "kind": "Court",
+      "effects": [
+        {
+          "type": "note",
+          "text": "Pay 4 hours now, or gamble: roll 5+ to get +2 hours; otherwise the debt doubles and goes to court."
+        }
+      ]
+    },
+    {
+      "id": "scn-annual-bonus",
+      "title": "Annual Bonus",
+      "text": "After a prosperous financial year, all Financial job holders are rewarded with a bonus.\nTier 1 holders receive +1 hour.\nTier 2 holders receive +2 hours.\nTier 3 holders receive +3 hours.\nAny Finance Title holders receive +4 hours.",
+      "copies": 1,
+      "kind": "Faction",
+      "effects": [
+        {
+          "type": "time",
+          "who": "faction:Finance:tier1",
+          "minutes": 60
+        },
+        {
+          "type": "time",
+          "who": "faction:Finance:tier2",
+          "minutes": 120
+        },
+        {
+          "type": "time",
+          "who": "faction:Finance:tier3",
+          "minutes": 180
+        },
+        {
+          "type": "time",
+          "who": "faction:Finance:titled",
+          "minutes": 240
+        }
+      ]
+    },
+    {
+      "id": "scn-loan-sharks",
+      "title": "Loan Sharks",
+      "text": "The Loan Sharks have come to claim their debts on behalf of the Illicit job holders.\nEach Illicit job holder can call in the debt on a player of their choice who are not part of the Illicit faction.\nYou can choose one of the following for your victim:\nA) Claim back (receive) 3 hours\nB) Steal 2 collectables (of your victim’s choice).",
+      "copies": 1,
+      "kind": "Faction",
+      "effects": [
+        {
+          "type": "note",
+          "text": "Each Illicit job holder picks a non-Illicit victim: take 3 hours from them, or 2 collectables (their choice)."
+        }
+      ]
+    },
+    {
+      "id": "scn-fire-sale",
+      "title": "Fire Sale",
+      "text": "All Public Service job holders receive a promotion card!\nAll Public Service job holders have the one-time opportunity to purchase two of the following for reduced prices:\n*Job Opportunity – 10 minutes\n*Hospital Item – 20 minutes\n*Collectable OR Shortcut – 30 minutes.\nThese purchases are not affected by democracy.",
+      "copies": 1,
+      "kind": "Faction",
+      "effects": [
+        {
+          "type": "draw",
+          "who": "faction:Public Service",
+          "deck": "promotion",
+          "count": 1
+        },
+        {
+          "type": "note",
+          "text": "Public Service job holders may each buy two of: Job Opportunity 10 min, Hospital Item 20 min, Collectable or Shortcut 30 min (not doubled by Democracy)."
+        }
+      ]
+    },
+    {
+      "id": "scn-curfew",
+      "title": "Curfew",
+      "text": "A military curfew is immediately implemented and all players are caught outside. Roll 5 or higher for A (3 or higher for government leaders):\nA) You make it inside without being caught (move to the next named building tile & action the tile).\nB) You were shot in the leg and caught (+30 minutes bleeding effect, +1 heat).",
+      "copies": 1,
+      "kind": "All players",
+      "effects": [
+        {
+          "type": "roll_check",
+          "who": "all",
+          "threshold": 5,
+          "leader_threshold": 3,
+          "label": "Curfew",
+          "success": [],
+          "failure": [
+            {
+              "type": "bleed",
+              "who": "self",
+              "amount": 3
+            },
+            {
+              "type": "heat",
+              "who": "self",
+              "amount": 1
+            }
+          ]
+        },
+        {
+          "type": "note",
+          "text": "Everyone who made it inside moves to the next named building tile and actions it."
+        }
+      ]
+    },
+    {
+      "id": "scn-reputation",
+      "title": "Reputation",
+      "text": "A game show is introduced to highlight who is negatively contributing to society.\nAll players have the opportunity to vote for the player they want to lose time anonymously via a straw poll.\nEach vote is worth 1.5 hours.",
+      "copies": 1,
+      "kind": "All players",
+      "effects": [
+        {
+          "type": "note",
+          "text": "Anonymous straw poll: every vote against a player costs them 1.5 hours."
+        }
+      ]
+    },
+    {
+      "id": "scn-insurance-fraud",
+      "title": "Insurance Fraud",
+      "text": "Your home insurance provider is refusing to pay out for a fire as they believe you started it.\nPay 2 hours to fix the damages caused to your house.\nYou have the option to take your insurance provider to court (roll 5 or higher for A):\nA) Your insurance provider pays out (+6 hours)\nB) You lose, and must pay for damages and legal fees (-4 hours, +2 heat).",
+      "copies": 1,
+      "kind": "Court",
+      "effects": [
+        {
+          "type": "time",
+          "who": "self",
+          "minutes": -120
+        },
+        {
+          "type": "roll_check",
+          "who": "self",
+          "threshold": 5,
+          "court": true,
+          "success": [
+            {
+              "type": "time",
+              "who": "self",
+              "minutes": 360
+            }
+          ],
+          "failure": [
+            {
+              "type": "time",
+              "who": "self",
+              "minutes": -240
+            },
+            {
+              "type": "heat",
+              "who": "self",
+              "amount": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scn-revolution",
+      "title": "Revolution!",
+      "text": "The Soviet National Anthem is played and there is an immediate revolution.\nCurrent government leaders and advisors are sanctioned with +1 heat (no affect under democracy)\nThe current government is changed randomly to one of the three other government choices.",
+      "copies": 1,
+      "kind": "Government",
+      "effects": [
+        {
+          "type": "heat",
+          "who": "leaders",
+          "amount": 1
+        },
+        {
+          "type": "note",
+          "text": "The government changes at random to one of the three others: the admin sets it."
+        }
+      ]
+    },
+    {
+      "id": "scn-no-confidence-vote",
+      "title": "No Confidence Vote",
+      "text": "Calls for new leadership leads a vote of no confidence in the current government leaders.\nEach government leader faces a vote in their leadership; if removed, they cannot be the next leader.\nIf there is a Judge in play, they can decide the outcome of one government leader.\n[IGNORE THIS CARD IF THE CURRENT GOVERNMENT IS DEMOCRACY]",
+      "copies": 1,
+      "kind": "Government",
+      "effects": [
+        {
+          "type": "note",
+          "text": "Ignore under Democracy. Each government leader faces a vote; anyone removed can't be the next leader. A Judge can decide one leader's outcome."
+        }
+      ]
+    },
+    {
+      "id": "scn-time-laundering",
+      "title": "Time Laundering",
+      "text": "You have been contracted to launder 8 hours of time from illegal investments.\nIf the launder the time to your account, you must roll 4 or higher for success. If you launder the time to another player, you or the player must roll 3 or higher for success.\nTime must be laundered in 2 hour quantities.\nAny failed attempts sends player(s) to court for their totalled failed laundered time.",
+      "copies": 1,
+      "kind": "Roll",
+      "effects": [
+        {
+          "type": "note",
+          "text": "Launder 8 hours in 2-hour lots: to yourself roll 4+, to another player roll 3+. Failed attempts go to court for the failed amount."
+        }
+      ]
+    },
+    {
+      "id": "scn-rnli",
+      "title": "RNLI",
+      "text": "You were out fishing late at night and the tide swept you in. You were saved by the RNLI but now you must now pay their fees… (roll 5 or higher for A:)\nA) You are charged 3 hours.\nB) You are charged 8 hours.\nTo pay the debt, you must pay between 1-3 hours inclusive per turn. However at the end of your turn the debt earns interest of 30 minutes.\n[KEEP CARD UNTIL YOU HAVE PAID IN FULL]",
+      "copies": 1,
+      "kind": "Ongoing",
+      "effects": [
+        {
+          "type": "roll_check",
+          "who": "self",
+          "threshold": 5,
+          "label": "RNLI",
+          "success": [
+            {
+              "type": "note",
+              "text": "Your RNLI bill is 3 hours."
+            }
+          ],
+          "failure": [
+            {
+              "type": "note",
+              "text": "Your RNLI bill is 8 hours."
+            }
+          ]
+        },
+        {
+          "type": "note",
+          "text": "Pay 1–3 hours a turn; 30 minutes interest is added at the end of each turn. Keep the card until it's paid."
+        }
+      ]
+    },
+    {
+      "id": "scn-mafia",
+      "title": "Mafia",
+      "text": "The Mafia have entered the city and demand payment from all players.\nStarting with the player who drew this card and continuing clockwise, players roll the die until they first roll a 6.\nEach player pays 30 minutes for each roll until they roll a 6.",
+      "copies": 1,
+      "kind": "All players",
+      "effects": [
+        {
+          "type": "roll_until",
+          "who": "all",
+          "face": 6,
+          "per_roll": -30
+        }
+      ]
+    },
+    {
+      "id": "scn-income-tax",
+      "title": "Income Tax",
+      "text": "A capital policy is introduced to curve all citizen’s income. When you land on Collectables Promotions, you must pay tax depending on your job & title:\nNo job = 0.5 hours\nTier 1/2 = 1 hour\nTier 3 = 1.5 hours\nTitle holders = 2 hours\nTo remove this policy, a lump sum of 24 hours must be donated to the state.\n[THIS SCENARIO CARD APPLIES TO ALL PLAYERS AND IS ONLY REMOVED ONCE PAID]",
+      "copies": 1,
+      "kind": "Ongoing",
+      "effects": [
+        {
+          "type": "note",
+          "text": "Ongoing: on Collectables Promotions tiles pay tax (no job 30m, Tier 1/2 1h, Tier 3 1.5h, title 2h) until 24 hours are donated to the state."
+        }
+      ]
+    }
+  ],
+  "assignment": [
+    {
+      "id": "asg-inflict-3-bleed-one-turn-on",
+      "title": "Inflict 3 bleed (one turn) on",
+      "text": "Inflict 3 bleed (one turn) on your target. Reward: 3 hours.",
+      "copies": 7,
+      "reward": [
+        {
+          "type": "time",
+          "who": "self",
+          "minutes": 180
+        }
+      ]
+    },
+    {
+      "id": "asg-use-drug-package-on",
+      "title": "Use Drug Package on",
+      "text": "Use Drug Package on your target. Reward: 3 hours.",
+      "copies": 1,
+      "reward": [
+        {
+          "type": "time",
+          "who": "self",
+          "minutes": 180
+        }
+      ]
+    },
+    {
+      "id": "asg-time-virus-on",
+      "title": "Time Virus on",
+      "text": "Time Virus on your target. Reward: 3 hours.",
+      "copies": 2,
+      "reward": [
+        {
+          "type": "time",
+          "who": "self",
+          "minutes": 180
+        }
+      ]
+    },
+    {
+      "id": "asg-use-government-oppression-on",
+      "title": "Use Government Oppression on",
+      "text": "Use Government Oppression on your target. Reward: 3 hours.",
+      "copies": 1,
+      "reward": [
+        {
+          "type": "time",
+          "who": "self",
+          "minutes": 180
+        }
+      ]
+    },
+    {
+      "id": "asg-use-peasant-s-revolt-on",
+      "title": "Use Peasant’s Revolt on",
+      "text": "Use Peasant’s Revolt on your target. Reward: 3 hours.",
+      "copies": 2,
+      "reward": [
+        {
+          "type": "time",
+          "who": "self",
+          "minutes": 180
+        }
+      ]
+    },
+    {
+      "id": "asg-use-strike-on",
+      "title": "Use Strike! on",
+      "text": "Use Strike! on your target. Reward: 3 hours.",
+      "copies": 2,
+      "reward": [
+        {
+          "type": "time",
+          "who": "self",
+          "minutes": 180
+        }
+      ]
+    },
+    {
+      "id": "asg-change-the-government-vote-of",
+      "title": "Change the government vote of",
+      "text": "Change the government vote of your target. Reward: 3 hours.",
+      "copies": 3,
+      "reward": [
+        {
+          "type": "time",
+          "who": "self",
+          "minutes": 180
+        }
+      ]
+    },
+    {
+      "id": "asg-use-snitch-on",
+      "title": "Use Snitch on",
+      "text": "Use Snitch on your target. Reward: 3 hours.",
+      "copies": 1,
+      "reward": [
+        {
+          "type": "time",
+          "who": "self",
+          "minutes": 180
+        }
+      ]
+    },
+    {
+      "id": "asg-judge-against",
+      "title": "Judge against",
+      "text": "Judge against your target. Reward: 3 hours.",
+      "copies": 1,
+      "reward": [
+        {
+          "type": "time",
+          "who": "self",
+          "minutes": 180
+        }
+      ]
+    },
+    {
+      "id": "asg-use-stock-broker-on",
+      "title": "Use Stock Broker on",
+      "text": "Use Stock Broker on your target. Reward: 3 hours.",
+      "copies": 1,
+      "reward": [
+        {
+          "type": "time",
+          "who": "self",
+          "minutes": 180
+        }
+      ]
+    },
+    {
+      "id": "asg-use-charity-commissioner-on",
+      "title": "Use Charity Commissioner on",
+      "text": "Use Charity Commissioner on your target. Reward: 3 hours.",
+      "copies": 1,
+      "reward": [
+        {
+          "type": "time",
+          "who": "self",
+          "minutes": 180
+        }
+      ]
+    },
+    {
+      "id": "asg-use-syndicate-leader-on",
+      "title": "Use Syndicate Leader on",
+      "text": "Use Syndicate Leader on your target. Reward: 3 hours.",
+      "copies": 1,
+      "reward": [
+        {
+          "type": "time",
+          "who": "self",
+          "minutes": 180
+        }
+      ]
+    },
+    {
+      "id": "asg-sanction-using-the-cfo-on",
+      "title": "Sanction using the CFO on",
+      "text": "Sanction using the CFO on your target. Reward: 3 hours.",
+      "copies": 1,
+      "reward": [
+        {
+          "type": "time",
+          "who": "self",
+          "minutes": 180
+        }
+      ]
+    },
+    {
+      "id": "asg-use-pimp-on",
+      "title": "Use Pimp on",
+      "text": "Use Pimp on your target. Reward: 3 hours.",
+      "copies": 1,
+      "reward": [
+        {
+          "type": "time",
+          "who": "self",
+          "minutes": 180
+        }
+      ]
+    },
+    {
+      "id": "asg-use-assassin-on",
+      "title": "Use Assassin on",
+      "text": "Use Assassin on your target. Reward: 3 hours.",
+      "copies": 1,
+      "reward": [
+        {
+          "type": "time",
+          "who": "self",
+          "minutes": 180
+        }
+      ]
+    },
+    {
+      "id": "asg-change-vote-using-chancellor-on",
+      "title": "Change vote using Chancellor on",
+      "text": "Change vote using Chancellor on your target. Reward: 3 hours.",
+      "copies": 1,
+      "reward": [
+        {
+          "type": "time",
+          "who": "self",
+          "minutes": 180
+        }
+      ]
+    },
+    {
+      "id": "asg-use-chaos-creator-directly-against",
+      "title": "Use Chaos Creator directly against",
+      "text": "Use Chaos Creator directly against your target. Reward: 3 hours.",
+      "copies": 1,
+      "reward": [
+        {
+          "type": "time",
+          "who": "self",
+          "minutes": 180
+        }
+      ]
+    },
+    {
+      "id": "asg-use-real-estate-agent-on",
+      "title": "Use Real Estate Agent on",
+      "text": "Use Real Estate Agent on your target. Reward: 3 hours.",
+      "copies": 1,
+      "reward": [
+        {
+          "type": "time",
+          "who": "self",
+          "minutes": 180
+        }
+      ]
+    },
+    {
+      "id": "asg-increase-hospital-fees-as-doctor-on",
+      "title": "Increase Hospital Fees as Doctor on",
+      "text": "Increase Hospital Fees as Doctor on your target. Reward: 3 hours.",
+      "copies": 1,
+      "reward": [
+        {
+          "type": "time",
+          "who": "self",
+          "minutes": 180
+        }
+      ]
+    },
+    {
+      "id": "asg-use-time-keeper-on",
+      "title": "Use Time Keeper on",
+      "text": "Use Time Keeper on your target. Reward: 3 hours.",
+      "copies": 1,
+      "reward": [
+        {
+          "type": "time",
+          "who": "self",
+          "minutes": 180
+        }
+      ]
+    }
+  ],
+  "collectable": [
+    {
+      "id": "col-mission-objective",
+      "title": "Mission Objective",
+      "text": "Change the target of a current assignment slip to a specific player.\nOR\nIntroduce a new assignment.",
+      "copies": 12,
+      "effects": [
+        {
+          "type": "note",
+          "text": "Change the target of an assignment, or introduce a new one: the table updates the assignment board."
+        }
+      ]
+    },
+    {
+      "id": "col-throwing-knife",
+      "title": "Throwing Knife",
+      "text": "Can be used to inflict 20 minutes of bleeding on a player of your choice.",
+      "copies": 12,
+      "contraband": true,
+      "effects": [
+        {
+          "type": "bleed",
+          "who": "choose",
+          "amount": 2
+        }
+      ]
+    },
+    {
+      "id": "col-advance",
+      "title": "Advance",
+      "text": "Can be used to advance yourself along the game board to another player.\nYou cannot advance beyond the Black Market Tile.",
+      "copies": 8,
+      "effects": [
+        {
+          "type": "note",
+          "text": "Move your pawn to another player's tile (not beyond the Black Market): click that tile on the board."
+        }
+      ]
+    },
+    {
+      "id": "col-medical-kit",
+      "title": "Medical Kit",
+      "text": "Can be used to heal 30 minutes of bleeding effect.",
+      "copies": 7,
+      "effects": [
+        {
+          "type": "bleed",
+          "who": "self",
+          "amount": -3
+        }
+      ]
+    },
+    {
+      "id": "col-remote-access",
+      "title": "Remote Access",
+      "text": "Access features from the Senate wherever you are on the game board.",
+      "copies": 7,
+      "effects": [
+        {
+          "type": "note",
+          "text": "Take a Senate action from wherever you are on the board."
+        }
+      ]
+    },
+    {
+      "id": "col-strike",
+      "title": "Strike!",
+      "text": "Steal 1 hour 30 minutes from an opposition player.\nRoll 5 or higher to activate this card for a second time.",
+      "copies": 6,
+      "contraband": true,
+      "effects": [
+        {
+          "type": "steal",
+          "who": "choose",
+          "minutes": 90
+        },
+        {
+          "type": "roll_check",
+          "who": "self",
+          "threshold": 5,
+          "label": "Strike again",
+          "success": [
+            {
+              "type": "steal",
+              "who": "choose",
+              "minutes": 90
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "col-snitch",
+      "title": "Snitch",
+      "text": "You can remove a player of your choice from their job.",
+      "copies": 4,
+      "contraband": true,
+      "effects": [
+        {
+          "type": "fire",
+          "who": "choose"
+        }
+      ]
+    },
+    {
+      "id": "col-hell-bent",
+      "title": "Hell Bent",
+      "text": "During War, you can roll an extra time and sum the numbers together.",
+      "copies": 4,
+      "reusable": true,
+      "equip": true,
+      "effects": [
+        {
+          "type": "note",
+          "text": "During War, roll an extra time and add the numbers together."
+        }
+      ]
+    },
+    {
+      "id": "col-charm",
+      "title": "Charm",
+      "text": "The roll success criteria amount is reduced by 1.\nDoes not work on the mafia scenario card.",
+      "copies": 4,
+      "reusable": true,
+      "equip": true,
+      "effects": [
+        {
+          "type": "note",
+          "text": "Your roll's success target is reduced by 1 (not against the Mafia)."
+        }
+      ]
+    },
+    {
+      "id": "col-efficiency",
+      "title": "Efficiency",
+      "text": "All knives thrown and healing collectables used are 10 minutes more effective.",
+      "copies": 4,
+      "reusable": true,
+      "equip": true,
+      "effects": [
+        {
+          "type": "note",
+          "text": "Knives you throw and healing you use are 10 minutes more effective."
+        }
+      ]
+    },
+    {
+      "id": "col-careers-advisor",
+      "title": "Careers Advisor",
+      "text": "Choose a job of your choice at any tier which is available.",
+      "copies": 3,
+      "effects": [
+        {
+          "type": "note",
+          "text": "Choose any available job at any tier in the You panel."
+        }
+      ]
+    },
+    {
+      "id": "col-drugs-package",
+      "title": "Drugs Package",
+      "text": "Plant the drugs on any player of your choosing (+1 heat).",
+      "copies": 3,
+      "contraband": true,
+      "effects": [
+        {
+          "type": "heat",
+          "who": "choose",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "col-revolution-token-start",
+      "title": "Revolution Token",
+      "text": "You can call a vote on the current government and change it to a different government of your choice.",
+      "copies": 1,
+      "contraband": true,
+      "effects": [
+        {
+          "type": "note",
+          "text": "Call a vote on the government and change it to one of your choice: the admin starts the vote."
+        }
+      ],
+      "start_in_discard": true
+    },
+    {
+      "id": "col-revolution-token",
+      "title": "Revolution Token",
+      "text": "You can call a vote on the current government and change it to a different government of your choice.",
+      "copies": 1,
+      "contraband": true,
+      "effects": [
+        {
+          "type": "note",
+          "text": "Call a vote on the government and change it to one of your choice: the admin starts the vote."
+        }
+      ]
+    }
+  ],
+  "job": [
+    {
+      "id": "job-job-opportunity",
+      "title": "Job Opportunity",
+      "text": "You can choose an available Tier 1 job of your choice.",
+      "copies": 12,
+      "effects": [
+        {
+          "type": "note",
+          "text": "Choose an available Tier 1 job in the You panel."
+        }
+      ]
+    }
+  ],
+  "promotion": [
+    {
+      "id": "pro-promotion",
+      "title": "Promotion",
+      "text": "Can be used to promote yourself in your job by one tier or increase your title by one level.",
+      "copies": 15,
+      "effects": [
+        {
+          "type": "note",
+          "text": "Promote yourself: change your job tier or title in the You panel."
+        }
+      ]
+    }
+  ],
+  "hospital": [
+    {
+      "id": "hos-medical-kit",
+      "title": "Medical Kit",
+      "text": "Can be used to heal 30 minutes of bleeding effect.",
+      "copies": 7,
+      "effects": [
+        {
+          "type": "bleed",
+          "who": "self",
+          "amount": -3
+        }
+      ]
+    },
+    {
+      "id": "hos-bandages",
+      "title": "Bandages",
+      "text": "Can be used to heal 10 minutes of bleeding effect.",
+      "copies": 20,
+      "effects": [
+        {
+          "type": "bleed",
+          "who": "self",
+          "amount": -1
+        }
+      ]
+    },
+    {
+      "id": "hos-painkillers",
+      "title": "Painkillers",
+      "text": "Can be used to heal 20 minutes of bleeding effect.",
+      "copies": 10,
+      "effects": [
+        {
+          "type": "bleed",
+          "who": "self",
+          "amount": -2
+        }
+      ]
+    }
+  ],
+  "shortcut": [
+    {
+      "id": "sct-shortcut",
+      "title": "Shortcut",
+      "text": "Jump forward 5 tiles and action the tile you land on (you can jump past the Start Tile)\nOR\nMove to Senate Tile if within five tiles.",
+      "copies": 10,
+      "effects": [
+        {
+          "type": "note",
+          "text": "Jump forward 5 tiles and action that tile (you can pass Start), or move to the Senate if it's within 5 tiles: click the tile on the board."
+        }
+      ]
+    }
+  ],
+  "oppression": [
+    {
+      "id": "opp-1-steal-time-20-mins",
+      "title": "Steal time (20 mins)",
+      "text": "Steal 20 minutes from a player of your choice per turn.",
+      "copies": 1,
+      "effects": [
+        {
+          "type": "steal",
+          "who": "choose",
+          "minutes": 20
+        }
+      ]
+    },
+    {
+      "id": "opp-2-steal-time-30-mins",
+      "title": "Steal time (30 mins)",
+      "text": "Steal 30 minutes from a player of your choice per turn.",
+      "copies": 1,
+      "effects": [
+        {
+          "type": "steal",
+          "who": "choose",
+          "minutes": 30
+        }
+      ]
+    },
+    {
+      "id": "opp-3-steal-time-30-mins",
+      "title": "Steal time (30 mins)",
+      "text": "Steal 30 minutes from a player of your choice per turn.",
+      "copies": 1,
+      "effects": [
+        {
+          "type": "steal",
+          "who": "choose",
+          "minutes": 30
+        }
+      ]
+    },
+    {
+      "id": "opp-4-steal-time-40-mins",
+      "title": "Steal time (40 mins)",
+      "text": "Steal 40 minutes from a player of your choice per turn.",
+      "copies": 1,
+      "effects": [
+        {
+          "type": "steal",
+          "who": "choose",
+          "minutes": 40
+        }
+      ]
+    },
+    {
+      "id": "opp-5-bleeding-10-mins",
+      "title": "Bleeding (10 mins)",
+      "text": "+10 minutes of bleeding effect to a player of your choice per turn.",
+      "copies": 1,
+      "effects": [
+        {
+          "type": "bleed",
+          "who": "choose",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "opp-6-bleeding-20-mins",
+      "title": "Bleeding (20 mins)",
+      "text": "+20 minutes of bleeding effect to a player of your choice per turn.",
+      "copies": 1,
+      "effects": [
+        {
+          "type": "bleed",
+          "who": "choose",
+          "amount": 2
+        }
+      ]
+    },
+    {
+      "id": "opp-7-bleeding-20-mins",
+      "title": "Bleeding (20 mins)",
+      "text": "+20 minutes of bleeding effect to a player of your choice per turn.",
+      "copies": 1,
+      "effects": [
+        {
+          "type": "bleed",
+          "who": "choose",
+          "amount": 2
+        }
+      ]
+    },
+    {
+      "id": "opp-8-bleeding-30-mins",
+      "title": "Bleeding (30 mins)",
+      "text": "+30 minutes of bleeding effect to a player of your choice per turn.",
+      "copies": 1,
+      "effects": [
+        {
+          "type": "bleed",
+          "who": "choose",
+          "amount": 3
+        }
+      ]
+    },
+    {
+      "id": "opp-9-steal-collectable-1-collectable",
+      "title": "Steal collectable (1 collectable)",
+      "text": "Steal a collectable (their choice) from a player of your choice per turn.",
+      "copies": 1,
+      "effects": [
+        {
+          "type": "note",
+          "text": "The player gives you a collectable of their choice (use Give in their cards)."
+        }
+      ]
+    },
+    {
+      "id": "opp-10-steal-collectable-1-collectable",
+      "title": "Steal collectable (1 collectable)",
+      "text": "Steal a collectable (their choice) from a player of your choice per turn.",
+      "copies": 1,
+      "effects": [
+        {
+          "type": "note",
+          "text": "The player gives you a collectable of their choice (use Give in their cards)."
+        }
+      ]
+    },
+    {
+      "id": "opp-11-time-virus",
+      "title": "Time Virus",
+      "text": "Time Virus to a player of your choice per turn.",
+      "copies": 1,
+      "effects": [
+        {
+          "type": "time_roll",
+          "who": "choose",
+          "per_pip": -30,
+          "dice": 1
+        }
+      ]
+    },
+    {
+      "id": "opp-12-time-virus",
+      "title": "Time Virus",
+      "text": "Time Virus to a player of your choice per turn.",
+      "copies": 1,
+      "effects": [
+        {
+          "type": "time_roll",
+          "who": "choose",
+          "per_pip": -30,
+          "dice": 1
+        }
+      ]
+    },
+    {
+      "id": "opp-13-sacrifice-item-1-item",
+      "title": "Sacrifice item (1 item)",
+      "text": "Force a player of your choice to sacrifice an item per turn.",
+      "copies": 1,
+      "effects": [
+        {
+          "type": "note",
+          "text": "The player sacrifices an item of their choice: a job, a title level, a collectable or a completed slip."
+        }
+      ]
+    },
+    {
+      "id": "opp-14-sacrifice-item-1-item",
+      "title": "Sacrifice item (1 item)",
+      "text": "Force a player of your choice to sacrifice an item per turn.",
+      "copies": 1,
+      "effects": [
+        {
+          "type": "note",
+          "text": "The player sacrifices an item of their choice: a job, a title level, a collectable or a completed slip."
+        }
+      ]
+    },
+    {
+      "id": "opp-15-demote-1-title-level",
+      "title": "Demote (1 title level)",
+      "text": "Demote a player of your choice in their title per turn.",
+      "copies": 1,
+      "effects": [
+        {
+          "type": "demote",
+          "who": "choose"
+        }
+      ]
+    },
+    {
+      "id": "opp-16-heat-1-heat",
+      "title": "Heat (+1 heat)",
+      "text": "+1 heat to a player of your choice per turn.",
+      "copies": 1,
+      "effects": [
+        {
+          "type": "heat",
+          "who": "choose",
+          "amount": 1
+        }
+      ]
+    }
+  ],
+  "reference": {
+    "jobs": [
+      {
+        "Job": "Data Analyst",
+        "Faction": "Finance",
+        "Tier": "1",
+        "Pay (mins per turn)": "10",
+        "Ability": "—"
+      },
+      {
+        "Job": "Teacher",
+        "Faction": "Public Service",
+        "Tier": "1",
+        "Pay (mins per turn)": "10",
+        "Ability": "—"
+      },
+      {
+        "Job": "Phone Scammer",
+        "Faction": "Illicit",
+        "Tier": "1",
+        "Pay (mins per turn)": "10",
+        "Ability": "—"
+      },
+      {
+        "Job": "Accountant",
+        "Faction": "Finance",
+        "Tier": "2",
+        "Pay (mins per turn)": "20",
+        "Ability": "—"
+      },
+      {
+        "Job": "Legal Advisor",
+        "Faction": "Public Service",
+        "Tier": "2",
+        "Pay (mins per turn)": "20",
+        "Ability": "—"
+      },
+      {
+        "Job": "Prostitute",
+        "Faction": "Illicit",
+        "Tier": "2",
+        "Pay (mins per turn)": "20",
+        "Ability": "—"
+      },
+      {
+        "Job": "Stock Broker",
+        "Faction": "Finance",
+        "Tier": "3",
+        "Pay (mins per turn)": "30",
+        "Ability": "Once per turn, you can steal 30 minutes from a player of your choice and gamble it depending on your movement roll:\n1: -30 mins; 2: -10 mins\n3: 10 mins; 4: 20 mins\n5: 30 mins; 6: 40 mins"
+      },
+      {
+        "Job": "CFO",
+        "Faction": "Finance",
+        "Tier": "3",
+        "Pay (mins per turn)": "30",
+        "Ability": "Sanction up to three players of your choice who possess 6 or more items with 20 minutes each."
+      },
+      {
+        "Job": "Real Estate Officer",
+        "Faction": "Finance",
+        "Tier": "3",
+        "Pay (mins per turn)": "30",
+        "Ability": "Every time a player visits the Job Centre, Hospital or Senate you can demand 20 minutes."
+      },
+      {
+        "Job": "Time Keeper",
+        "Faction": "Finance",
+        "Tier": "3",
+        "Pay (mins per turn)": "30",
+        "Ability": "Every turn, you can siphon 20 minutes from one player of your choice and/or 20 minutes from a second player of your choice."
+      },
+      {
+        "Job": "Charity Commissioner",
+        "Faction": "Public Service",
+        "Tier": "3",
+        "Pay (mins per turn)": "30",
+        "Ability": "All opposition players pay 20 minutes per turn whilst you are in post.\nOnce per turn, forgive +1 heat from a player of your choice at an agreed price."
+      },
+      {
+        "Job": "Judge",
+        "Faction": "Public Service",
+        "Tier": "3",
+        "Pay (mins per turn)": "30",
+        "Ability": "You can overrule and decide any court case. Can accept bribes/make deals for a favourable outcome at an agreed price."
+      },
+      {
+        "Job": "Doctor",
+        "Faction": "Public Service",
+        "Tier": "3",
+        "Pay (mins per turn)": "30",
+        "Ability": "The costs at the Hospital are doubled whilst you are in post for all opposition players.\nDraw three Hospital Items per turn."
+      },
+      {
+        "Job": "Chancellor",
+        "Faction": "Public Service",
+        "Tier": "3",
+        "Pay (mins per turn)": "30",
+        "Ability": "Allows remote access to the Senate per turn but all costs are increased by 30 minutes.\nGranted two votes when trying to change government, but a single vote when voting remain."
+      },
+      {
+        "Job": "Assassin",
+        "Faction": "Illicit",
+        "Tier": "3",
+        "Pay (mins per turn)": "30",
+        "Ability": "Once per turn, you can inflict 20 minutes bleeding effect on one player and 10 minutes bleeding effect on a different player of your choice."
+      },
+      {
+        "Job": "Syndicate Leader",
+        "Faction": "Illicit",
+        "Tier": "3",
+        "Pay (mins per turn)": "30",
+        "Ability": "Can sanction a player of your choice with +1 heat by rolling 4 or higher for movement (not affected by charms) on your turn."
+      },
+      {
+        "Job": "Pimp",
+        "Faction": "Illicit",
+        "Tier": "3",
+        "Pay (mins per turn)": "30",
+        "Ability": "Can steal a collectable from another player (of their choice) on your turn."
+      },
+      {
+        "Job": "Chaos Creator",
+        "Faction": "Illicit",
+        "Tier": "3",
+        "Pay (mins per turn)": "30",
+        "Ability": "Roll the black die:\n1. +5 to Horseman counter\n2. Time Virus EVERYONE\n3. Draw a Scenario Card\n4. Time Virus a player\n5. +1 heat to a player\n6. Steal 30 mins from players"
+      }
+    ],
+    "titles": [
+      {
+        "Title": "Manager",
+        "Items required": "1",
+        "Pay (mins per turn)": "40",
+        "Quantity": "6",
+        "Abilities": "+1 to die against War and win all ties against War."
+      },
+      {
+        "Title": "Senior",
+        "Items required": "2",
+        "Pay (mins per turn)": "50",
+        "Quantity": "4",
+        "Abilities": "+1 to die against War and win all ties against War.\n+2 to heat threshold."
+      },
+      {
+        "Title": "Executive",
+        "Items required": "3",
+        "Pay (mins per turn)": "60",
+        "Quantity": "2",
+        "Abilities": "+1 to die against War and win all ties against War.\n+2 to heat threshold.\nDraw a deck card per turn."
+      }
+    ],
+    "governments": [
+      {
+        "Government": "Democracy",
+        "Who governs": "All players",
+        "Max oppressions": "None (0)",
+        "Leader income": "—",
+        "Full card text": "All players make up the governing body.\nNo government oppressions can be implemented.\nAll purchases are double in price."
+      },
+      {
+        "Government": "Communism",
+        "Who governs": "Politburo (two random players)",
+        "Max oppressions": "2 per turn (per leader)",
+        "Leader income": "+20 mins per turn (each Politburo leader)",
+        "Full card text": "All players share 50% of their current time equally among all alive players.\nTwo random players make up the Politburo.\nLeaders can use a max of two oppressions per turn.\nEach Politburo leader receives +20 minutes income per turn.\nEach peasant donates 20 minutes per turn to the state."
+      },
+      {
+        "Government": "Dictatorship",
+        "Who governs": "Dictator (one-vote blind auction)",
+        "Max oppressions": "3 per turn",
+        "Leader income": "+30 mins per turn",
+        "Full card text": "The dictator is chosen by one-vote blind auction. All decisions are made by the dictator.\nThe Dictator can use a max of three oppressions per turn.\nDictator receives +30 minutes income per turn.\nCost of Jail is increased by 4 hours for all peasants."
+      },
+      {
+        "Government": "Republic",
+        "Who governs": "Head of State (popular vote) + two advisors",
+        "Max oppressions": "1 per state enemy per turn",
+        "Leader income": "+20 mins Head of State; +10 mins each advisor",
+        "Full card text": "The Head of State is elected by popular vote; they choose two advisors once elected.\nThe Head of State can only use government oppressions against state enemies (must be agreed by the head of state and at least one advisor).\nThe Head of State can use a max of one oppression per state enemy per turn.\nHead of State receives +20 minutes income per turn; advisors receive +10 minutes income per turn.\nCollectable Promotions tiles no longer grant a free collectable."
+      }
+    ],
+    "oppressions": [
+      {
+        "Card #": "1",
+        "Effect type": "Steal time",
+        "Amount": "20 mins",
+        "Card text": "Steal 20 minutes from a player of your choice per turn."
+      },
+      {
+        "Card #": "2",
+        "Effect type": "Steal time",
+        "Amount": "30 mins",
+        "Card text": "Steal 30 minutes from a player of your choice per turn."
+      },
+      {
+        "Card #": "3",
+        "Effect type": "Steal time",
+        "Amount": "30 mins",
+        "Card text": "Steal 30 minutes from a player of your choice per turn."
+      },
+      {
+        "Card #": "4",
+        "Effect type": "Steal time",
+        "Amount": "40 mins",
+        "Card text": "Steal 40 minutes from a player of your choice per turn."
+      },
+      {
+        "Card #": "5",
+        "Effect type": "Bleeding",
+        "Amount": "10 mins",
+        "Card text": "+10 minutes of bleeding effect to a player of your choice per turn."
+      },
+      {
+        "Card #": "6",
+        "Effect type": "Bleeding",
+        "Amount": "20 mins",
+        "Card text": "+20 minutes of bleeding effect to a player of your choice per turn."
+      },
+      {
+        "Card #": "7",
+        "Effect type": "Bleeding",
+        "Amount": "20 mins",
+        "Card text": "+20 minutes of bleeding effect to a player of your choice per turn."
+      },
+      {
+        "Card #": "8",
+        "Effect type": "Bleeding",
+        "Amount": "30 mins",
+        "Card text": "+30 minutes of bleeding effect to a player of your choice per turn."
+      },
+      {
+        "Card #": "9",
+        "Effect type": "Steal collectable",
+        "Amount": "1 collectable",
+        "Card text": "Steal a collectable (their choice) from a player of your choice per turn."
+      },
+      {
+        "Card #": "10",
+        "Effect type": "Steal collectable",
+        "Amount": "1 collectable",
+        "Card text": "Steal a collectable (their choice) from a player of your choice per turn."
+      },
+      {
+        "Card #": "11",
+        "Effect type": "Time Virus",
+        "Amount": "—",
+        "Card text": "Time Virus to a player of your choice per turn."
+      },
+      {
+        "Card #": "12",
+        "Effect type": "Time Virus",
+        "Amount": "—",
+        "Card text": "Time Virus to a player of your choice per turn."
+      },
+      {
+        "Card #": "13",
+        "Effect type": "Sacrifice item",
+        "Amount": "1 item",
+        "Card text": "Force a player of your choice to sacrifice an item per turn."
+      },
+      {
+        "Card #": "14",
+        "Effect type": "Sacrifice item",
+        "Amount": "1 item",
+        "Card text": "Force a player of your choice to sacrifice an item per turn."
+      },
+      {
+        "Card #": "15",
+        "Effect type": "Demote",
+        "Amount": "1 title level",
+        "Card text": "Demote a player of your choice in their title per turn."
+      },
+      {
+        "Card #": "16",
+        "Effect type": "Heat",
+        "Amount": "+1 heat",
+        "Card text": "+1 heat to a player of your choice per turn."
+      }
+    ]
+  },
+  "default": true
+}

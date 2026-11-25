@@ -17,6 +17,12 @@ class Config(object):
     FLASK_ADMIN_SWATCH = "cerulean"
     UPLOAD_FOLDER = UPLOAD_FOLDER
     MAX_CONTENT_LENGTH = MAX_CONTENT_LENGTH
+    # Usernames allowed to upload new card versions through the website
+    # (comma-separated env var). Empty = command line only (manage_cards.py).
+    # Let Flask-JWT-Extended's handlers turn bad/expired tokens into 401s;
+    # without this Flask-RESTful swallows them and answers 500.
+    PROPAGATE_EXCEPTIONS = True
+    GAME_DATA_ADMINS = [u.strip() for u in os.environ.get("GAME_DATA_ADMINS", "").split(",") if u.strip()]
 
 
 class DevelopmentConfig(Config):

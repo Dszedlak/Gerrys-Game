@@ -148,6 +148,10 @@ def on_join(payload=None):
     emit("room_state", serialize_room(room), to=room_identifier)
     emit("setUserId", {"data": get_jwt_identity()})
     emit("updateClock", {"data": getClock(userData)})
+
+    # The board view's positions, turn and log.
+    from app.websocket.board import emit_board_state
+    emit_board_state(room, to_requester=True)
     
     # If dictator bidding is active for this room, send bidding state to reconnecting user.
     # The auction is blind: only who has bid is shared, never the amounts.
@@ -286,6 +290,10 @@ def update_government(data):
     print(serialize_room(room))
     emit("room_state", serialize_room(room), to=str(room.id))
 
+    # Government oppressions don't survive a change of government
+    from app.websocket.board import government_changed
+    government_changed(room)
+
 
 @socketio.on("startPolitburoSpin")
 @jwt_required()
@@ -375,6 +383,29 @@ def close_politburo_modal(data=None):
 @jwt_required()
 def balanceChange(data=None):
     userData = getUserData()
+    _, room = apply_income(userData)
+
+    # Emit to the user who made the update
+    formatted_clock = timeFormat(userData.clock)
+    emit("updateClock", {"data": formatted_clock})
+
+    # Broadcast this user's clock update to everyone in the room
+    if room:
+        room_identifier = str(room.id)
+        socketio.emit("userClockUpdate", {
+            "user_id": userData.userId,
+            "clock": formatted_clock
+        }, room=room_identifier)
+
+
+def apply_income(userData):
+    """
+    Pay one turn of income into `userData`'s clock and commit.
+
+    Shared by the Get Paid button and the board's Collect Income step, so the
+    two can never pay different amounts. Mirrored on the client by
+    frontend/src/composables/useIncome.js. Returns (net_minutes, room).
+    """
     job_income = 0
     if userData.job:
         job_income = userData.job.tier * 10  # Example: tier 3 = 30 mins
@@ -405,11 +436,12 @@ def balanceChange(data=None):
             user_id=user_id
         ).first()
         
+        # Government cards (v4.27): Politburo +20, Dictator +30, Head of State +20,
+        # advisors +10; under Communism each peasant donates 20 minutes to the state.
         if gov_type == "Communism":
             if gov_member and gov_member.role == "politburo":
-                # Politburo members get +10 mins
-                government_bonus = 10
-                print(f"[balanceChange] Communism: User is politburo member, bonus: +10")
+                government_bonus = 20
+                print(f"[balanceChange] Communism: User is politburo member, bonus: +20")
             else:
                 # Non-politburo members get -20 mins
                 government_bonus = -20
@@ -417,11 +449,14 @@ def balanceChange(data=None):
         
         elif gov_type == "Dictatorship":
             if gov_member and gov_member.role == "dictator":
-                # Dictator gets +10 mins
+                government_bonus = 30
+                print(f"[balanceChange] Dictatorship: User is dictator, bonus: +30")
+
+        elif gov_type == "Republic":
+            if gov_member and gov_member.role == "head_of_state":
+                government_bonus = 20
+            elif gov_member and gov_member.role == "advisor":
                 government_bonus = 10
-                print(f"[balanceChange] Dictatorship: User is dictator, bonus: +10")
-            else:
-                print(f"[balanceChange] Dictatorship: User is not dictator, no special bonus")
 
     # Charity Commissioner in the game: every opposition player (i.e. everyone
     # except the Commissioner themselves) loses 20 minutes of turn income.
@@ -450,18 +485,7 @@ def balanceChange(data=None):
         print(f"[balanceChange] Clock overflow detected, setting to 00•00•00")
     
     db.session.commit()
-    
-    # Emit to the user who made the update
-    formatted_clock = timeFormat(userData.clock)
-    emit("updateClock", {"data": formatted_clock})
-    
-    # Broadcast this user's clock update to everyone in the room
-    if room:
-        room_identifier = str(room.id)
-        socketio.emit("userClockUpdate", {
-            "user_id": userData.userId,
-            "clock": formatted_clock
-        }, room=room_identifier)
+    return net_income, room
 
 
 @socketio.on("getOutOfJail")
@@ -486,6 +510,10 @@ def get_out_of_jail(data=None):
         print(f"[getOutOfJail] Dictatorship government - jail fee is 12 hours")
     else:
         print(f"[getOutOfJail] Non-dictatorship government - jail fee is 8 hours")
+
+    # Jury Corruption: "The cost of Jail for the alive player is half the cost when they leave"
+    from app.websocket.board import jail_fee_discount
+    jail_fee = jail_fee_discount(room, userData.userId, jail_fee)
     
     # Check if player has enough time
     current_clock_minutes = (userData.clock - datetime.min).total_seconds() / 60
@@ -496,8 +524,15 @@ def get_out_of_jail(data=None):
     # Deduct jail fee
     time_delta = timedelta(minutes=jail_fee)
     userData.clock -= time_delta
+    was_in_jail = bool(userData.is_in_jail)
+    userData.is_in_jail = False
     
     db.session.commit()
+
+    # Paying out of Jail moves your pawn to the Start tile on the board.
+    if was_in_jail:
+        from app.websocket.board import release_from_jail
+        release_from_jail(userData.roomId, userData.userId, jail_fee)
     
     print(f"[getOutOfJail] User {userData.userId} paid {jail_fee} minutes for jail")
     
@@ -1117,6 +1152,10 @@ def conclude_dictator_bidding(data=None):
     db.session.add(gov_member)
     db.session.commit()
 
+    # Government oppressions don't survive a change of government
+    from app.websocket.board import government_changed
+    government_changed(room)
+
     # Clear bidding data
     if room.id in dictator_bids:
         del dictator_bids[room.id]
@@ -1380,6 +1419,10 @@ def select_republic_advisors(data=None):
     for adv in advisors:
         db.session.add(GovernmentMember(government_id=government.id, user_id=adv, role="advisor"))
     db.session.commit()
+
+    # Government oppressions don't survive a change of government
+    from app.websocket.board import government_changed
+    government_changed(room)
 
     # Initialize state enemies voting for this room
     republic_enemy_votes[room.id] = {}
