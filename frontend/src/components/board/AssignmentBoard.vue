@@ -41,6 +41,10 @@
             <span v-if="a.card?.example" class="assign__example">example</span>
           </div>
           <div class="assign__text">{{ a.card?.text }}</div>
+          <div v-if="a.retargeted" class="assign__moved">
+            🔁 Retargeted by {{ playersById[a.retargeted.by]?.username || 'someone' }}:
+            was on {{ playersById[a.retargeted.from]?.username || 'someone' }}
+          </div>
         </div>
         <button
           v-if="(a.target !== myUserId || bountyTargets(a).length) && canClaim"
@@ -271,6 +275,16 @@ TargetSelect.emits = ['pick', 'cancel']
 
 /* Aimed at me: red alert */
 .assign__item.is-mine { border-color: #EF4444; box-shadow: 0 0 12px rgba(239, 68, 68, 0.35); }
+.assign__moved {
+  margin-top: 4px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(34, 211, 238, 0.12);
+  color: #A5F3FC;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
 .assign__item.is-mine .assign__target { background: linear-gradient(90deg, rgba(239, 68, 68, 0.6), rgba(239, 68, 68, 0.15)); }
 .assign__item.is-mine .assign__target-name { color: #FEE2E2; }
 

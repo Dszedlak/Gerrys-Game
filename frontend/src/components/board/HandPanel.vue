@@ -6,7 +6,7 @@
       <span
         class="hand__count"
         :class="{ 'is-over': limitCount > handLimit }"
-        :title="`Up to ${handLimit} collectables, job opportunities and promotions in hand, plus ${maxEquipped} equipped. Hospital items don't count.`"
+        :title="`Up to ${handLimit} cards in hand (collectables, job opportunities, promotions, hospital items and shortcuts), plus ${maxEquipped} equipped.`"
       >
         {{ limitCount }}/{{ handLimit }} in hand · {{ equipped.length }}/{{ maxEquipped }} equipped
       </span>
@@ -48,7 +48,8 @@
         <span class="hand__zone-count" :class="{ 'is-over': limitCount > handLimit }">{{ limitCount }}/{{ handLimit }}</span>
       </div>
       <div class="hand__cards">
-        <div v-for="c in hand" :key="c.uid" class="hand__slot">
+        <div v-for="c in hand" :key="c.uid" class="hand__slot" :class="{ 'is-in-play': inPlay(c) }">
+          <span v-if="inPlay(c)" class="hand__active hand__active--play">IN PLAY</span>
           <CardFace :card="c" size="sm" />
           <div class="hand__actions">
             <button
@@ -124,9 +125,16 @@ const ON_YOUR_TURN = new Set(['Advance', 'Shortcut', 'Remote Access'])
 const BLACK_MARKET = 19
 const myTurn = computed(() => Boolean(props.state?.started) && props.state?.turn?.user_id === props.myUserId)
 
+// A card being played stays in the hand until its action has happened
+function inPlay(card) {
+  const ev = props.state?.event
+  return Boolean(ev && !ev.done && ev.entry && ev.entry === card.uid)
+}
+
 function unusable(card) {
   const s = props.state
   if (!s) return ''
+  if (inPlay(card)) return 'Being played now: it leaves your hand once it has done its job'
   if (s.event && !s.event.done) return `Finish “${s.event.title}” first`
   if (!ON_YOUR_TURN.has(card.title)) return ''
   if (!myTurn.value) return 'Use this on your turn'
@@ -426,6 +434,9 @@ TargetPicker.emits = ['pick', 'cancel']
   border-radius: 10px;
   box-shadow: 0 0 0 2px rgba(234, 179, 8, 0.7), 0 0 16px rgba(234, 179, 8, 0.25);
 }
+
+.hand__slot.is-in-play { position: relative; outline: 2px dashed rgba(34, 211, 238, 0.7); outline-offset: 2px; border-radius: 10px; }
+.hand__active--play { background: #22D3EE !important; }
 
 .hand__active {
   position: absolute;

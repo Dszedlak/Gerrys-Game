@@ -27,6 +27,7 @@
           <b-button v-else variant="primary" size="lg" :disabled="isSpinning" @click="spinWheel" class="spin-button">{{ isSpinning ? 'Spinning...' : 'SPIN!' }}</b-button>
         </div>
         <div v-if="winner" class="winner-result mt-4">
+          <p v-if="winner.landedOn" class="chaos-note">🌀 The wheel landed on <strong>{{ winner.landedOn }}</strong>… but the Chaos Creator is in the game!</p>
           <h3>🎉 Winner: <span class="winner-name">{{ winner.text || winner }}</span> 🎉</h3>
           <div v-if="showCustomActions" class="custom-actions mt-3">
             <slot name="winner-actions" :winner="winner"></slot>
@@ -112,10 +113,24 @@ const wheelItems = computed(() => {
 })
 
 const sliceAngle = computed(() => wheelItems.value.length > 0 ? 360 / wheelItems.value.length : 0)
+// Slice sizes from the server (a Chaos Creator's wild wheel); equal slices otherwise
+const sliceWeights = ref(null)
+const slices = computed(() => {
+  const n = wheelItems.value.length
+  const w = sliceWeights.value && sliceWeights.value.length === n ? sliceWeights.value : Array(n).fill(1)
+  const total = w.reduce((a, b) => a + b, 0) || 1
+  let start = 0
+  return w.map(x => {
+    const size = (360 * x) / total
+    const out = { start, size }
+    start += size
+    return out
+  })
+})
 
 function getSlicePath(index) {
-  const angle = sliceAngle.value
-  const startAngle = index * angle - 90
+  const angle = slices.value[index]?.size || sliceAngle.value
+  const startAngle = (slices.value[index]?.start ?? index * angle) - 90
   const endAngle = startAngle + angle
   const centerX = 250, centerY = 250, radius = 240
   const startRad = (startAngle * Math.PI) / 180
@@ -128,28 +143,33 @@ function getSlicePath(index) {
   return `M ${centerX} ${centerY} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`
 }
 
+function sliceMid(index) {
+  const sl = slices.value[index]
+  return sl ? sl.start + sl.size / 2 : index * sliceAngle.value + sliceAngle.value / 2
+}
+
 function getTextX(index) {
-  const angle = sliceAngle.value
-  const midAngle = (index * angle + angle / 2 - 90) * Math.PI / 180
+  const midAngle = (sliceMid(index) - 90) * Math.PI / 180
   const radius = 160
   return 250 + radius * Math.cos(midAngle)
 }
 
 function getTextY(index) {
-  const angle = sliceAngle.value
-  const midAngle = (index * angle + angle / 2 - 90) * Math.PI / 180
+  const midAngle = (sliceMid(index) - 90) * Math.PI / 180
   const radius = 160
   return 250 + radius * Math.sin(midAngle)
 }
 
 function getTextTransform(index) {
-  const angle = sliceAngle.value
-  const rotation = index * angle + angle / 2
+  const rotation = sliceMid(index)
   return `rotate(${rotation} ${getTextX(index)} ${getTextY(index)})`
 }
 
 function open() {
-  if (!isSpinning.value) winner.value = null
+  if (!isSpinning.value) {
+    winner.value = null
+    sliceWeights.value = null
+  }
   wheelModal.value?.show()
 }
 
@@ -246,6 +266,7 @@ async function playSpin(spin) {
   winner.value = null
   currentRotation.value = 0
   spunBy.value = spin.by || ''
+  sliceWeights.value = spin.weights || null
   await nextTick()
   await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
   isSpinning.value = true
@@ -254,7 +275,10 @@ async function playSpin(spin) {
   clearTimeout(spinTimer)
   spinTimer = setTimeout(() => {
     const w = spin.entries?.[spin.winner_index]
-    winner.value = w ? { text: w.username, value: w.user_id } : null
+    // Chaos Creator: where it stopped isn't necessarily who won
+    const landed = spin.chaos && spin.landed_index !== undefined && spin.landed_index !== spin.winner_index
+      ? spin.entries?.[spin.landed_index]?.username : null
+    winner.value = w ? { text: w.username, value: w.user_id, landedOn: landed } : null
     isSpinning.value = false
   }, spin.duration_ms || 5000)
 }
@@ -298,6 +322,12 @@ defineExpose({ open, winner, spinWheel, spinToRotation, generateSpinData, clearW
 .spin-button-inline { min-width: 180px; font-size: 1.1em; font-weight: bold; padding: 10px 24px; border-radius: 50px; transition: all 0.3s ease; }
 .spin-button:hover:not(:disabled) { transform: scale(1.05);;; }
 .spin-button:disabled { opacity: 0.6; cursor: not-allowed; }
+.chaos-note {
+  margin: 0 0 6px;
+  font-weight: 600;
+  color: #C084FC;
+}
+
 .winner-result { text-align: center; animation: fadeIn 0.5s ease-in; }
 .winner-result h3 { font-size: 2em; color: #EAB308; margin: 0;; }
 .winner-result-inline { text-align: center; animation: fadeIn 0.5s ease-in; }

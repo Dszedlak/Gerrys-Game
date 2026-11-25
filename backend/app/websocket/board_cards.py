@@ -20,12 +20,15 @@ import random
 DECK_NAMES = ("scenario", "assignment", "collectable", "job", "promotion", "hospital", "shortcut", "oppression")
 # Decks whose cards go into a player's hand
 HAND_DECKS = ("collectable", "job", "promotion", "hospital", "shortcut")
-# Hand cards that count towards the "5 collectables" hand limit
-HAND_LIMIT_DECKS = ("collectable", "job", "promotion")
+# Hand cards that count towards the "5 collectables" hand limit: every card in your hand
+HAND_LIMIT_DECKS = HAND_DECKS
+# Decks shuffled into another deck's pile: Promotion cards are part of the Collectables deck
+# (their entries in that pile carry their deck: "promotion:<id>#<n>")
+MERGED_DECKS = {"promotion": "collectable"}
 
 STARTING_HAND = 2
 MAX_ASSIGNMENTS = 6
-MAX_PER_TARGET = 2
+MAX_PER_TARGET = 3
 MAX_EQUIPPED = 2
 
 BLEED_MAX = 64
@@ -108,6 +111,9 @@ def card_id(instance: str) -> str:
 
 
 def card_of(cards: dict, deck: str, instance: str):
+    head = str(instance).split("#", 1)[0]
+    if ":" in head:   # a merged deck's card inside another pile ("promotion:<id>#<n>")
+        deck, instance = str(instance).split(":", 1)
     return (cards.get(deck) or {}).get(card_id(instance))
 
 
@@ -128,7 +134,25 @@ def new_deck(deck_cards: dict, rng=random) -> dict:
 
 
 def new_decks(cards: dict, rng=random) -> dict:
-    return {d: new_deck(cards.get(d, {}), rng) for d in DECK_NAMES}
+    decks = {d: new_deck(cards.get(d, {}), rng) for d in DECK_NAMES}
+    for merged, into in MERGED_DECKS.items():
+        extra = decks[merged]
+        decks[into]["draw"] += [f"{merged}:{i}" for i in extra["draw"]]
+        decks[into]["discard"] += [f"{merged}:{i}" for i in extra["discard"]]
+        rng.shuffle(decks[into]["draw"])
+        decks[merged] = {"draw": [], "discard": []}
+    return decks
+
+
+def available(decks: dict, deck: str) -> int:
+    """How many cards of `deck` could still be drawn (draw + discard piles)."""
+    pile = decks.get(deck) or {"draw": [], "discard": []}
+    n = len(pile["draw"]) + len(pile["discard"])
+    into = MERGED_DECKS.get(deck)
+    if into:
+        host = decks.get(into) or {"draw": [], "discard": []}
+        n += sum(1 for e in host["draw"] + host["discard"] if str(e).startswith(deck + ":"))
+    return n
 
 
 def shuffle_deck(decks: dict, deck: str, rng=random) -> int:
@@ -164,6 +188,18 @@ def draw(decks: dict, deck: str, cards: dict, rng=random):
     Instances whose card has since been removed from cards.json are skipped.
     """
     pile = decks.setdefault(deck, {"draw": [], "discard": []})
+    into = MERGED_DECKS.get(deck)
+    if into and not pile["draw"] and not pile["discard"]:
+        # e.g. a Promotion card: the first one in the Collectables deck (or its discard pile)
+        host = decks.setdefault(into, {"draw": [], "discard": []})
+        prefix = deck + ":"
+        for src in ("draw", "discard"):
+            for i in range(len(host[src]) - 1, -1, -1):
+                entry = host[src][i]
+                if str(entry).startswith(prefix) and card_of(cards, deck, entry[len(prefix):]):
+                    host[src].pop(i)
+                    return entry[len(prefix):], False
+        return None, False
     reshuffled = False
     while True:
         if not pile["draw"]:
@@ -178,6 +214,10 @@ def draw(decks: dict, deck: str, cards: dict, rng=random):
 
 
 def discard(decks: dict, deck: str, instance: str):
+    into = MERGED_DECKS.get(deck)
+    if into and ":" not in str(instance).split("#", 1)[0]:
+        decks.setdefault(into, {"draw": [], "discard": []})["discard"].append(f"{deck}:{instance}")
+        return
     decks.setdefault(deck, {"draw": [], "discard": []})["discard"].append(instance)
 
 
@@ -211,7 +251,7 @@ def assignments_against(assignments: list, user_id) -> int:
 
 
 def black_bag(alive_ids, assignments: list, rng=random):
-    """Draw a target counter: any alive player with fewer than 2 assignments on them."""
+    """Draw a target counter: any alive player with fewer than MAX_PER_TARGET assignments on them."""
     pool = [u for u in alive_ids if assignments_against(assignments, u) < MAX_PER_TARGET]
     return rng.choice(pool) if pool else None
 

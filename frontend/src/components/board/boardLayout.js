@@ -168,7 +168,7 @@ export function tileDescription(tile, { doctorInPlay = false } = {}) {
     case 'senate_virus':
       return 'Senate tile: receive a Shortcut card and take one Senate action. You also get to release the Time Virus on a player of your choice.'
     case 'hospital':
-      return `A free hospital item (bandage) is dealt straight into your hand. You can buy up to 5 more for ${hospitalCost} each.`
+      return `A random hospital item is dealt free, straight into your hand. You can buy up to 5 more for ${hospitalCost} each.`
     case 'go_to_job_centre':
       return 'Jump straight to the Job Centre. You have passed Start (−1 heat).'
     case 'black_market':
@@ -195,19 +195,19 @@ export function tileSubLabel(tile, { doctorInPlay = false } = {}) {
 export const GOVERNMENT_CARDS = {
   Democracy: {
     icon: '🗳️',
-    summary: 'The starting government. There are no leaders. Every alive player holds an approval vote, changed at the Senate; when most reject, a vote on a new government follows.'
+    summary: 'The starting government. There are no leaders. Every alive player holds an approval vote, changed at the Senate; when most reject, the player who tipped it proposes a new government and everyone votes.'
   },
   Republic: {
     image: '/republic.png',
-    summary: 'The Head of State is elected by popular vote and chooses two advisors. Oppressions may only target enemies of the state (agreed by the Head of State and at least one advisor), one per state enemy per turn. Any title promotion needs an extra completed assignment slip.'
+    summary: 'The Head of State is elected by popular vote (a split vote is settled by dice) and chooses two advisors (one if only two players are left). Head of State +20 minutes a turn, advisors +10. Collectables & Promotions tiles give no free collectable. Oppressions may only target enemies of the state (agreed by the Head of State and at least one advisor), one per state enemy per turn.'
   },
   Dictatorship: {
     image: '/dictator.png',
-    summary: 'The dictator is chosen by a one-vote blind auction and makes every decision, with up to three oppressions per turn. The dictator earns +10 minutes per turn. Jail costs 12 hours.'
+    summary: 'The dictator is chosen by a one-vote blind auction and makes every decision, with up to three oppressions per turn. The dictator earns +30 minutes per turn. Jail costs 4 hours more for every peasant (12 hours).'
   },
   Communism: {
     image: '/communism.png',
-    summary: 'Two politburo members are chosen at random. Each earns +10 minutes per turn, and every peasant pays 20 minutes per turn to the state.'
+    summary: 'Two politburo members are chosen at random. Each earns +20 minutes per turn, and every peasant donates 20 minutes per turn to the state.'
   },
   Anarchy: {
     icon: '🏴',
@@ -219,9 +219,9 @@ export function governmentCard(type) {
   return GOVERNMENT_CARDS[type] || { icon: '🏛️', summary: '' }
 }
 
-/** Jail fee in hours: 8, or 12 under a Dictatorship (matches getOutOfJail). */
-export function jailFeeHours(governmentType) {
-  return governmentType === 'Dictatorship' ? 12 : 8
+// Dictatorship: "Cost of Jail is increased by 4 hours for all peasants" (the Dictator pays 8)
+export function jailFeeHours(governmentType, isDictator = false) {
+  return governmentType === 'Dictatorship' && !isDictator ? 12 : 8
 }
 
 /** Jail at 3 heat, or 4 for a Senior or Executive. Mirrors board_rules.heat_threshold. */
@@ -306,7 +306,7 @@ export const PURCHASE_LIMIT = 5
 export const ACTION_TILE_KINDS = ['collectables', 'hospital', 'senate', 'senate_virus', 'black_market', 'time_virus', 'scenario']
 
 // Hand cards that count towards the hand limit ("5 collectables in hand")
-export const HAND_LIMIT_DECKS = ['collectable', 'job', 'promotion']
+export const HAND_LIMIT_DECKS = ['collectable', 'job', 'promotion', 'hospital', 'shortcut']
 
 // How long the die tumbles, and each hop of the pawn after it.
 export const DIE_SETTLE_MS = 1050

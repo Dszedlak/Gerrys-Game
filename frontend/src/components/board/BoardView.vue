@@ -136,6 +136,19 @@
           @visible="(v) => { revealShowing = v }"
         />
 
+        <!-- The last player standing wins -->
+        <WinnerModal
+          :open="Boolean(winner) && winnerDismissed !== winner.user_id"
+          :player="winner"
+          :myUserId="currentUserId"
+          :isAdmin="isAdmin"
+          @close="winnerDismissed = winner?.user_id ?? null"
+          @end-game="winnerDismissed = winner?.user_id ?? null; $emit('end-game')"
+        />
+
+        <!-- Peasant's Revolt: on the same tile as a government leader (any turn) -->
+        <RevoltPrompt v-if="!moving" :board="board" :targets="revoltTargets" />
+
         <!-- "X's turn", whenever the turn passes on -->
         <TurnBanner
           :state="boardState"
@@ -351,6 +364,8 @@ import JobsModal from '@/components/board/JobsModal.vue'
 import TitlesModal from '@/components/board/TitlesModal.vue'
 import ActionPopup from '@/components/board/ActionPopup.vue'
 import TurnBanner from '@/components/board/TurnBanner.vue'
+import RevoltPrompt from '@/components/board/RevoltPrompt.vue'
+import WinnerModal from '@/components/board/WinnerModal.vue'
 import DeckMenu from '@/components/board/DeckMenu.vue'
 import ScenarioEvent from '@/components/board/ScenarioEvent.vue'
 import OngoingCards from '@/components/board/OngoingCards.vue'
@@ -403,7 +418,8 @@ const emit = defineEmits([
   'bleed-changed',
   'heat-changed',
   'get-out-of-jail',
-  'set-approval'
+  'set-approval',
+  'end-game'
 ])
 
 const { computeIncomeBreakdown } = useIncome()
@@ -416,7 +432,7 @@ const governmentName = computed(() => props.government?.type || 'Democracy')
 // Collapsed by default, like the assignments and oppressions
 const { collapsed: govCollapsed, toggle: toggleGov } = useCollapsed('government.v2', true)
 const govCard = computed(() => governmentCard(governmentName.value))
-const jailFee = computed(() => jailFeeHours(governmentName.value))
+const jailFee = computed(() => jailFeeHours(governmentName.value, roleOf(Number(props.currentUserId)) === 'Dictator'))
 
 const ROLE_LABELS = {
   dictator: 'Dictator',
@@ -477,11 +493,9 @@ const ledgerPlayers = computed(() => {
       // A card debt (RNLI) is repaid from each turn's income
       const debt = s?.debts?.[String(p.user_id)] || null
       const repay = debt ? Math.min(debt.plan || 60, debt.minutes) : 0
-      const levy = charityLevyFor(p, job)
       const incomeLines = [
         ...income.lines,
-        ...(repay ? [{ label: `${debt.title} repayment`, minutes: -repay }] : []),
-        ...(levy ? [{ label: 'Charity Commissioner levy', minutes: -levy }] : [])
+        ...(repay ? [{ label: `${debt.title} repayment`, minutes: -repay }] : [])
       ]
       return {
         user_id: p.user_id,
@@ -494,7 +508,7 @@ const ledgerPlayers = computed(() => {
         clockMinutes: clockToMinutes(p.clock),
         alive: isAlive(p),
         jailed: Boolean(p.is_in_jail),
-        incomeNet: income.net - repay - levy,
+        incomeNet: income.net - repay,
         incomeLines,
         debt: debt ? { title: debt.title, minutes: debt.minutes, repay } : null,
         bleed: p.bleed || 0,
@@ -519,17 +533,32 @@ const ledgerPlayers = computed(() => {
     })
 })
 
-// With a Charity Commissioner in post, opposition players (not Public Service) pay 20m a turn
-function charityLevyFor(p, job) {
-  const secondary = props.boardState?.secondary_jobs || {}
-  const commissioners = props.participants.filter(x =>
-    x.user_id !== p.user_id && isAlive(x) &&
-    (x.job_name === 'Charity Commissioner' || (secondary[String(x.user_id)] === 'Charity Commissioner' && x.perk === 'Executive')))
-  if (!commissioners.length || job?.type === 'Public Service' || !isAlive(p)) return 0
-  return 20
-}
-
 const playersById = computed(() => Object.fromEntries(ledgerPlayers.value.map(p => [p.user_id, p])))
+
+// The last player standing (the server marks it in state.finished; clocks can also show it first)
+const winnerDismissed = ref(null)
+const winner = computed(() => {
+  const s = props.boardState
+  if (!s?.started) return null
+  if (s.finished?.winner != null) return playersById.value[s.finished.winner] || null
+  const players = ledgerPlayers.value
+  const alive = players.filter(p => p.alive)
+  return players.length >= 2 && alive.length === 1 ? alive[0] : null
+})
+
+// Peasant's Revolt: a peasant on the same tile as a government leader (once per leader per turn)
+const REVOLT_LEADERS = ['Dictator', 'Head of State', 'Politburo']
+const revoltTargets = computed(() => {
+  const s = props.boardState
+  if (!s?.started || governmentName.value === 'Democracy') return []
+  const mine = ledgerPlayers.value.find(p => p.user_id === props.currentUserId)
+  if (!mine || !mine.alive || mine.jailed || mine.govRole) return []
+  const pos = s.positions?.[String(props.currentUserId)]
+  if (pos === undefined || pos === null || pos === s.jail) return []
+  const used = s.revolts?.turn_seq === s.turn_seq ? (s.revolts.pairs || []) : []
+  return ledgerPlayers.value.filter(p => REVOLT_LEADERS.includes(p.govRole) && p.alive && !p.jailed &&
+    s.positions?.[String(p.user_id)] === pos && !used.includes(`${props.currentUserId}:${p.user_id}`))
+})
 const me = computed(() => playersById.value[props.currentUserId] || null)
 const myIncomeNet = computed(() => me.value?.incomeNet || 0)
 const myEquipped = computed(() => me.value?.equipped || [])
@@ -589,7 +618,7 @@ const canBuyAtMarket = computed(() => {
   return Boolean(s?.started) && s?.turn?.user_id === props.currentUserId && Boolean(s?.turn?.rolled || s?.turn?.landed) &&
     s?.tiles?.[pos]?.kind === 'black_market' && !(s?.turn?.purchases?.black_market >= 1)
 })
-// Only collectables, job opportunities and promotions count towards the hand limit
+// Every card in your hand counts towards the hand limit
 const limitedHandSize = computed(() => props.hand.filter(c => HAND_LIMIT_DECKS.includes(c.deck || 'collectable')).length)
 
 const revealRef = ref(null)
@@ -615,10 +644,15 @@ const mySecondaryJob = computed(() => {
 const myAbilities = computed(() => {
   const ref = props.boardState?.reference?.jobs || []
   const used = props.boardState?.turn?.abilities_used || {}
+  // A new Tier 3 job's ability works from the next turn (see board_jobs.ability_ready)
+  const since = props.boardState?.job_since?.[String(props.currentUserId)] || {}
+  const seq = props.boardState?.turn_seq
   const out = []
   const add = (slot, job) => {
     const info = ref.find(j => j.name === job)
-    out.push({ slot, job, text: info?.ability || '', automatic: info?.automatic || null, used: Boolean(used[slot]) })
+    const s = since[slot] ?? -1
+    out.push({ slot, job, text: info?.ability || '', automatic: info?.automatic || null, used: Boolean(used[slot]),
+      notYet: s >= 0 && s === seq })
   }
   if (me.value?.jobTier === 3) add('primary', me.value.jobName)
   if (mySecondaryJob.value) add('secondary', mySecondaryJob.value)
@@ -708,8 +742,10 @@ const myTileNow = computed(() => {
 const myTileHasActions = computed(() => {
   const s = props.boardState
   const pending = s?.pending && s.pending.user_id === props.currentUserId
-  return Boolean(myTurnNow.value && (s?.turn?.rolled || s?.turn?.landed) && me.value?.alive && !me.value?.jailed &&
-    (ACTION_TILE_KINDS.includes(myTileNow.value?.kind) || pending || s?.turn?.remote_senate))
+  if (!myTurnNow.value || !me.value?.alive || me.value?.jailed) return false
+  // Remote Access works from anywhere, before or after rolling
+  if (s?.turn?.remote_senate) return true
+  return Boolean((s?.turn?.rolled || s?.turn?.landed) && (ACTION_TILE_KINDS.includes(myTileNow.value?.kind) || pending))
 })
 
 // A pawn is still hopping to its tile: its pop-ups wait until it lands
@@ -751,7 +787,7 @@ watch(() => [props.boardState?.turn_seq, Boolean(props.boardState?.turn?.rolled 
     }
     // Just rolled onto it, moved there by a card, or got Remote Access
     // (on joining mid-turn, show it straight away)
-    const justRolled = rolled && (!oldRolled || seq !== oldSeq || (old && tile !== oldTile) || (remote && !oldRemote))
+    const justRolled = (rolled && (!oldRolled || seq !== oldSeq || (old && tile !== oldTile))) || (remote && !oldRemote)
     if (!justRolled && actionOpen.value) return
     if (!old) return showActions()
     if (!justRolled) return

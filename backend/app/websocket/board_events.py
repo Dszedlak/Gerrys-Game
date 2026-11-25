@@ -310,13 +310,43 @@ def finish(room, state, ctx):
     ev = state["event"]
     ev["done"] = True
     ev["finished_at"] = B._iso(B._now())
-    if not ev["keep"]:
+    used = True
+    if ev.get("entry"):
+        # A card played from a hand only leaves it now that its action has happened
+        used = bool(B._take_card(state, ev["drawer"], ev["entry"]))
+    if used and not ev["keep"]:
         cards_mod.discard(state["decks"], ev.get("deck", "scenario"), ev["inst"])
     if ev.get("chain"):
         # e.g. Gerry's Slot Machine "draw scenario card", or a Shortcut onto a Scenario tile
         ev["chain"] = False
         B._log(state, f"🃏 {ctx.name(ev['drawer'])} draws a scenario card.", kind="card")
         B._land_scenario(room, state, ev["drawer"], None)
+    elif state.get("gov_vote_pending") is not None:
+        # The table rejected the government while this card was in play
+        start_government_vote(room, state, state.pop("gov_vote_pending"))
+
+
+def start_government_vote(room, state, uid):
+    """The majority rejects the government: `uid` (who tipped it) proposes a new one, then everyone votes."""
+    state.pop("gov_vote_pending", None)
+    state["event_seq"] = state.get("event_seq", 0) + 1
+    state.pop("event_secret", None)
+    text = ("The majority of the table rejects the government. The player whose vote tipped it chooses a "
+            "new government, then everyone votes on it.")
+    state["event"] = {
+        "id": state["event_seq"], "deck": "government", "inst": None,
+        "card": {"uid": None, "id": "no-confidence", "deck": "government", "title": "The table rejects the government",
+                 "text": text, "equip": False, "example": False, "needs_target": False, "notes": []},
+        "title": "The table rejects the government", "drawer": uid, "queue": [], "prompt": None, "lines": [],
+        "roll": None, "vars": {}, "done": False, "keep": True, "chain": False, "war": False,
+        "started_at": B._iso(B._now()), "after_roll": None, "played": False,
+    }
+    ctx = Ctx(room, state)
+    current = ctx.government()
+    ctx.ask("choice", uid, "token_gov", args={"uid": uid},
+            question="👎 The majority rejects the government. Propose a new one for everyone to vote on:",
+            options=[{"key": g, "label": g} for g in GOVERNMENTS if g != current])
+    return run(room, state, ctx)
 
 
 def cancel(state, reason):
@@ -328,6 +358,12 @@ def cancel(state, reason):
     ev["prompt"] = None
     ev["done"] = True
     ev["cancelled"] = reason
+    if ev.get("entry"):
+        # A played card that didn't happen stays in its player's hand
+        ev["returned"] = True
+        ev["lines"].append({"text": f"↩️ “{ev['title']}” wasn't used: it goes back into the hand it was played from.",
+                            "tone": ""})
+        return True
     if not ev["keep"]:
         cards_mod.discard(state["decks"], ev.get("deck", "scenario"), ev["inst"])
     return True
@@ -1129,13 +1165,21 @@ def _change_government(ctx, new, prefix="🏛️ "):
             db.session.add(GovernmentMember(government_id=gov.id, user_id=uid, role="politburo"))
         text += f" The Politburo: {' and '.join(ctx.name(u) for u in politburo)}."
     elif new == "Dictatorship":
-        text += " Hold the blind auction for the Dictator with the government controls."
+        text += " Everyone now bids secretly for the Dictator's seat (the auction is open)."
     elif new == "Republic":
-        text += " Elect the Head of State with the government controls."
+        text += " Everyone now votes for the Head of State (the ballot is open)."
     db.session.commit()
+    # A new government starts with everyone's approval
+    B.board_gov.reset_approvals(room)
     ctx.room_changed = True
     B._check_government(room, ctx.state)
     ctx.line(text)
+    # Choosing the new leaders opens for everyone straight away
+    from app.websocket import sockets
+    if new == "Dictatorship":
+        sockets.begin_dictator_bidding(room)
+    elif new == "Republic":
+        sockets.begin_republic_voting(room)
 
 
 @script("no-confidence-vote")
@@ -1333,8 +1377,11 @@ def card_check(room, state, user_id, card_def):
     return check(room, state, user_id) if check else None
 
 
-def start_card(room, state, deck, inst, actor):
-    """A hand card was played: everyone sees it play out (like a scenario card)."""
+def start_card(room, state, deck, inst, actor, entry=None):
+    """
+    A hand card was played: everyone sees it play out (like a scenario card).
+    It stays in the hand (as `entry`) until its action has happened: cancelling it returns it.
+    """
     card_def = cards_mod.card_of(B._cards(state), deck, inst)
     state["event_seq"] = state.get("event_seq", 0) + 1
     state.pop("event_secret", None)
@@ -1342,7 +1389,7 @@ def start_card(room, state, deck, inst, actor):
         "id": state["event_seq"], "deck": deck, "inst": inst, "card": B._pc(state, deck, inst),
         "title": card_def["title"], "drawer": actor, "queue": [], "prompt": None, "lines": [], "roll": None,
         "vars": {}, "done": False, "keep": False, "chain": False, "war": False,
-        "started_at": B._iso(B._now()), "after_roll": None, "played": True,
+        "started_at": B._iso(B._now()), "after_roll": None, "played": True, "entry": entry,
     }
     ctx = Ctx(room, state)
     card_script(card_def)(ctx, card_def)
@@ -1443,7 +1490,10 @@ def _check_mission(room, state, user_id):
         return "The game hasn't started."
     deck = state["decks"]["assignment"]
     can_new = len(state["assignments"]) < cards_mod.MAX_ASSIGNMENTS and (deck["draw"] or deck["discard"])
-    if not state["assignments"] and not can_new:
+    order = state.get("turn_order") or []
+    movable = any(any(u != a["target"] and cards_mod.assignments_against([x for x in state["assignments"] if x is not a], u)
+                      < cards_mod.MAX_PER_TARGET for u in order) for a in state["assignments"])
+    if not movable and not can_new:
         return "There are no assignment slips to change or draw."
     return None
 
@@ -1452,7 +1502,7 @@ def _check_mission(room, state, user_id):
 def c_mission(ctx, card_def):
     me = ctx.ev["drawer"]
     options = []
-    if ctx.state["assignments"]:
+    if any(_retarget_pool(ctx, a) for a in ctx.state["assignments"]):
         options.append({"key": "change", "label": "Change the target of a slip"})
     if len(ctx.state["assignments"]) < cards_mod.MAX_ASSIGNMENTS:
         options.append({"key": "new", "label": "Introduce a new assignment"})
@@ -1478,8 +1528,19 @@ def mission_choice(ctx, answer, uid):
         ctx.line(f"📜 A new assignment, “{title}”, targets {ctx.name(target)}.")
         return
     options = [{"key": str(a["id"]), "label": f"“{(B._pc(ctx.state, 'assignment', a['card']) or {}).get('title', 'Slip')}” → "
-                                             f"{ctx.name(a['target'])}"} for a in ctx.state["assignments"]]
-    ctx.ask("pick", uid, "mission_slip", args={"uid": uid}, question="Which slip?", options=options, min=1, max=1)
+                                             f"{ctx.name(a['target'])}"} for a in ctx.state["assignments"] if _retarget_pool(ctx, a)]
+    if not options:
+        ctx.line("No slip can be moved: everyone else already has the most slips on them.")
+        return
+    ctx.ask("pick", uid, "mission_slip", args={"uid": uid}, question="Which slip do you want to retarget?",
+            options=options, min=1, max=1)
+
+
+def _retarget_pool(ctx, slip):
+    """Who a slip could be moved onto: anyone else with room for another slip."""
+    others = [a for a in ctx.state["assignments"] if a is not slip]
+    return [u for u in ctx.order() if u != slip["target"]
+            and cards_mod.assignments_against(others, u) < cards_mod.MAX_PER_TARGET]
 
 
 @step
@@ -1488,11 +1549,14 @@ def mission_slip(ctx, answer, uid):
     if not slip:
         ctx.line("That slip has gone.")
         return
-    others = [a for a in ctx.state["assignments"] if a is not slip]
-    pool = [u for u in ctx.order() if u != slip["target"]
-            and cards_mod.assignments_against(others, u) < cards_mod.MAX_PER_TARGET]
+    pool = _retarget_pool(ctx, slip)
+    if not pool:
+        ctx.line("Nobody else has room for that slip.")
+        return
+    title = (B._pc(ctx.state, "assignment", slip["card"]) or {}).get("title", "the slip")
     ctx.ask("pick", uid, "mission_target", args={"uid": uid, "slip": slip["id"]},
-            question="Who should it target now?", options=ctx.options_for(pool), min=1, max=1)
+            question=f"“{title}” targets {ctx.name(slip['target'])} now. Who should it target instead?",
+            options=ctx.options_for(pool), min=1, max=1)
 
 
 @step
@@ -1502,8 +1566,12 @@ def mission_target(ctx, answer, uid, slip):
         return
     old = a["target"]
     a["target"] = int(answer[0])
+    # Shown on the slip, so everyone can see it changed
+    a["retargeted"] = {"from": old, "by": uid, "round": ctx.state.get("round")}
     title = (B._pc(ctx.state, "assignment", a["card"]) or {}).get("title", "A slip")
-    ctx.line(f"📜 “{title}” now targets {ctx.name(a['target'])} (was {ctx.name(old)}).")
+    ctx.line(f"🔁 Assignment changed: “{title}” now targets {ctx.name(a['target'])} instead of {ctx.name(old)}.", "good")
+    B._log(ctx.state, f"🔁 {ctx.name(uid)} moved the assignment “{title}” from {ctx.name(old)} to {ctx.name(a['target'])}.",
+           kind="card", announce=True)
 
 
 # --- Remote Access: the Senate from anywhere, this turn -------------------------------
@@ -1584,10 +1652,13 @@ TITLES = ["Manager", "Senior", "Executive"]
 def _promotion_options(room, user_id):
     rp = B._participants(room).get(user_id)
     options = []
-    if rp.perk != "Executive":
-        nxt = TITLES[TITLES.index(rp.perk) + 1] if rp.perk in TITLES else "Manager"
-        options.append({"key": "title", "label": f"Title: {rp.perk or 'none'} → {nxt}"})
     tier = rp.job.tier if rp.job else 0
+    # Titles are only for Tier 3 jobs (and only while one of that title is free)
+    if rp.perk != "Executive" and tier == 3:
+        nxt = TITLES[TITLES.index(rp.perk) + 1] if rp.perk in TITLES else "Manager"
+        held = sum(1 for p in room.participants if p.perk == nxt and p.userId != user_id)
+        if held < B.board_jobs.TITLE_QUANTITY[nxt]:
+            options.append({"key": "title", "label": f"Title: {rp.perk or 'none'} → {nxt}"})
     if 1 <= tier < 3:
         jobs = Job.query.filter_by(type=rp.job.type, tier=tier + 1).order_by(Job.name).all()
         options += [{"key": o["key"], "label": f"Job: {o['label']}"} for o in _job_options(room, user_id, jobs)]
@@ -1598,7 +1669,7 @@ def _check_promotion(room, state, user_id):
     if not state.get("started"):
         return "The game hasn't started."
     if not _promotion_options(room, user_id):
-        return "There's nothing to promote: you're an Executive and your job can't go up a tier."
+        return "There's nothing to promote: your job can't go up a tier, and titles need a Tier 3 job."
     return None
 
 
@@ -2170,6 +2241,29 @@ def board_event_skip(data=None):
             state.pop("event_secret", None)
             B._log(state, f"🛠️ The admin skipped a step of “{ev['title']}”.", kind="admin")
             run(room, state)
+        _finish_request(room, state, None)
+
+
+@socketio.on("boardEventWithdraw")
+@jwt_required()
+def board_event_withdraw(data=None):
+    """Take back a card you played, while you're still choosing what it does: it stays in your hand."""
+    ctx_ = B._context()
+    if not ctx_:
+        return
+    user_id, rp, room = ctx_
+    with B._room_locks[room.id]:
+        state = B._load(room)
+        ev = state.get("event")
+        if not active(state) or not ev.get("entry") or ev.get("drawer") != user_id:
+            emit("error", {"message": "You don't have a card in play to take back."})
+            return
+        prompt = ev.get("prompt")
+        if not prompt or prompt.get("user_id") != user_id:
+            emit("error", {"message": "Others are answering this card now, so it can't be taken back."})
+            return
+        cancel(state, "withdrawn")
+        B._log(state, f"↩️ {B._name(rp)} took back “{ev['title']}”.", kind="card", user_id=user_id)
         _finish_request(room, state, None)
 
 

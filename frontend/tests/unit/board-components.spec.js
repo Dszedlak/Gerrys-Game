@@ -232,10 +232,10 @@ describe('HandLimitModal', () => {
 
   it('asks for the extra cards and blocks ending the turn until you are at the limit', async () => {
     const hand = [card('a'), card('b'), card('c'), card('bandage#1', 'hospital')]
-    const { wrapper, board } = await mountModal(hand, 2)
+    const { wrapper, board } = await mountModal(hand, 3)
     expect(wrapper.text()).toContain('give away 1 more card')
-    expect(wrapper.text()).toContain('3/2')
-    expect(wrapper.text()).not.toContain('bandage#1') // hospital items don't count
+    expect(wrapper.text()).toContain('4/3')
+    expect(wrapper.text()).toContain('bandage#1') // every card in the hand counts, hospital items too
     const end = wrapper.findAll('button').find(b => b.text().includes('more to go'))
     expect(end.attributes('disabled')).toBeDefined()
 

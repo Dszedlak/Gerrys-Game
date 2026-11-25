@@ -126,6 +126,10 @@ export function useBoard(socket, { onAnnounce } = {}) {
     eventAnswer: (promptId, answer) => send('boardEventAnswer', { prompt_id: promptId, answer }),
     // Admin: skip the current question, or stop the card
     eventSkip: (stop = false) => send('boardEventSkip', stop ? { stop: true } : {}),
+    // Take back a card you played (while you're still choosing): it stays in your hand
+    eventWithdraw: () => send('boardEventWithdraw', {}),
+    // A peasant on the same tile as a government leader: steal 1h + a free Throwing Knife
+    peasantRevolt: (targetUserId) => send('boardPeasantRevolt', { target_user_id: targetUserId }),
     // Ongoing cards: pay off a debt (RNLI), donate to lift Income Tax
     payDebt: (minutes) => send('boardPayDebt', { minutes }),
     // How much of the debt is repaid each turn when you collect income (60, 120 or 180)

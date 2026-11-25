@@ -110,8 +110,9 @@ def test_time_roll_rolls_once_for_everyone():
     print("PASS: time roll")
 
 
-def test_black_bag_respects_the_two_per_target_limit():
-    assignments = [{"target": 2}, {"target": 2}, {"target": 3}]
+def test_black_bag_respects_the_three_per_target_limit():
+    assert cards_mod.MAX_PER_TARGET == 3
+    assignments = [{"target": 2}, {"target": 2}, {"target": 2}, {"target": 3}]
     for seed in range(20):
         assert cards_mod.black_bag([1, 2, 3], assignments, rng=random.Random(seed)) in (1, 3)
     assert cards_mod.black_bag([2], assignments) is None

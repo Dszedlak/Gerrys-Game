@@ -179,8 +179,28 @@ def _load(room) -> dict:
 
 
 def _save(room, state):
+    _check_winner(room, state)
+    # Note job changes made by this request (a new Tier 3 ability waits a turn)
+    board_jobs.track_jobs(state, _participants(room))
     room.board_state = json.dumps(state)
     db.session.commit()
+
+
+def _check_winner(room, state):
+    """The last player standing wins: the game is over (no more turns)."""
+    if not state.get("started") or state.get("finished"):
+        return
+    parts = list(room.participants)
+    alive = [p for p in parts if _alive(p)]
+    if len(parts) < 2 or len(alive) != 1:
+        return
+    w = alive[0]
+    state["finished"] = {"winner": w.userId, "at": _iso(_now())}
+    state["turn"] = None
+    if board_events.active(state):
+        board_events.cancel(state, "game over")
+    _log(state, f"🏆 {_name(w)} is the last player standing and wins the game!", kind="round",
+         user_id=w.userId, announce=True)
 
 
 def _pc(state, deck, instance):
@@ -392,6 +412,24 @@ def _advance_turn(room, state):
     elif rp and rp.is_in_jail:
         suffix = " (in Jail)"
     _log(state, f"▶ {_name(rp)}'s turn{suffix}.", kind="turn", user_id=uid)
+    _turn_income(room, state)
+
+
+def _turn_income(room, state):
+    """Income is paid automatically at the very start of a turn (then any RNLI repayment)."""
+    turn = state.get("turn") or {}
+    uid = turn.get("user_id")
+    rp = _participants(room).get(uid)
+    if not rp or turn.get("paid"):
+        return
+    turn["paid"] = True
+    if not _alive(rp):
+        return
+    net, _ = apply_income(rp)
+    sign = "+" if net >= 0 else "-"
+    _log(state, f"💰 {_name(rp)} received their income: {sign}{_fmt(abs(net))}.", kind="money", user_id=uid)
+    repay_debt(state, rp)
+    _emit_clock(room, rp)
 
 
 def _jail(room, state, target) -> str:
@@ -751,7 +789,7 @@ def _hand_limit(rp) -> int:
 
 
 def _hand_limit_status(state, rp):
-    '''(cards counting towards the hand limit, the limit). Hospital items don't count.'''
+    '''(cards counting towards the hand limit, the limit): every card in the hand.'''
     hand = state["hands"].get(str(rp.userId), [])
     held = sum(1 for e in hand if cards_mod.split_entry(e)[0] in cards_mod.HAND_LIMIT_DECKS)
     return held, _hand_limit(rp)
@@ -1039,6 +1077,7 @@ def _begin_game(room, state, order, first_roll=None, announce_winner=True):
     _log(state, "⏳ The Reaper arrives in 2 hours.", kind="reaper")
     if order:
         _log(state, f"▶ {_name(participants[order[0]])}'s turn.", kind="turn", user_id=order[0])
+        _turn_income(room, state)
 
 
 # Everyone plays a pawn (players choose its colour); see frontend/src/components/board/pieces.js
@@ -1389,6 +1428,7 @@ def board_set_turn(data=None):
         state["turn_seq"] = state.get("turn_seq", 0) + 1
         _log(state, f"🛠️ The admin made it {_name(target)}'s turn.", kind="admin", announce=True)
         _log(state, f"▶ {_name(target)}'s turn.", kind="turn", user_id=target_id)
+        _turn_income(room, state)
         _save(room, state)
     _emit_room_state(room)
     _broadcast(room, state)
@@ -1416,11 +1456,10 @@ def board_collect_income(data=None):
         sign = "+" if net >= 0 else "-"
         _log(state, f"💰 {_name(rp)} collected income: {sign}{_fmt(net)}.", kind="money", user_id=user_id)
         repaid = repay_debt(state, rp)
-        levied = board_jobs.charity_levy(room, state, rp)
         _save(room, state)
     _emit_clock(room, rp)
     _broadcast(room, state)
-    if repaid or levied:
+    if repaid:
         _emit_room_state(room)
 
 
@@ -1550,9 +1589,8 @@ def board_purchase(data=None):
         # Each purchase deals its card into your hand
         deal_deck = {"collectable": "collectable", "promotion": "promotion", "hospital": "hospital"}.get(kind)
         if deal_deck:
-            pile = state["decks"][deal_deck]
-            if len(pile["draw"]) + len(pile["discard"]) < count:
-                left = len(pile["draw"]) + len(pile["discard"])
+            left = cards_mod.available(state["decks"], deal_deck)
+            if left < count:
                 emit("error", {"message": f"The {DECK_LABEL[deal_deck].lower()} deck is empty." if not left
                                else f"Only {left} left in the {DECK_LABEL[deal_deck].lower()} deck."})
                 return
@@ -1597,9 +1635,6 @@ def board_time_virus(data=None):
             return
         if turn.get("virus_used"):
             emit("error", {"message": "You've already released the Time Virus this turn."})
-            return
-        if rules.tile(position).get("building") and turn.get("no_access"):
-            emit("error", {"message": "You haven't left the Senate, so you can't use it this turn."})
             return
         participants = _participants(room)
         target = participants.get(_int_or_none(target_id))
@@ -1947,11 +1982,12 @@ def board_play_card(data=None):
             if error:
                 emit("error", {"message": error})
                 return
-            if not _take_card(state, user_id, instance):
+            if instance not in state["hands"].get(str(user_id), []) + state["equipped"].get(str(user_id), []):
                 emit("error", {"message": "That card isn't in your hand."})
                 return
             _log(state, f"🎴 {_name(rp)} plays “{card['title']}”.", kind="card", user_id=user_id)
-            board_events.start_card(room, state, deck, inst, user_id)
+            # It leaves the hand once its action has happened (board_events.finish)
+            board_events.start_card(room, state, deck, inst, user_id, entry=instance)
             _save(room, state)
             _emit_room_state(room)
             _broadcast(room, state)
@@ -2171,18 +2207,42 @@ def board_shuffle_deck(data=None):
 WHEEL_SPIN_MS = 5000
 
 
-def wheel_spin_for(entries, rng=random):
+def wheel_spin_for(entries, rng=random, weights=None):
     """
     Pick a winner and the wheel rotation that lands the pointer on them.
-    Slice i covers [i*s, (i+1)*s) clockwise from the top; rotating the wheel
-    by R degrees puts slice floor(((360 - R % 360) % 360) / s) under the pointer.
+    Slice i covers [start_i, start_i + size_i) clockwise from the top (sizes in
+    proportion to `weights`, equal by default); rotating the wheel by R degrees
+    puts the slice holding angle (360 - R % 360) % 360 under the pointer.
+    Returns (landed slice index, rotation).
     """
     n = len(entries)
-    s = 360 / n
-    winner = rng.randrange(n)
-    landing = (winner + rng.uniform(0.15, 0.85)) * s
+    weights = weights or [1] * n
+    total = float(sum(weights))
+    sizes = [360 * w / total for w in weights]
+    # The pointer lands on a slice in proportion to its size, like a real wheel
+    pick = rng.uniform(0, 360)
+    start = 0.0
+    landed = n - 1
+    for i, size in enumerate(sizes):
+        if pick < start + size:
+            landed = i
+            break
+        start += size
+    start = sum(sizes[:landed])
+    landing = start + sizes[landed] * rng.uniform(0.15, 0.85)
     rotation = rng.randint(5, 7) * 360 + (360 - landing)
-    return winner, round(rotation, 3)
+    return landed, round(rotation, 3)
+
+
+def chaos_wheel(entries, rng=random):
+    """
+    With a Chaos Creator in the game the wheel is wild: slices are random sizes,
+    and wherever it lands, the real winner is drawn separately.
+    Returns (weights, landed index, winner index, rotation).
+    """
+    weights = [round(rng.uniform(0.25, 3.0), 3) for _ in entries]
+    landed, rotation = wheel_spin_for(entries, rng, weights)
+    return weights, landed, rng.randrange(len(entries)), rotation
 
 
 @socketio.on("roomWheelSpin")
@@ -2205,18 +2265,29 @@ def room_wheel_spin(data=None):
         emit("error", {"message": "Nobody to spin for."})
         return
     entries = [{"user_id": p.userId, "username": _name(p)} for p in players]
-    winner, rotation = wheel_spin_for(entries)
 
     with _room_locks[room.id]:
         state = _load(room)
         state["wheel_id"] = state.get("wheel_id", 0) + 1
         spin_id = state["wheel_id"]
+        chaos = bool(board_jobs.holders(room, state, "Chaos Creator"))
         _save(room, state)
+
+    if chaos:
+        weights, landed, winner, rotation = chaos_wheel(entries)
+    else:
+        weights = None
+        landed, rotation = wheel_spin_for(entries)
+        winner = landed
 
     socketio.emit("roomWheelSpin", {
         "id": spin_id,
         "entries": entries,
         "winner_index": winner,
+        # Where the pointer stops (with a Chaos Creator in the game, not necessarily the winner)
+        "landed_index": landed,
+        "weights": weights,
+        "chaos": chaos,
         "rotation": rotation,
         "duration_ms": WHEEL_SPIN_MS,
         "by": _name(rp),
@@ -2230,7 +2301,11 @@ def room_wheel_spin(data=None):
                 return
             with _room_locks[r.id]:
                 st = _load(r)
-                _log(st, f"🎡 The wheel picked {entries[winner]['username']}.", kind="admin", announce=True)
+                if chaos and landed != winner:
+                    _log(st, f"🌀 Chaos! The wheel landed on {entries[landed]['username']}, but the real winner is "
+                             f"{entries[winner]['username']}.", kind="admin", announce=True)
+                else:
+                    _log(st, f"🎡 The wheel picked {entries[winner]['username']}.", kind="admin", announce=True)
                 _save(r, st)
             _broadcast(r, st)
     app_ref = _current_app()
@@ -2322,10 +2397,13 @@ def _check_government(room, state):
 def government_changed(room):
     """Called by sockets.py whenever the government changes."""
     room = Room.query.get(room.id)
+    # A new government starts with everyone's approval
+    board_gov.reset_approvals(room)
     with _room_locks[room.id]:
         state = _load(room)
         _save(room, state)
     _broadcast(room, state)
+    _emit_room_state(room)
 
 
 def _oppression_uses(state):
@@ -2379,6 +2457,7 @@ def board_senate_vote(data=None):
     payload = _parse(data)
     target_id = _int_or_none(payload.get("target_user_id"))
     status = payload.get("status")
+    was_majority = board_gov.reject_majority(room)
     with _room_locks[room.id]:
         state = _load(room)
         if not _require_own_turn(state, user_id):
@@ -2414,6 +2493,8 @@ def board_senate_vote(data=None):
     _emit_clock(room, rp)
     _emit_room_state(room)
     _broadcast(room, state)
+    # Tipping the table into a REJECT majority calls a vote on a new government
+    board_gov.approval_changed(room, user_id, was_majority)
 
 
 @socketio.on("boardIntroduceOppression")
@@ -2563,3 +2644,4 @@ def board_remove_oppression(data=None):
 # Scenario cards as live events (imports this module, so it comes last)
 from app.websocket import board_events  # noqa: E402
 from app.websocket import board_jobs  # noqa: E402
+from app.websocket import board_gov  # noqa: E402

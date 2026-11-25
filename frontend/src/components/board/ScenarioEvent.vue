@@ -7,7 +7,10 @@
         <header class="sev__head">
           <span class="sev__dot" :style="{ background: drawer?.color || '#A78BFA' }" />
           <span class="sev__eyebrow">
-            <template v-if="ev.played">
+            <template v-if="ev.deck === 'government'">
+              👎 Government · {{ ev.drawer === myUserId ? 'you tipped the vote' : `called by ${drawer?.username || 'someone'}` }}
+            </template>
+            <template v-else-if="ev.played">
               {{ ev.deck === 'ability' ? '⚡' : '🎴' }} {{ deckLabel }} · {{ ev.drawer === myUserId ? (ev.deck === 'ability' ? 'you used it' : 'you played it') : `${ev.deck === 'ability' ? 'used' : 'played'} by ${drawer?.username || 'someone'}` }}
             </template>
             <template v-else>
@@ -215,9 +218,16 @@
         </div>
 
         <footer class="sev__foot">
-          <button v-if="!ev.done && canRedraw && !ev.played && !p?.unusable" type="button" class="sev__btn sev__btn--small sev__btn--redraw" @click="redraw">
+          <button v-if="!ev.done && canRedraw && !ev.played && ev.deck !== 'government' && !p?.unusable" type="button" class="sev__btn sev__btn--small sev__btn--redraw" @click="redraw">
             🔁 Discard &amp; draw another
           </button>
+          <button
+            v-if="canWithdraw"
+            type="button"
+            class="sev__btn sev__btn--small"
+            title="Nothing happens and the card stays in your hand"
+            @click="board.eventWithdraw()"
+          >↩ Don't play it (keep the card)</button>
           <template v-if="!ev.done && isAdmin">
             <button v-if="p" type="button" class="sev__btn sev__btn--small" @click="board.eventSkip()">Skip this step</button>
             <button type="button" class="sev__btn sev__btn--small" @click="stopCard">Stop the card</button>
@@ -431,6 +441,9 @@ const waitingVoters = computed(() => {
 })
 
 // --- footer ----------------------------------------------------------------
+// A card you played can be taken back while you're still choosing what it does
+const canWithdraw = computed(() => Boolean(ev.value && !ev.value.done && ev.value.entry &&
+  ev.value.drawer === props.myUserId && p.value && p.value.user_id === props.myUserId))
 const canRedraw = computed(() => ev.value?.drawer === props.myUserId || props.isAdmin)
 
 async function redraw() {
@@ -440,7 +453,8 @@ async function redraw() {
 }
 
 async function stopCard() {
-  if (await askConfirm(`Stop “${ev.value.title}” here? Nothing more on it will happen.`)) props.board.eventSkip(true)
+  const back = ev.value.entry ? ' The card goes back into its player’s hand.' : ''
+  if (await askConfirm(`Stop “${ev.value.title}” here? Nothing more on it will happen.${back}`)) props.board.eventSkip(true)
 }
 
 function close() {

@@ -89,9 +89,9 @@
           <li class="step" :class="stepState(1)">
             <span class="step__mark">{{ turn.paid ? '✓' : '1' }}</span>
             <div class="step__text">
-              <span class="step__title">Collect income</span>
+              <span class="step__title">{{ turn.paid ? 'Income received' : 'Collect income' }}</span>
               <span class="step__sub" :class="incomeNet >= 0 ? 'is-good' : 'is-bad'">
-                {{ turn.paid ? 'Collected' : `${formatSigned(incomeNet)} this turn` }}
+                {{ turn.paid ? 'Paid automatically at the start of your turn' : `${formatSigned(incomeNet)} this turn` }}
               </span>
             </div>
             <button v-if="!turn.paid" type="button" class="step__action step__action--income" @click="board.collectIncome()">
@@ -149,15 +149,15 @@
           <div v-for="a in abilities" :key="a.slot" class="ability" :title="a.text">
             <div class="ability__text">
               <span class="ability__name">⚡ {{ a.job }}<small v-if="a.slot === 'secondary'"> · executive</small></span>
-              <span class="ability__sub">{{ a.automatic || (a.used ? 'Used this turn' : 'Once per turn') }}</span>
+              <span class="ability__sub">{{ a.automatic || (a.notYet ? 'New job: usable from your next turn' : a.used ? 'Used this turn' : 'Once per turn') }}</span>
             </div>
             <button
               v-if="!a.automatic"
               type="button"
               class="ability__use"
-              :disabled="a.used || eventInPlay"
+              :disabled="a.used || a.notYet || eventInPlay"
               @click="board.useAbility(a.slot)"
-            >{{ a.used ? 'Used' : 'Use' }}</button>
+            >{{ a.used ? 'Used' : a.notYet ? 'Next turn' : 'Use' }}</button>
           </div>
         </div>
 
@@ -290,7 +290,7 @@ const turnTarget = ref(null)
 async function confirmSetTurn() {
   const p = props.playersById[turnTarget.value]
   if (!p) return
-  if (await askConfirm(`Make it ${p.username}'s turn now? Their turn starts afresh (collect income, roll...), and any scenario card being played is stopped.`)) {
+  if (await askConfirm(`Make it ${p.username}'s turn now? Their turn starts afresh (income is paid again, then roll...), and any scenario card being played is stopped.`)) {
     props.board.setTurn(p.user_id)
     turnTarget.value = null
   }

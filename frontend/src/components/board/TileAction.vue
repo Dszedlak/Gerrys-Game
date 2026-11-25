@@ -17,8 +17,11 @@
     <p v-if="showRules || !isShopTile" class="tile-action__text">{{ description }}</p>
     <p v-if="dealtText" class="tile-action__dealt">🎴 {{ dealtText }}</p>
     <p v-else-if="turn.dealt_note" class="tile-action__text">{{ turn.dealt_note }}</p>
-    <p v-if="turn.no_access" class="tile-action__warn">
-      You haven't left this building since your last turn, so you get no access this time.
+    <p v-if="turn.no_access && !remoteSenate" class="tile-action__warn">
+      You haven't left this building since your last turn, so you get no access this time{{ tile.kind === 'senate_virus' ? ' (the Time Virus still works)' : '' }}.
+    </p>
+    <p v-if="remoteSenate" class="tile-action__remote">
+      📡 Remote Access: you can use the Senate from here this turn, as if you were standing in it.
     </p>
 
     <!-- Scenario tile: the card drawn on landing; swap it for another -->
@@ -100,7 +103,7 @@
         <button
           type="button"
           class="virus__roll"
-          :disabled="virusTarget === null || (tile.kind === 'senate_virus' && turn.no_access)"
+          :disabled="virusTarget === null"
           @click="releaseVirus"
         >🎲 {{ virusTarget === null ? 'Pick a victim, then roll' : `Roll the virus on ${playersById[virusTarget]?.username}` }}</button>
       </template>

@@ -110,13 +110,44 @@ def holders(room, state, job):
 
 
 def tidy_secondary(room, state):
-    """An executive ability goes with the Executive title."""
+    """An executive ability goes with the Executive title. Also notes when each player's job changed."""
     sec = state.get("secondary_jobs") or {}
     parts = B._participants(room)
     for uid in list(sec):
         rp = parts.get(int(uid))
         if not rp or rp.perk != "Executive":
             sec.pop(uid)
+    track_jobs(state, parts)
+
+
+def track_jobs(state, parts):
+    """
+    Remember the turn each player's current job (and executive ability) began,
+    so a new Tier 3 ability can only be used from the following turn.
+    """
+    seen = state.setdefault("job_since", {})
+    seq = state.get("turn_seq", 0)
+    sec = state.get("secondary_jobs") or {}
+    for uid, rp in parts.items():
+        key = f"{rp.job_id}|{sec.get(str(uid)) or ''}"
+        rec = seen.get(str(uid))
+        if not rec or rec.get("key") != key:
+            old = (rec or {}).get("key", "").split("|")
+            new = key.split("|")
+            # Before the game starts (or the first time we see a player), abilities are ready
+            since = seq if (rec and state.get("started")) else -1
+            seen[str(uid)] = {
+                "key": key,
+                "primary": since if not rec or old[0] != new[0] else rec.get("primary", -1),
+                "secondary": since if not rec or old[1:] != new[1:] else rec.get("secondary", -1),
+            }
+
+
+def ability_ready(state, user_id, slot):
+    """False on the turn the job (or executive ability) was taken: it works from the next turn."""
+    rec = (state.get("job_since") or {}).get(str(user_id)) or {}
+    since = rec.get(slot, -1)
+    return since < 0 or since != state.get("turn_seq")
 
 
 # --------------------------------------------------------------------------
@@ -260,6 +291,9 @@ def board_use_ability(data=None):
             return
         if B.board_events.active(state):
             emit("error", {"message": f"Finish “{state['event']['title']}” first."})
+            return
+        if not ability_ready(state, user_id, slot):
+            emit("error", {"message": f"You only just became a {job}: its ability works from your next turn."})
             return
         used = state["turn"].setdefault("abilities_used", {})
         if used.get(slot):

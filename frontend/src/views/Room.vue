@@ -33,6 +33,7 @@
         @heat-changed="changeHeat"
         @get-out-of-jail="getOutOfJail"
         @set-approval="setMyApproval"
+        @end-game="openRemoveModal"
       />
 
       <template v-else>
@@ -411,9 +412,20 @@
             </div>
           </div>
           
+          <!-- A split vote: the tied candidates rolled a die -->
+          <div v-if="republicTieRolls.length" class="republic-tie mt-3">
+            <div class="leaderboard-header">🎲 Split vote: the tied candidates rolled</div>
+            <div v-for="(round, r) in republicTieRolls" :key="r" class="republic-tie__round">
+              <span v-if="republicTieRolls.length > 1" class="republic-tie__label">Roll {{ r + 1 }}</span>
+              <span v-for="x in round" :key="x.user_id" class="republic-tie__roll">
+                {{ x.username }} <strong>{{ x.roll }}</strong>
+              </span>
+            </div>
+          </div>
+
           <!-- Head of State selects advisors -->
           <div v-if="currentUserId === republicWinner.winner_id" class="republic-advisor-selection mt-3">
-            <h5>Select Your 2 Advisors:</h5>
+            <h5>Select Your {{ republicAdvisorsNeeded === 1 ? 'Advisor' : `${republicAdvisorsNeeded} Advisors` }}:</h5>
             <div class="republic-advisor-grid">
               <b-button
                 v-for="candidate in republicAdvisorCandidates"
@@ -429,7 +441,7 @@
             <b-button
               variant="primary"
               class="w-100 mt-2"
-              :disabled="republicSelectedAdvisors.length !== 2"
+              :disabled="republicSelectedAdvisors.length !== republicAdvisorsNeeded"
               @click="confirmRepublicAdvisors"
             >
               Confirm Advisors
@@ -578,6 +590,12 @@
             <span class="crown">👑</span>
             <h3>{{ dictatorWinner }}</h3>
             <p>Crowned Dictator!</p>
+          </div>
+          <div v-if="dictatorTieRolls.length" class="republic-tie mt-2">
+            <div class="leaderboard-header">🎲 Tied top bid: the bidders rolled</div>
+            <div v-for="(round, r) in dictatorTieRolls" :key="r" class="republic-tie__round">
+              <span v-for="x in round" :key="x.user_id" class="republic-tie__roll">{{ x.username }} <strong>{{ x.roll }}</strong></span>
+            </div>
           </div>
           
           <div class="mt-3 d-flex justify-content-end">
@@ -1066,6 +1084,10 @@ const republicCurrentUserVote = ref(null)
 const republicWinner = ref(null)
 const republicVoteResults = ref([])
 const republicSelectedAdvisors = ref([])
+// 2 advisors (1 when only two players are left), and a split vote's dice
+const republicAdvisorsNeeded = ref(2)
+const republicTieRolls = ref([])
+const dictatorTieRolls = ref([])
 const republicAdvisorCandidates = computed(() =>
   republicCandidates.value.filter(c => c.user_id !== republicWinner.value?.winner_id)
 )
@@ -1537,6 +1559,7 @@ socket.on('dictatorWinner', (data) => {
   console.log('[dictatorWinner]', data)
   biddingActive.value = false
   dictatorWinner.value = data.winner_name
+  dictatorTieRolls.value = data.tie_rolls || []
   biddingLeaderboard.value = data.leaderboard || []
   dictatorBiddingModal.value && dictatorBiddingModal.value.hide()
   
@@ -1567,6 +1590,9 @@ socket.on('republicVoteResults', (data) => {
   console.log('[republicVoteResults]', data)
   republicWinner.value = { winner_id: data.winner_id, winner_name: data.winner_name }
   republicVoteResults.value = data.results || []
+  republicAdvisorsNeeded.value = data.advisors_needed || 2
+  republicTieRolls.value = data.tie_rolls || []
+  republicSelectedAdvisors.value = []
   republicVotingModal.value && republicVotingModal.value.hide()
   republicResultsModal.value && republicResultsModal.value.show()
 })
@@ -2194,13 +2220,13 @@ function toggleRepublicAdvisor(userId) {
   const idx = republicSelectedAdvisors.value.indexOf(userId)
   if (idx >= 0) {
     republicSelectedAdvisors.value.splice(idx, 1)
-  } else if (republicSelectedAdvisors.value.length < 2) {
+  } else if (republicSelectedAdvisors.value.length < republicAdvisorsNeeded.value) {
     republicSelectedAdvisors.value.push(userId)
   }
 }
 
 function confirmRepublicAdvisors() {
-  if (republicSelectedAdvisors.value.length !== 2) return
+  if (republicSelectedAdvisors.value.length !== republicAdvisorsNeeded.value) return
   socket.emit('selectRepublicAdvisors', JSON.stringify({ advisor_ids: republicSelectedAdvisors.value }))
 }
 
@@ -4546,6 +4572,12 @@ ul {
   border-radius: 12px;
   margin-bottom: 16px;
 }
+.republic-tie { text-align: center; }
+.republic-tie__round { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 6px; }
+.republic-tie__label { font-size: 0.8rem; color: #94A3B8; align-self: center; }
+.republic-tie__roll { padding: 3px 10px; border-radius: 999px; background: rgba(234, 179, 8, 0.15); color: #FDE68A; }
+.republic-tie__roll strong { margin-left: 4px; color: #fff; }
+
 .republic-advisor-selection h5 {
   color: #eab308;
   text-align: center;

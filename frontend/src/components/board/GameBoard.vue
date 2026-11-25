@@ -216,7 +216,7 @@
             'is-me': pawn.user_id === myUserId
           }"
           :style="{ left: `${pawn.x}%`, top: `${pawn.y}%`, '--pawn': pawn.color, zIndex: Math.round(pawn.y * 10) }"
-          :title="pawn.alive ? pawn.username : `${pawn.username} (servant of the Reaper)`"
+          :title="pawn.alive ? `${pawn.username}${pawn.govRole ? ` (${pawn.govRole})` : ''}` : `${pawn.username} (servant of the Reaper)`"
           @click="openTile(pawn.tile)"
         >
           <span class="pawn__halo" />
@@ -224,7 +224,9 @@
             <BoardPawn :color="pawn.color" :piece="pawn.piece" />
           </span>
           <span v-if="!pawn.alive" class="pawn__skull">💀</span>
-          <span class="pawn__tag">{{ pawn.username }}</span>
+          <!-- Government members carry their badge, so everyone can find them on the board -->
+          <span v-else-if="pawn.govRole" class="pawn__gov" :class="`is-${govClass(pawn.govRole)}`">{{ govBadge(pawn.govRole) }}</span>
+          <span class="pawn__tag">{{ pawn.username }}<template v-if="pawn.govRole"> · {{ pawn.govRole }}</template></span>
         </button>
       </div>
 
@@ -495,6 +497,11 @@ watch(() => props.state, (s) => {
 }, { immediate: true })
 
 watch(() => props.players.map(p => `${p.user_id}:${p.jailed}`).join('|'), syncPositions)
+
+// The badge over a government member's pawn
+const GOV_BADGES = { Dictator: '👑', 'Head of State': '🎖️', Advisor: '📜', Politburo: '☭' }
+function govBadge(role) { return GOV_BADGES[role] || '🏛️' }
+function govClass(role) { return String(role || '').toLowerCase().replace(/\s+/g, '-') }
 
 const pawnPlacements = computed(() => {
   const byTile = {}
@@ -1288,6 +1295,27 @@ button.deck { cursor: pointer; }
   filter: grayscale(1) brightness(0.6);
   opacity: 0.75;
 }
+
+.pawn__gov {
+  position: absolute;
+  top: -22%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: grid;
+  place-items: center;
+  width: 1.9cqw;
+  height: 1.9cqw;
+  border-radius: 50%;
+  background: #EAB308;
+  border: 2px solid #1c1917;
+  box-shadow: 0 0 0 2px rgba(234, 179, 8, 0.45), 0 2px 6px rgba(0, 0, 0, 0.5);
+  font-size: 1.1cqw;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.pawn__gov.is-advisor { background: #93C5FD; box-shadow: 0 0 0 2px rgba(147, 197, 253, 0.45), 0 2px 6px rgba(0, 0, 0, 0.5); }
+.pawn__gov.is-politburo { background: #F87171; box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.45), 0 2px 6px rgba(0, 0, 0, 0.5); }
 
 .pawn__skull {
   position: absolute;

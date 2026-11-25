@@ -37,7 +37,7 @@
             {{ opt.text }}
           </option>
         </select>
-        <small class="text-muted">Hold Ctrl (Cmd on Mac) to select two advisors.</small>
+        <small class="text-muted">Hold Ctrl (Cmd on Mac) to select {{ advisorsNeeded === 1 ? 'one advisor' : 'two advisors' }}.</small>
       </div>
     </div>
 
@@ -105,6 +105,12 @@ const participantOptions = computed(() =>
   }))
 )
 
+// A Republic has 2 advisors; with only two players left, 1
+const advisorsNeeded = computed(() => {
+  const alive = (props.participants || []).filter(p => String(p.clock || '').trim() !== '00•00•00')
+  return alive.length <= 2 ? 1 : 2
+})
+
 const show = (governmentType) => {
   govForm.value = {
     type: governmentType,
@@ -131,14 +137,15 @@ const submit = () => {
     }
     payload.dictator = Number(govForm.value.dictator)
   } else if (t === 'Republic') {
-    if (!govForm.value.head_of_state || (govForm.value.advisors || []).length !== 2) {
-      error.value = 'Select a head of state and exactly 2 advisors.'
+    const needed = advisorsNeeded.value
+    if (!govForm.value.head_of_state || (govForm.value.advisors || []).length !== needed) {
+      error.value = `Select a head of state and exactly ${needed} advisor${needed === 1 ? '' : 's'}.`
       return
     }
     payload.head_of_state = Number(govForm.value.head_of_state)
-    payload.advisors = govForm.value.advisors.slice(0, 2).map(Number)
+    payload.advisors = govForm.value.advisors.slice(0, needed).map(Number)
     const all = [payload.head_of_state, ...payload.advisors]
-    if (new Set(all).size !== 3) {
+    if (new Set(all).size !== needed + 1) {
       error.value = 'Head of state and advisors must be different people.'
       return
     }

@@ -1,3 +1,4 @@
+import random
 from app.models import db, serialize_room, serialize_government
 
 from flask_socketio import emit, join_room, leave_room, send
@@ -257,10 +258,11 @@ def update_government(data):
         members_to_add.append(("dictator", int(dictator)))
     elif gov_type == "Republic":
         head = action.get("head_of_state"); advisors = action.get("advisors") or []
-        if head is None or len(advisors) != 2:
-            db.session.rollback(); emit("error", {"message": "Need head_of_state + 2 advisors"}); return
+        needed = republic_advisors_needed(room)
+        if head is None or len(advisors) != needed:
+            db.session.rollback(); emit("error", {"message": f"Need head_of_state + {needed} advisor(s)"}); return
         ids = [int(head)] + [int(a) for a in advisors]
-        if len(set(ids)) != 3 or not all(_is_room_member(room.id, uid) for uid in ids):
+        if len(set(ids)) != needed + 1 or not all(_is_room_member(room.id, uid) for uid in ids):
             db.session.rollback(); emit("error", {"message": "Invalid republic members"}); return
         members_to_add.append(("head_of_state", int(head)))
         for adv in advisors:
@@ -491,7 +493,7 @@ def apply_income(userData):
 @socketio.on("getOutOfJail")
 @jwt_required()
 def get_out_of_jail(data=None):
-    """Handle player paying jail fee - deducts 8 hours (or 12 during dictatorship)"""
+    """Handle player paying jail fee - deducts 8 hours (12 for peasants under a Dictatorship)"""
     userData = getUserData()
     
     if not userData or not userData.roomId:
@@ -505,11 +507,12 @@ def get_out_of_jail(data=None):
     # Dictatorship has 12 hours (720 minutes)
     jail_fee = 480  # 8 hours in minutes
     
+    # Dictatorship: "Cost of Jail is increased by 4 hours for all peasants" (not the Dictator)
     if room and room.government and room.government.type == "Dictatorship":
-        jail_fee = 720  # 12 hours in minutes for Dictatorship
-        print(f"[getOutOfJail] Dictatorship government - jail fee is 12 hours")
-    else:
-        print(f"[getOutOfJail] Non-dictatorship government - jail fee is 8 hours")
+        is_dictator = GovernmentMember.query.filter_by(
+            government_id=room.government.id, user_id=userData.userId, role="dictator").first() is not None
+        if not is_dictator:
+            jail_fee += 240
 
     # Jury Corruption: "The cost of Jail for the alive player is half the cost when they leave"
     from app.websocket.board import jail_fee_discount
@@ -707,6 +710,8 @@ def balance_books(data=None):
     for data_item in participant_data:
         p = data_item['participant']
         new_total = data_item['remaining'] + share_per_player
+        # Every balance ends on a multiple of 10 minutes (nearest, halves up)
+        new_total = max(0, ((new_total + 5) // 10) * 10)
         p.clock = datetime.min + timedelta(minutes=new_total)
     
     db.session.commit()
@@ -765,6 +770,9 @@ def set_approval_status(data=None):
         emit("error", {"message": "Room not found"})
         return
     
+    from app.websocket import board_gov
+    was_majority = board_gov.reject_majority(room)
+
     # Allow setting approval status even without government
     # Store in the approval_status field
     if approval_status is None:
@@ -783,6 +791,9 @@ def set_approval_status(data=None):
         "username": db.session.query(User.username).filter_by(id=user_id).scalar(),
         "status": approval_status
     }, to=room_identifier)
+
+    # Tipping the table into a REJECT majority calls a vote on a new government
+    board_gov.approval_changed(room, user_id, was_majority)
 
 
 @socketio.on("startVoting")
@@ -1028,13 +1039,14 @@ def start_dictator_bidding(data=None):
         emit("error", {"message": "Room not found"})
         return
     
-    # Initialize bidding for this room
+    begin_dictator_bidding(room)
+
+
+def begin_dictator_bidding(room):
+    """Open the Dictator's blind auction for everyone (the admin closes it)."""
     dictator_bids[room.id] = {}
     bidding_active[room.id] = True
-    
-    # Broadcast to all players to open bidding modal
-    room_identifier = str(room.id)
-    socketio.emit("startDictatorBidding", {}, to=room_identifier)
+    socketio.emit("startDictatorBidding", {}, to=str(room.id))
     print(f"[startDictatorBidding] Bidding started for room {room.id}")
 
 @socketio.on("placeDictatorBid")
@@ -1111,7 +1123,17 @@ def conclude_dictator_bidding(data=None):
         emit("error", {"message": "No bids placed"})
         return
     
-    winner_id = max(room_bids.keys(), key=lambda k: room_bids[k])
+    # Highest bid wins; tied top bids are settled by the tied bidders rolling a die
+    top_bid = max(room_bids.values())
+    tied = sorted(k for k, v in room_bids.items() if v == top_bid)
+    tie_rolls = []
+    while len(tied) > 1:
+        rolls = {k: random.randint(1, 6) for k in tied}
+        tie_rolls.append([{"user_id": k, "username": db.session.query(User.username).filter_by(id=k).scalar(),
+                           "roll": r} for k, r in rolls.items()])
+        best = max(rolls.values())
+        tied = [k for k in tied if rolls[k] == best]
+    winner_id = tied[0]
     winner_bid_minutes = room_bids[winner_id]
     winner_name = db.session.query(User.username).filter_by(id=winner_id).scalar()
     
@@ -1167,7 +1189,8 @@ def conclude_dictator_bidding(data=None):
     socketio.emit("dictatorWinner", {
         "winner_id": winner_id,
         "winner_name": winner_name,
-        "leaderboard": leaderboard
+        "leaderboard": leaderboard,
+        "tie_rolls": tie_rolls
     }, to=room_identifier)
 
     # Refresh room to get updated participant data
@@ -1216,6 +1239,13 @@ def buy_black_market(data=None):
 
 # ==================== REPUBLIC VOTING ====================
 
+def republic_advisors_needed(room) -> int:
+    """A Republic has 2 advisors; with only two players left, the Head of State appoints 1."""
+    alive = [p for p in RoomParticipants.query.filter_by(roomId=room.id).all()
+             if (p.clock - datetime.min).total_seconds() > 0]
+    return 1 if len(alive) <= 2 else 2
+
+
 @socketio.on("startRepublicVoting")
 @jwt_required()
 def start_republic_voting(data=None):
@@ -1231,7 +1261,11 @@ def start_republic_voting(data=None):
     if not room:
         emit("error", {"message": "Room not found"}); return
 
-    # Initialize voting
+    begin_republic_voting(room)
+
+
+def begin_republic_voting(room):
+    """Open the Head of State election for everyone (the admin closes it)."""
     republic_votes[room.id] = {}
     republic_voting_active[room.id] = True
 
@@ -1327,10 +1361,18 @@ def conclude_republic_voting(data=None):
     for voter_id, candidate_id in room_bids.items():
         vote_counts[candidate_id] = vote_counts.get(candidate_id, 0) + 1
 
-    # Highest count wins; ties are broken deterministically by lowest user id
-    # so every client agrees on the same head of state.
-    sorted_candidates = sorted(vote_counts.items(), key=lambda x: (-x[1], x[0]))
-    winner_id = sorted_candidates[0][0]
+    # Highest count wins; a split vote is settled by the tied candidates rolling a die
+    # (re-rolling any tie for the top roll).
+    top = max(vote_counts.values())
+    tied = sorted(c for c, n in vote_counts.items() if n == top)
+    tie_rolls = []
+    while len(tied) > 1:
+        rolls = {c: random.randint(1, 6) for c in tied}
+        tie_rolls.append([{"user_id": c, "username": db.session.query(User.username).filter_by(id=c).scalar(),
+                           "roll": r} for c, r in rolls.items()])
+        best = max(rolls.values())
+        tied = [c for c in tied if rolls[c] == best]
+    winner_id = tied[0]
     winner_name = db.session.query(User.username).filter_by(id=winner_id).scalar()
 
     # Remember who actually won, so only they can appoint advisors
@@ -1361,7 +1403,11 @@ def conclude_republic_voting(data=None):
     socketio.emit("republicVoteResults", {
         "winner_id": winner_id,
         "winner_name": winner_name,
-        "results": results
+        "results": results,
+        # A split vote: each round of dice the tied candidates rolled
+        "tie_rolls": tie_rolls,
+        # How many advisors the Head of State appoints (1 when only two players are left)
+        "advisors_needed": republic_advisors_needed(room),
     }, to=room_identifier)
     print(f"[concludeRepublicVoting] Winner: {winner_name} (ID: {winner_id})")
 
@@ -1380,9 +1426,6 @@ def select_republic_advisors(data=None):
         print(f"[selectRepublicAdvisors] Parse error: {e}")
         emit("error", {"message": "Invalid payload"}); return
 
-    if len(advisors) != 2:
-        emit("error", {"message": "Need exactly 2 advisors"}); return
-
     userData = RoomParticipants.query.filter_by(userId=user_id).first()
     if not userData:
         emit("error", {"message": "Not in a room"}); return
@@ -1390,6 +1433,10 @@ def select_republic_advisors(data=None):
     room = Room.query.get(userData.roomId)
     if not room:
         emit("error", {"message": "Room not found"}); return
+
+    needed = republic_advisors_needed(room)
+    if len(advisors) != needed:
+        emit("error", {"message": f"Choose exactly {needed} advisor{'s' if needed != 1 else ''}"}); return
 
     # Verify the caller is the head of state (republic vote winner)
     room_id = room.id
@@ -1405,7 +1452,7 @@ def select_republic_advisors(data=None):
     head_of_state = user_id
     advisors = [int(a) for a in advisors]
     ids = [head_of_state] + advisors
-    if len(set(ids)) != 3 or not all(_is_room_member(room.id, uid) for uid in ids):
+    if len(set(ids)) != needed + 1 or not all(_is_room_member(room.id, uid) for uid in ids):
         emit("error", {"message": "Invalid republic members"}); return
 
     # Create Republic government

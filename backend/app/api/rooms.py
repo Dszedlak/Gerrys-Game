@@ -41,7 +41,12 @@ class RoomListResource(Resource):
             return {"errors": "Room already exists for this user. Please quit a room before making a new one."}, 400
 
         from .. import game_versions
-        room = Room(id=user, name=name, game_version=game_versions.resolve_key(args.get("game_version")))
+        # A room's id is its creator's user id, so an earlier game's clock history can still be
+        # filed under it: clear it, or the end-game graph would mix the two games
+        from app.models import ClockHistory
+        ClockHistory.query.filter_by(room_id=user).delete(synchronize_session=False)
+        room = Room(id=user, name=name, game_version=game_versions.resolve_key(args.get("game_version")),
+                    startedAt=datetime.utcnow())
         db.session.add(room)
         db.session.commit()
 
@@ -173,8 +178,10 @@ class RemoveRoomResource(Resource):
                 # Delete governments
                 Government.query.filter(Government.id.in_(gov_ids)).delete(synchronize_session=False)
 
-            # Delete participants
+            # Delete participants, and this game's clock history (the room id will be reused)
             RoomParticipants.query.filter_by(roomId=room_id).delete(synchronize_session=False)
+            from app.models import ClockHistory
+            ClockHistory.query.filter_by(room_id=room_id).delete(synchronize_session=False)
 
             # Delete room
             Room.query.filter_by(id=room_id).delete(synchronize_session=False)
@@ -212,7 +219,14 @@ class RoomHistoryResource(Resource):
         from app.models import ClockHistory
         from datetime import datetime, timedelta
         
-        history = ClockHistory.query.filter_by(room_id=room_id).order_by(ClockHistory.timestamp).all()
+        # Only this game: snapshots since the room was created, of the players in it now
+        # (room ids are reused, so older games' snapshots may share the id)
+        room = Room.query.get(room_id)
+        players = {p.userId for p in RoomParticipants.query.filter_by(roomId=room_id).all()}
+        query = ClockHistory.query.filter(ClockHistory.room_id == room_id, ClockHistory.user_id.in_(players))
+        if room and room.startedAt:
+            query = query.filter(ClockHistory.timestamp >= room.startedAt)
+        history = query.order_by(ClockHistory.timestamp).all()
         
         print(f"[RoomHistory] Found {len(history)} history entries for room {room_id}")
         

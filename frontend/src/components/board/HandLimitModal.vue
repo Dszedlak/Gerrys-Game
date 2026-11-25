@@ -66,7 +66,7 @@ const props = defineProps({
 const emit = defineEmits(['close'])
 
 const giveTo = reactive({})
-// Only these count towards the limit (hospital items don't)
+// Every card in your hand counts towards the limit
 const counted = computed(() => props.hand.filter(c => HAND_LIMIT_DECKS.includes(c.deck || 'collectable')))
 const over = computed(() => Math.max(0, counted.value.length - props.handLimit))
 
